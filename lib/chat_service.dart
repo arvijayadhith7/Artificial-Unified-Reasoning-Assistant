@@ -8,8 +8,9 @@ class ChatService {
   Stream<Map<String, dynamic>> get responseStream => _controller.stream;
 
   void connect() {
-    socket = io.io('http://192.168.1.4:3000', io.OptionBuilder()
+    socket = io.io('https://vijayadhith7-aura-backend.hf.space', io.OptionBuilder()
       .setTransports(['websocket'])
+      .enableForceNew()
       .build());
 
     socket.onConnect((_) => print('Connected to backend'));

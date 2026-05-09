@@ -1,62 +1,56 @@
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
+const config = require('../config/config');
 
 class MemoryService {
   constructor() {
-    this.db = null;
-    this.init();
-  }
-
-  async init() {
-    // Database stored on D: drive for persistence
-    const dbPath = 'D:\\ANTIGRAVITY\\llm APP\\memory\\chat_memory.db';
-    
-    this.db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database
-    });
-
-    await this.db.exec(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sessionId TEXT,
-        role TEXT,
-        content TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    console.log('✅ SQLite Memory System initialized on D: drive');
+    this.supabase = createClient(config.supabaseUrl, config.supabaseKey);
+    console.log('✅ Supabase Cloud Memory connected');
   }
 
   async getHistory(sessionId) {
-    if (!this.db) await this.init();
-    
-    const rows = await this.db.all(
-      'SELECT role, content FROM messages WHERE sessionId = ? ORDER BY timestamp ASC LIMIT 20',
-      [sessionId]
-    );
+    try {
+      const { data, error } = await this.supabase
+        .from('messages')
+        .select('role, content')
+        .eq('sessionId', sessionId)
+        .order('timestamp', { ascending: true })
+        .limit(20);
 
-    // Transform to Gemini/Transformer-style format
-    return rows.map(row => ({
-      role: row.role,
-      parts: [{ text: row.content }]
-    }));
+      if (error) throw error;
+
+      return data.map(row => ({
+        role: row.role,
+        parts: [{ text: row.content }]
+      }));
+    } catch (err) {
+      console.error('❌ Supabase History Error:', err.message);
+      return [];
+    }
   }
 
   async addMessage(sessionId, role, content) {
-    if (!this.db) await this.init();
-    
-    await this.db.run(
-      'INSERT INTO messages (sessionId, role, content) VALUES (?, ?, ?)',
-      [sessionId, role, content]
-    );
+    try {
+      const { error } = await this.supabase
+        .from('messages')
+        .insert([{ sessionId, role, content }]);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('❌ Supabase Save Error:', err.message);
+    }
   }
 
   async clearHistory(sessionId) {
-    if (!this.db) await this.init();
-    await this.db.run('DELETE FROM messages WHERE sessionId = ?', [sessionId]);
+    try {
+      const { error } = await this.supabase
+        .from('messages')
+        .delete()
+        .eq('sessionId', sessionId);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('❌ Supabase Clear Error:', err.message);
+    }
   }
 }
 

@@ -93,43 +93,39 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0F172A), // Premium Dark Slate
+      drawer: _buildSidebar(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
         centerTitle: true,
-        title: const Column(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              "AURA Assistant",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            const Text(
+              "AURA",
+              style: TextStyle(
+                fontSize: 18, 
+                fontWeight: FontWeight.bold, 
+                letterSpacing: 4,
+                color: Colors.white,
+              ),
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(radius: 3, backgroundColor: Color(0xFF00FFA3)), // Neon green/cyan for AURA
-                SizedBox(width: 4),
-                Text(
-                  "Unified Reasoning Active",
-                  style: TextStyle(fontSize: 10, color: AppColors.textSecondary, letterSpacing: 0.5),
-                ),
-              ],
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blueAccent.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.blueAccent.withOpacity(0.5)),
+              ),
+              child: const Text(
+                "PRO",
+                style: TextStyle(fontSize: 9, color: Colors.blueAccent, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.transparent,
-              child: Image.asset('assets/robot.png'),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -155,23 +151,155 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildStatusIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      color: Colors.black.withOpacity(0.05),
-      child: Row(
+  Widget _buildSidebar() {
+    return Drawer(
+      backgroundColor: const Color(0xFF0F172A),
+      child: Column(
         children: [
-          const SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+          const SizedBox(height: 50),
+          // New Chat Button
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Container(
+              width: double.infinity,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: InkWell(
+                onTap: () => setState(() => _messages.clear()),
+                child: const Row(
+                  children: [
+                    SizedBox(width: 16),
+                    Icon(Icons.add_circle_outline, color: Colors.white, size: 20),
+                    SizedBox(width: 12),
+                    Text("New chat", style: TextStyle(color: Colors.white, fontSize: 14)),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: 12),
+          
+          // Menu Items
+          _buildSidebarItem(Icons.search, "Search chats"),
+          _buildSidebarItem(Icons.folder_open, "Projects"),
+          _buildSidebarItem(Icons.more_horiz, "More"),
+          
+          const Divider(color: Colors.white10),
+          
+          // Recents
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Text("Recents", style: TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold)),
+                Icon(Icons.keyboard_arrow_down, color: Colors.white38, size: 14),
+              ],
+            ),
+          ),
+          
           Expanded(
-            child: Text(
-              _currentTool.isNotEmpty ? "Action: $_currentTool" : "Thinking: $_currentThought",
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
-              overflow: TextOverflow.ellipsis,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    "No recent chats",
+                    style: TextStyle(color: Colors.white24, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const Divider(color: Colors.white10),
+          
+          // User Profile
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Color(0xFFF87171), // Salmon/Pinkish as per image
+                  child: Text("VA", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("vijay adhith", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                      Text("Free", style: TextStyle(color: Colors.white38, fontSize: 11)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Text("Upgrade", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarItem(IconData icon, String title) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white70, size: 20),
+      title: Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+      dense: true,
+      onTap: () {},
+    );
+  }
+
+  Widget _buildRecentItem(String title) {
+    return ListTile(
+      title: Text(
+        title, 
+        style: const TextStyle(color: Colors.white, fontSize: 13),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      dense: true,
+      onTap: () {},
+    );
+  }
+
+  // --- RESTORED UI COMPONENTS ---
+
+  Widget _buildModelSelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.blueAccent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.blueAccent.withOpacity(0.5), width: 1),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.bolt_outlined, size: 16, color: Colors.blueAccent),
+                SizedBox(width: 8),
+                Text(
+                  "AURA Pipeline Active",
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                ),
+              ],
             ),
           ),
         ],
@@ -183,23 +311,16 @@ class _ChatScreenState extends State<ChatScreen> {
     return Align(
       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: msg.isUser ? Colors.white : AppColors.cardBg,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: msg.isUser ? const Radius.circular(20) : Radius.zero,
-            bottomRight: msg.isUser ? Radius.zero : const Radius.circular(20),
-          ),
+          color: msg.isUser ? Colors.white.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: msg.isUser ? Colors.white12 : Colors.transparent),
         ),
         child: Text(
           msg.text,
-          style: TextStyle(
-            color: msg.isUser ? Colors.black : Colors.white,
-            fontWeight: msg.isUser ? FontWeight.w500 : FontWeight.normal,
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 15),
         ),
       ),
     );
@@ -207,152 +328,42 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildBotCardMessage(String text) {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardBg,
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: Container(
-              height: 150,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF3B2E5A), Color(0xFF1C1C24)],
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  "AI HUB",
-                  style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white.withOpacity(0.2),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "AURA Response",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  text,
-                  style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModelSelector() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.accent.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.accent, width: 1),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.bolt_outlined, size: 16, color: AppColors.accent),
-                SizedBox(width: 8),
-                Text(
-                  "Groq Enterprise Engine",
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.accent),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModelChip(String label, String value, IconData icon) {
-    bool isSelected = _selectedModel == value;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedModel = value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.accent.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppColors.accent : Colors.white.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? AppColors.accent : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppColors.accent : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.white, fontSize: 15),
       ),
     );
   }
 
   Widget _buildInputSection() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Row(
         children: [
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              height: 56,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              height: 52,
               decoration: BoxDecoration(
-                color: AppColors.cardBg,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: Colors.white10),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      onSubmitted: (_) => _handleSend(),
-                      decoration: const InputDecoration(
-                        hintText: "Ask me something...",
-                        hintStyle: TextStyle(color: AppColors.textSecondary),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.mic_none, color: AppColors.textSecondary),
-                ],
+              child: TextField(
+                controller: _textController,
+                onSubmitted: (_) => _handleSend(),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: "Message AURA...",
+                  hintStyle: TextStyle(color: Colors.white30, fontSize: 14),
+                  border: InputBorder.none,
+                ),
               ),
             ),
           ),
@@ -360,16 +371,28 @@ class _ChatScreenState extends State<ChatScreen> {
           GestureDetector(
             onTap: _handleSend,
             child: Container(
-              height: 56,
-              width: 56,
+              height: 52,
+              width: 52,
               decoration: const BoxDecoration(
-                color: AppColors.accent,
+                color: Colors.white,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.black),
+              child: const Icon(Icons.arrow_upward_rounded, color: Colors.black),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatusIndicator() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Center(
+        child: Text(
+          _currentTool.isNotEmpty ? "Searching..." : "Thinking...",
+          style: const TextStyle(color: Colors.white30, fontSize: 11, fontStyle: FontStyle.italic),
+        ),
       ),
     );
   }
