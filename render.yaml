@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: aura-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: GROQ_API_KEY
+        sync: false # You will enter this in the Render Dashboard
+      - key: NODE_ENV
+        value: production
+      - key: LOCAL_INFERENCE_URL
+        value: ws://127.0.0.1:8000/chat # Placeholder for local tools
