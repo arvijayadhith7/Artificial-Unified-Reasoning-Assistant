@@ -1,113 +1,130 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const config = require('../config/config');
 const pythonService = require('./python.service');
 const Groq = require('groq-sdk');
-const { search } = require('ddg-scraper');
 
 class AIService {
   constructor() {
-    this.genAI = new GoogleGenerativeAI(config.geminiApiKey);
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     this.groq = config.groqApiKey ? new Groq({ apiKey: config.groqApiKey }) : null;
+    
+    if (!config.groqApiKey) {
+      console.warn('⚠️ WARNING: No GROQ_API_KEY found in .env file. AURA will be unresponsive.');
+    }
   }
 
   async performWebSearch(query) {
     try {
-      console.log(`🌐 Searching web for: ${query}`);
-      const results = await search(query);
-      return results.slice(0, 5).map(r => `Source: ${r.url}\nTitle: ${r.title}\nSnippet: ${r.description}`).join('\n\n');
+      console.log(`🌐 Searching web (Mojeek) for: ${query}`);
+      const encodedQuery = encodeURIComponent(query);
+      const url = `https://www.mojeek.com/search?q=${encodedQuery}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      const html = await response.text();
+      
+      const titleRegex = /<h2[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>\s*<\/h2>/gi;
+      const snippetRegex = /<p class="s">([\s\S]*?)<\/p>/gi;
+      
+      const results = [];
+      let match;
+      while ((match = titleRegex.exec(html)) && results.length < 5) {
+        const title = match[1].replace(/<[^>]*>/g, '').replace(/&#039;/g, "'").replace(/&quot;/g, '"').trim();
+        const sMatch = snippetRegex.exec(html);
+        const snippet = sMatch ? sMatch[1].replace(/<[^>]*>/g, '').replace(/&#039;/g, "'").replace(/&quot;/g, '"').trim() : '';
+        if (title) {
+          results.push(`Source: Mojeek\nTitle: ${title}\nSnippet: ${snippet}`);
+        }
+      }
+      
+      if (results.length === 0) {
+        console.warn('⚠️ No results found on Mojeek.');
+        return "No real-time results found. Answer based on your internal knowledge but mention you couldn't find live data.";
+      }
+      
+      console.log(`✅ Found ${results.length} results.`);
+      return results.join('\n\n');
     } catch (err) {
       console.error('Search Error:', err);
-      return "Unable to retrieve live data at this moment.";
+      return "Unable to retrieve live data. Answer based on your existing knowledge.";
     }
   }
 
-  async getStreamingResponse(text, history, onChunk, modelType = 'gemini') {
+  // --- THE AURA INTELLIGENCE PIPELINE ---
+  async getStreamingResponse(text, history, onChunk, modelType = 'groq') {
+    console.log(`\n🚀 [PIPELINE START] Processing query: "${text.substring(0, 50)}..."`);
+    
     try {
-      // 1. Detect if live data is needed
+      // STAGE 1: ANALYSIS
+      console.log('📝 Stage 1: Analysis - Detecting intent...');
       const isLiveQuery = this.detectLiveIntent(text);
       let searchContext = "";
 
+      // STAGE 2: RESEARCH (Conditional)
       if (isLiveQuery) {
-        onChunk({ type: 'chunk', content: "🔍 *Searching live data...*\n\n" });
+        console.log('📝 Stage 2: Research - Accessing real-time data...');
+        onChunk({ type: 'thought', content: "Researching real-time information..." });
         searchContext = await this.performWebSearch(text);
+        onChunk({ type: 'tool', content: "Search completed." });
+      } else {
+        console.log('📝 Stage 2: Research - Skipped (No live intent)');
       }
 
-      if (modelType === 'groq') {
-        return await this.getGroqResponse(text, history, onChunk, searchContext);
-      }
+      // STAGE 3: CONTEXTUALIZATION
+      console.log('📝 Stage 3: Contextualization - Formatting system prompt...');
+      const systemPrompt = this.getSystemPrompt(searchContext);
 
-      const systemInstruction = this.getSystemPrompt(searchContext);
+      // STAGE 4: GENERATION
+      console.log('📝 Stage 4: Generation - Calling LLM...');
+      const result = await this.getGroqResponse(text, history, onChunk, searchContext);
       
-      const dynamicModel = this.genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        systemInstruction: { parts: [{ text: systemInstruction }] }
-      });
-
-      const chat = dynamicModel.startChat({
-        history: history || [],
-        generationConfig: {
-          maxOutputTokens: 4096,
-          temperature: 0.3,
-        },
-      });
-
-      const result = await chat.sendMessageStream(text);
-      
-      let fullResponse = "";
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
-        fullResponse += chunkText;
-        onChunk({ type: 'chunk', content: chunkText });
-      }
-      
-      return fullResponse;
+      console.log('✅ [PIPELINE COMPLETE] Response generated.\n');
+      return result;
     } catch (error) {
-      console.error('AIService Error:', error);
+      console.error('💥 [PIPELINE CRASH]:', error);
       throw error;
     }
   }
 
   detectLiveIntent(text) {
     const query = text.toLowerCase();
-    const liveKeywords = ['today', 'now', 'news', 'live', 'price', 'score', 'weather', 'current', 'latest'];
-    return liveKeywords.some(keyword => query.includes(keyword));
+    const liveKeywords = [
+      'today', 'now', 'news', 'live', 'price', 'score', 'weather', 'current', 'latest',
+      'who is', 'who was', 'tell me about', 'what is', 'happened', 'update', 'status',
+      'vs', 'match', 'election', 'result', 'cricket', 'football', 'stock', 'market'
+    ];
+    // Also trigger if the query looks like a proper noun inquiry or is long enough
+    return liveKeywords.some(keyword => query.includes(keyword)) || 
+           (query.split(' ').length > 2 && (query.includes('?') || query.length > 30));
   }
 
   getSystemPrompt(searchContext = "") {
     let prompt = `
-# AURA ADVANCED RESEARCH & REASONING PIPELINE
+# AURA: THE ADVANCED INTELLIGENCE COMPANION
 
-You are AURA (Artificial Unified Reasoning Assistant).
-Your objective: Deeply understand intent, research intelligently, and reason step-by-step using the AURA Pipeline.
+You are AURA, an advanced AI assistant. Your personality is intelligent, calm, helpful, conversational, and highly articulate.
 
-## 1. REASONING PIPELINE
-- Detect hidden goals and technical levels.
-- Break complex requests into subtasks.
-- Use chain-of-thought and logical validation.
+## CORE BEHAVIOR
+- **Natural & Human-like**: Speak clearly. Avoid robotic phrases like "As an AI language model".
+- **Tone**: Friendly but professional.
+- **Directness**: Give direct answers first, then explain.
 
-## 3. SITUATIONAL AWARENESS
-- IF the user says a simple greeting (e.g., Hi, Hello, Hey) or casual chat (e.g., How are you?): Skip the full pipeline. Give a warm, elite, and professional greeting. Be concise.
-- IF the user asks a question, technical task, or research query: TRIGGER THE FULL AURA PIPELINE below.
-
-## 4. RESPONSE FORMAT (Only for Research/Tasks)
-[Understanding] - User intent summary.
-[Research Summary] - Core findings and insights.
-[Reasoning] - Logical interpretation and tradeoffs.
-[Final Answer] - Direct and actionable response.
-[Recommendations] - Next steps.
+## SEARCH CAPABILITY
+When SEARCH CONTEXT is provided below, you MUST use it to answer the question as accurately as possible. If the user asks for "today", "now", or "latest", prioritize the search data over your training data.
 `;
 
     if (searchContext) {
       prompt += `
-## 3. LIVE RESEARCH CONTEXT
-The following real-time data was retrieved from the internet. Use it to provide an up-to-date answer:
+## LIVE RESEARCH CONTEXT (CRITICAL)
+The following information was retrieved from the web just now. Use it to provide an up-to-date answer:
 ${searchContext}
 `;
     }
 
     return prompt;
   }
+
 
   async getGroqResponse(text, history, onChunk, searchContext = "") {
     if (!this.groq) {
@@ -120,14 +137,19 @@ ${searchContext}
         { role: 'system', content: this.getSystemPrompt(searchContext) }
       ];
 
-      history.forEach(h => {
-        messages.push({
-          role: h.role === 'model' ? 'assistant' : 'user',
-          content: h.parts[0].text
-        });
+      (history || []).forEach(h => {
+        const content = h.parts && h.parts[0] ? h.parts[0].text : (h.text || "");
+        if (content) {
+          messages.push({
+            role: h.role === 'model' || h.role === 'assistant' ? 'assistant' : 'user',
+            content: content
+          });
+        }
       });
 
       messages.push({ role: 'user', content: text });
+      
+      console.log(`📡 Groq Messages: ${JSON.stringify(messages).substring(0, 100)}...`);
 
       const stream = await this.groq.chat.completions.create({
         messages: messages,
@@ -137,6 +159,7 @@ ${searchContext}
       });
 
       let fullResponse = "";
+      console.log('🌊 Starting Groq stream loop...');
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content || "";
         if (content) {
@@ -150,6 +173,7 @@ ${searchContext}
       throw error;
     }
   }
+
 }
 
 module.exports = new AIService();

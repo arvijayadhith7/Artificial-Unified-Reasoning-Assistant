@@ -8,24 +8,26 @@ class ChatService {
   Stream<Map<String, dynamic>> get responseStream => _controller.stream;
 
   void connect() {
-    socket = io.io('https://vijayadhith7-aura-backend.hf.space', io.OptionBuilder()
+    socket = io.io('http://192.168.1.4:3000', io.OptionBuilder()
       .setTransports(['websocket'])
       .enableForceNew()
       .build());
 
-    socket.onConnect((_) => print('Connected to backend'));
+    socket.onConnect((_) => print('🚀 SUCCESS: Connected to AURA Backend'));
+    socket.onConnectError((data) => print('❌ Connection Error: $data'));
+    socket.onDisconnect((data) => print('🔌 Disconnected: $data'));
     
     socket.on('chunk', (data) {
-      // data is now { 'type': '...', 'content': '...' }
+      print('📥 Received chunk: $data');
       _controller.add(Map<String, dynamic>.from(data));
     });
 
     socket.on('error', (data) {
-      print('Socket Error: $data');
+      print('💥 Socket Logic Error: $data');
     });
   }
 
-  void sendMessage(String text, {String modelType = 'gemini'}) {
+  void sendMessage(String text, {String modelType = 'aura'}) {
     socket.emit('message', {'text': text, 'modelType': modelType});
   }
 

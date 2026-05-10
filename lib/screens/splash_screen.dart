@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'chat_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/glowing_orb.dart';
+import '../app_theme.dart';
+import 'welcome_screen.dart';
+import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
@@ -16,14 +22,36 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2500),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+    );
     _controller.forward();
 
-    Timer(Duration(seconds: 3), () {
+    _handleNavigation();
+  }
+
+  Future<void> _handleNavigation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstTime = prefs.getBool('isFirstTime') ?? true;
+
+    Timer(const Duration(seconds: 4), () {
+      Widget nextScreen;
+      if (isFirstTime) {
+        nextScreen = const WelcomeScreen();
+      } else {
+        nextScreen = const HomeScreen();
+      }
+
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => ChatScreen()),
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 1000),
+        ),
       );
     });
   }
@@ -37,62 +65,69 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF0F172A), // Premium Dark Slate
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Colors.blueAccent, Colors.purpleAccent],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blueAccent.withOpacity(0.5),
-                      blurRadius: 30,
-                      spreadRadius: 5,
-                    )
-                  ],
-                ),
-                child: Center(
-                  child: Image.asset(
-                    'assets/aura_logo.png',
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.contain,
-                  ),
-                ),
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          // Background Glows
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.neonBlue.withOpacity(0.05),
               ),
-              SizedBox(height: 24),
-              Text(
-                "AURA",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 8,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                "ADVANCED REASONING PIPELINE",
-                style: TextStyle(
-                  color: Colors.blueAccent.withOpacity(0.7),
-                  fontSize: 12,
-                  letterSpacing: 2,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          Positioned(
+            bottom: -150,
+            right: -100,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.neonPurple.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Center(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const GlowingOrb(size: 180),
+                  const SizedBox(height: 40),
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [AppColors.neonBlue, AppColors.neonPurple],
+                    ).createShader(bounds),
+                    child: Text(
+                      "AURA",
+                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                        letterSpacing: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "NEURAL INTELLIGENCE ENGINE",
+                    style: TextStyle(
+                      color: AppColors.neonBlue.withOpacity(0.6),
+                      fontSize: 10,
+                      letterSpacing: 4,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

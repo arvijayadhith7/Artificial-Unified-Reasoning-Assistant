@@ -1,200 +1,160 @@
 import 'package:flutter/material.dart';
 import '../app_theme.dart';
 import 'chat_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
-class WelcomeScreen extends StatefulWidget {
+class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
-  @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
-}
-
-class _WelcomeScreenState extends State<WelcomeScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 3),
-      vsync: this,
-    )..repeat(reverse: true);
-    _animation = Tween<double>(
-      begin: 0,
-      end: 20,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  Future<void> _completeOnboarding(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isFirstTime', false);
+    
+    if (context.mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const ChatScreen()),
+      );
+    }
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  Future<void> _handleGoogleSignIn(BuildContext context) async {
+    try {
+      // Mock Google Sign-In for demo purposes
+      // In a real app, you'd use: final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚡ Authenticating with Google Cloud...')),
+      );
+      await Future.delayed(const Duration(seconds: 2));
+      await _completeOnboarding(context);
+    } catch (error) {
+      print(error);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // Background decoration
+          // Background Gradient
           Positioned.fill(
             child: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: RadialGradient(
-                  center: const Alignment(0, -0.3),
-                  radius: 1.0,
+                  center: Alignment.bottomRight,
+                  radius: 1.5,
                   colors: [
-                    const Color.fromARGB(255, 0, 0, 0).withOpacity(0.15),
+                    Color(0xFF1A1A2E),
                     AppColors.background,
                   ],
                 ),
               ),
-              child: CustomPaint(painter: TopoLinesPainter()),
             ),
           ),
-
+          
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Spacer(),
-                  const Text(
-                    "AURA",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 64,
-                      letterSpacing: 4.0,
-                      color: AppColors.accent,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Text(
-                    "Artificial Unified Reasoning Assistant",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      letterSpacing: 1.2,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // Robot Image with Floating Animation
-                  Center(
-                    child: AnimatedBuilder(
-                      animation: _animation,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(0, _animation.value),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Glow behind robot
-                              Container(
-                                width: 250,
-                                height: 250,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color.fromARGB(
-                                        255,
-                                        0,
-                                        0,
-                                        0,
-                                      ).withOpacity(0.4),
-                                      blurRadius: 100,
-                                      spreadRadius: 20,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Robot with background blending
-                              ShaderMask(
-                                shaderCallback: (Rect bounds) {
-                                  return const RadialGradient(
-                                    center: Alignment.center,
-                                    radius:
-                                        0.6, // Increased radius for square head
-                                    colors: [Colors.white, Colors.transparent],
-                                    stops: [
-                                      0.85,
-                                      1.0,
-                                    ], // Sharper cutoff at the very edge
-                                  ).createShader(bounds);
-                                },
-                                blendMode: BlendMode.dstIn,
-                                child: Container(
-                                  width: 380, // Slightly larger
-                                  height: 380,
-                                  decoration: const BoxDecoration(
-                                    image: DecorationImage(
-                                      image: AssetImage('assets/robot.png'),
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
                   const SizedBox(height: 20),
-
-                  // Version Chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      "V1.0-ENTERPRISE",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
+                  // Neural Core Image
+                  Center(
+                    child: Container(
+                      height: 280,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.neonBlue.withOpacity(0.2),
+                            blurRadius: 40,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: Image.asset(
+                          'assets/neural_core.png',
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   ),
-
                   const Spacer(),
-
-                  const Text(
-                    "Nice to meet you! How can I help you?",
-                    style: TextStyle(
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [AppColors.neonBlue, Colors.white],
+                    ).createShader(bounds),
+                    child: Text(
+                      "Elevate Your\nIntelligence.",
+                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Experience AURA — the next generation of autonomous reasoning and cognitive assistance.",
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppColors.textSecondary,
-                      fontSize: 16,
                     ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  // Start Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const ChatScreen(),
+                  const SizedBox(height: 40),
+                  
+                  // Google Auth Button
+                  GestureDetector(
+                    onTap: () => _handleGoogleSignIn(context),
+                    child: Container(
+                      width: double.infinity,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.network(
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_\"G\"_logo.svg/1200px-Google_\"G\"_logo.svg.png',
+                            height: 24,
                           ),
-                        );
-                      },
-                      child: const Text("Let's start chatting"),
+                          const SizedBox(width: 12),
+                          const Text(
+                            "Continue with Google",
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+                  
+                  // Secondary Initialize Button
+                  Center(
+                    child: TextButton(
+                      onPressed: () => _completeOnboarding(context),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Initialize System",
+                            style: TextStyle(color: Colors.white70, fontSize: 16),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward_rounded, color: AppColors.neonBlue, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -203,25 +163,4 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ),
     );
   }
-}
-
-class TopoLinesPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-
-    for (var i = 1; i < 10; i++) {
-      canvas.drawCircle(
-        Offset(size.width * 0.5, size.height * 0.4),
-        i * 50.0,
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

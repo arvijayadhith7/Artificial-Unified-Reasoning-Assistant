@@ -12,7 +12,7 @@ class MemoryService {
       const { data, error } = await this.supabase
         .from('messages')
         .select('role, content')
-        .eq('sessionId', sessionId)
+        .eq('session_id', sessionId)
         .order('timestamp', { ascending: true })
         .limit(20);
 
@@ -32,7 +32,7 @@ class MemoryService {
     try {
       const { error } = await this.supabase
         .from('messages')
-        .insert([{ sessionId, role, content }]);
+        .insert([{ session_id: sessionId, role, content }]);
 
       if (error) throw error;
     } catch (err) {
@@ -45,7 +45,7 @@ class MemoryService {
       const { error } = await this.supabase
         .from('messages')
         .delete()
-        .eq('sessionId', sessionId);
+        .eq('session_id', sessionId);
 
       if (error) throw error;
     } catch (err) {

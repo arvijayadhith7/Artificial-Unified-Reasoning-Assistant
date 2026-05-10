@@ -19,7 +19,7 @@ Whether you are a developer seeking a Senior Architect's advice or a researcher 
 
 ## 🔥 Key Features
 
-- **⚡ Instant Reasoning:** Powered by **Groq Llama-3.3-70B**, delivering 200+ tokens/sec.
+- **⚡ Instant Reasoning:** Powered by **OpenRouter (Gemini 2.0 Flash)** and **Groq Llama-3.3-70B**.
 - **🧠 Intent-Aware Agents:** Automatic routing between specialized agents (Coding, Research, Empathy, General).
 - **🛠️ Agentic Tools:** Built-in capabilities to read local files, execute Python scripts, and search the web.
 - **📂 Contextual Memory:** SQLite-based vector memory system for long-term user context retention.
@@ -56,7 +56,7 @@ Whether you are a developer seeking a Senior Architect's advice or a researcher 
    ```bash
    cd backend
    npm install
-   # Create a .env file and add your GROQ_API_KEY
+   # Create a .env file and add your GROQ_API_KEY and OPENROUTER_API_KEY
    node server.js
    ```
 

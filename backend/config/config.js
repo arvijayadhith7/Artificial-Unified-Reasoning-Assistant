@@ -2,7 +2,6 @@ require('dotenv').config();
 
 module.exports = {
   port: process.env.PORT || 3000,
-  geminiApiKey: process.env.GEMINI_API_KEY || 'AIzaSyA...',
   mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/ai_chatbot',
   jwtSecret: process.env.JWT_SECRET || 'super-secret-key',
   redisConfig: {

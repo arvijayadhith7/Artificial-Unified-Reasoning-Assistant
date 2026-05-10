@@ -8,7 +8,7 @@ class SocketService {
       const sessionId = socket.id;
 
       socket.on('message', async (data) => {
-        const { text, modelType = 'gemini' } = data;
+        const { text, modelType = 'aura' } = data;
         
         try {
           // 1. Get History
@@ -30,7 +30,8 @@ class SocketService {
 
           socket.emit('done', { text: fullResponse });
         } catch (error) {
-          socket.emit('error', 'AI processing failed.');
+          console.error('💥 Socket Service Error:', error);
+          socket.emit('chunk', { type: 'chunk', content: "⚠️ *AURA is currently experiencing a connection blackout. Please ensure your backend is running and API keys are valid.*" });
         }
       });
 
