@@ -725,7 +725,7 @@ class AuraSidebar extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         children: [
                           _buildSectionHeader("RECENT CHATS"),
-                          ...chatHistory.map((title) => _buildHistoryItem(title)),
+                          ...chatHistory.map((title) => _buildHistoryItem(context, title)),
                         ],
                       ),
               ),
@@ -748,7 +748,7 @@ class AuraSidebar extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryItem(String title) {
+  Widget _buildHistoryItem(BuildContext context, String title) {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       child: ListTile(

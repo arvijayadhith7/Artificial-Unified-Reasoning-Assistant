@@ -25,8 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<List<dynamic>> _fetchAIUpdates() async {
     try {
-      // Try to fetch from the local backend
-      final response = await http.get(Uri.parse('http://localhost:3000/status')).timeout(const Duration(seconds: 2));
+      // Try to fetch from the production backend (Hugging Face)
+      final response = await http.get(Uri.parse('https://vijayadhith7-aura-backend.hf.space/status')).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         // Just return some mock enterprise updates since it's an enterprise dashboard
         return [
