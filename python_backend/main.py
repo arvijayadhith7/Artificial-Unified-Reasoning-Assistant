@@ -164,14 +164,18 @@ class InferenceEngine:
         self.toolbox = Toolbox()
         self.lock = ThreadingLock() # Ensure one inference at a time
 
-    def generate_stream(self, prompt, history):
+    def generate_stream(self, prompt, history, web_context=""):
         if self.is_mock:
-            yield f"🤖 [MOCK MODE] Simulation Active. Tools available: search_files, read_file, run_python, scrape_web."
+            yield f"🤖 [MOCK MODE] Simulation Active. Web Context: {len(web_context)} chars. Tools available: search_files, read_file, run_python, scrape_web."
             return
 
         with self.lock:
             context_docs = kb.search(prompt)
-            full_prompt = self.build_prompt(prompt, history, "\n".join(context_docs))
+            combined_context = "\n".join(context_docs)
+            if web_context:
+                combined_context = f"--- WEB SEARCH RESULTS ---\n{web_context}\n---\n{combined_context}"
+            
+            full_prompt = self.build_prompt(prompt, history, combined_context)
             inputs = self.tokenizer(full_prompt, return_tensors="pt")
             
             streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
@@ -267,7 +271,11 @@ async def websocket_endpoint(websocket: WebSocket):
         try:
             data = await websocket.receive_text()
             req = json.loads(data)
-            for chunk in engine.generate_stream(req.get("text"), req.get("history", [])):
+            prompt = req.get("text")
+            history = req.get("history", [])
+            web_context = req.get("searchContext", "")
+            
+            for chunk in engine.generate_stream(prompt, history, web_context):
                 await websocket.send_text(json.dumps({"chunk": chunk}))
             await websocket.send_text(json.dumps({"done": True}))
         except Exception as e:

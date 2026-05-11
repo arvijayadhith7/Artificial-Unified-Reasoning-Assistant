@@ -24,6 +24,9 @@ class MemoryService {
       }));
     } catch (err) {
       console.error('❌ Supabase History Error:', err.message);
+      if (err.message.includes('column') && err.message.includes('does not exist')) {
+        console.warn('💡 SCHEMA TIP: Ensure your Supabase "messages" table has a "session_id" column (snake_case).');
+      }
       return [];
     }
   }

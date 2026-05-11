@@ -26,10 +26,20 @@ app.use((req, res, next) => {
   );
   next();
 });
-app.use(express.static('../build/web'));
+const buildPath = path.join(__dirname, '../build/web');
+app.use(express.static(buildPath));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../build/web/index.html'));
+  const indexPath = path.join(buildPath, 'index.html');
+  if (require('fs').existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.json({ 
+      status: 'AURA Enterprise Backend Active', 
+      message: 'Web interface not found. Connect via Flutter Mobile App.',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 const server = http.createServer(app);

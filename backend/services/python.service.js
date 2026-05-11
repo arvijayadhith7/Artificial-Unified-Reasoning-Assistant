@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const config = require('../config/config');
 
 class PythonService {
-  async getStreamingResponse(text, history, onChunk) {
+  async getStreamingResponse(text, history, onChunk, searchContext = "") {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(config.localInferenceUrl);
       let fullResponse = "";
@@ -18,7 +18,8 @@ class PythonService {
 
         ws.send(JSON.stringify({
           text: text,
-          history: formattedHistory
+          history: formattedHistory,
+          searchContext: searchContext
         }));
       });
 

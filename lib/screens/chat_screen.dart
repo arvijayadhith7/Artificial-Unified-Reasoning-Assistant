@@ -42,8 +42,10 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isCanvasMarkdown = false;
 
   // Chat history for sidebar
-  List<String> _chatHistory = [];
+  List<String> _chatHistory = []; // Stores "id|title" strings
   bool _chatSaved = false;
+  String? _currentChatId;
+  String? _currentChatTitle;
 
   @override
   void initState() {
@@ -78,6 +80,11 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       });
       _scrollToBottom();
+    });
+    
+    // Add listener to update send button state in real-time
+    _textController.addListener(() {
+      setState(() {});
     });
   }
 
@@ -115,10 +122,18 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _saveChatTitle(String title) async {
+    if (_currentChatId == null) return;
     final prefs = await SharedPreferences.getInstance();
-    _chatHistory.insert(0, title);
+    final entry = "${_currentChatId!}|$title";
+    
+    // Remove old entry for this ID if it exists
+    _chatHistory.removeWhere((item) => item.startsWith("${_currentChatId!}|"));
+    _chatHistory.insert(0, entry);
+    
     if (_chatHistory.length > 20) _chatHistory = _chatHistory.sublist(0, 20);
     await prefs.setStringList('chat_history', _chatHistory);
+    
+    _currentChatTitle = title;
     setState(() {});
   }
 
@@ -128,17 +143,26 @@ class _ChatScreenState extends State<ChatScreen> {
       _currentResponse = "";
       _canvasContent = "";
       _chatSaved = false;
+      _currentChatTitle = null;
+      // Generate a stable ID immediately for chat continuity
+      _currentChatId = "chat_${DateTime.now().millisecondsSinceEpoch}";
       _textController.clear();
     });
   }
 
-  Future<void> _loadMessagesForChat(String title) async {
+  Future<void> _loadMessagesForChat(String idWithTitle) async {
+    final parts = idWithTitle.split('|');
+    final id = parts[0];
+    final title = parts.length > 1 ? parts[1] : id;
+
     final prefs = await SharedPreferences.getInstance();
-    final key = 'chat_content_$title';
+    final key = 'chat_content_$id';
     final content = prefs.getStringList(key) ?? [];
     
     setState(() {
       _messages.clear();
+      _currentChatId = id;
+      _currentChatTitle = title;
       for (var msgJson in content) {
         if (msgJson.startsWith('user:')) {
           _messages.add(ChatMessage(text: msgJson.substring(5), isUser: true));
@@ -158,6 +182,11 @@ class _ChatScreenState extends State<ChatScreen> {
       final title = text.length > 40 ? '${text.substring(0, 40)}...' : text;
       _saveChatTitle(title);
       _chatSaved = true;
+      // Keep the currentChatId stable, but we can associate it with the title in storage
+    }
+
+    if (_currentChatId == null) {
+      _currentChatId = "chat_${DateTime.now().millisecondsSinceEpoch}";
     }
 
     setState(() {
@@ -167,16 +196,15 @@ class _ChatScreenState extends State<ChatScreen> {
       _orbState = OrbState.thinking;
     });
     
-    _chatService.sendMessage(text, modelType: _selectedModel);
+    _chatService.sendMessage(text, chatId: _currentChatId, modelType: _selectedModel);
     _scrollToBottom();
     _persistCurrentChat();
   }
 
   Future<void> _persistCurrentChat() async {
-    if (_chatHistory.isEmpty) return;
-    final title = _chatHistory.first;
+    if (_currentChatId == null) return;
     final prefs = await SharedPreferences.getInstance();
-    final key = 'chat_content_$title';
+    final key = 'chat_content_${_currentChatId!}';
     
     final List<String> data = _messages.map((m) => '${m.isUser ? "user" : "aura"}:${m.text}').toList();
     await prefs.setStringList(key, data);
@@ -203,20 +231,8 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: _buildAppBar(),
       body: Stack(
         children: [
-          // Dynamic Background Glow
-          AnimatedPositioned(
-            duration: const Duration(seconds: 2),
-            top: _isVoiceMode ? 100 : -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.neonPurple.withOpacity(0.1),
-              ),
-            ),
-          ),
+          // Static background for professional look
+          Container(color: AppColors.background),
           
           Column(
             children: [
@@ -236,55 +252,35 @@ class _ChatScreenState extends State<ChatScreen> {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
+      centerTitle: true,
       leading: Builder(
         builder: (context) => IconButton(
-          icon: const Icon(Icons.menu_rounded, color: Colors.white70),
+          icon: const Icon(Icons.grid_view_rounded, color: Colors.white70, size: 22),
           onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
-      centerTitle: true,
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: _orbState == OrbState.thinking ? AppColors.neonPurple : AppColors.neonBlue,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: (_orbState == OrbState.thinking ? AppColors.neonPurple : AppColors.neonBlue).withOpacity(0.5),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            "AURA",
-            style: Theme.of(context).textTheme.displayMedium?.copyWith(
-              fontSize: 18,
-              letterSpacing: 4,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
-          ),
-        ],
+      title: Text(
+        "AURA",
+        style: Theme.of(context).textTheme.displayMedium?.copyWith(
+          fontSize: 16,
+          letterSpacing: 5,
+          fontWeight: FontWeight.w900,
+          color: Colors.white.withOpacity(0.9),
+        ),
       ),
       actions: [
         IconButton(
           onPressed: () => setState(() => _isVoiceMode = !_isVoiceMode),
           icon: Icon(
-            _isVoiceMode ? Icons.chat_bubble_outline : Icons.mic_none_rounded,
-            color: AppColors.neonBlue,
+            _isVoiceMode ? Icons.chat_bubble_outline_rounded : Icons.mic_rounded,
+            color: AppColors.textSecondary,
+            size: 22,
           ),
         ),
         if (_canvasContent.isNotEmpty)
           IconButton(
             onPressed: _showCanvasSheet,
-            icon: const Icon(Icons.code_rounded, color: AppColors.neonBlue),
+            icon: const Icon(Icons.auto_awesome_mosaic_rounded, color: AppColors.primaryGreen, size: 22),
           ),
         const SizedBox(width: 8),
       ],
@@ -313,22 +309,27 @@ class _ChatScreenState extends State<ChatScreen> {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 24),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-        ),
+        margin: const EdgeInsets.only(bottom: 24, left: 24),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              "AURA is processing",
-              style: TextStyle(color: Colors.white54, fontSize: 14, letterSpacing: 0.5),
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: AppColors.neonBlue,
+              ),
             ),
-            const SizedBox(width: 8),
-            _AnimatedThinkingDots(),
+            const SizedBox(width: 12),
+            Text(
+              "AURA is processing",
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.4),
+                fontSize: 13,
+                letterSpacing: 0.5,
+              ),
+            ),
           ],
         ),
       ),
@@ -366,56 +367,74 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildMessageBubble(ChatMessage msg) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
+      padding: const EdgeInsets.only(bottom: 20.0),
       child: Align(
         alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-          child: ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(28),
-              topRight: const Radius.circular(28),
-              bottomLeft: Radius.circular(msg.isUser ? 28 : 4),
-              bottomRight: Radius.circular(msg.isUser ? 4 : 28),
-            ),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: msg.isUser ? 0 : 20, sigmaY: msg.isUser ? 0 : 20),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: msg.isUser ? AppColors.neonBlue.withOpacity(0.15) : Colors.white.withOpacity(0.04),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(28),
-                    topRight: const Radius.circular(28),
-                    bottomLeft: Radius.circular(msg.isUser ? 28 : 4),
-                    bottomRight: Radius.circular(msg.isUser ? 4 : 28),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+          child: Column(
+            crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              if (!msg.isUser)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 14,
+                        height: 14,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryGreen,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        "AURA",
+                        style: TextStyle(
+                          color: AppColors.textPrimary.withOpacity(0.5),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  color: msg.isUser ? AppColors.userBubble : AppColors.aiBubble,
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: msg.isUser ? AppColors.neonBlue.withOpacity(0.3) : Colors.white.withOpacity(0.05),
+                    color: AppColors.border.withOpacity(0.3),
                   ),
                 ),
                 child: MarkdownBody(
                   data: msg.text,
                   styleSheet: MarkdownStyleSheet(
                     p: TextStyle(
-                      color: Colors.white.withOpacity(msg.isUser ? 1.0 : 0.85),
-                      fontSize: 16,
-                      height: 1.5,
+                      color: AppColors.textPrimary.withOpacity(0.9),
+                      fontSize: 15,
+                      height: 1.6,
                     ),
                     code: const TextStyle(
-                      backgroundColor: Colors.black26,
-                      color: AppColors.neonBlue,
-                      fontFamily: 'Courier',
+                      backgroundColor: Colors.black12,
+                      color: AppColors.hoverGreen,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
                     ),
-                    codeblockPadding: const EdgeInsets.all(12),
+                    codeblockPadding: const EdgeInsets.all(16),
                     codeblockDecoration: BoxDecoration(
-                      color: Colors.black45,
+                      color: Colors.black26,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border.withOpacity(0.5)),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -424,57 +443,54 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildInputSection() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+      ),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
-            const SizedBox(width: 8),
             IconButton(
               onPressed: () {},
-              icon: const Icon(Icons.add_rounded, color: Colors.white38),
+              icon: const Icon(Icons.attach_file_rounded, color: AppColors.textSecondary, size: 20),
             ),
             Expanded(
               child: TextField(
                 controller: _textController,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
                 decoration: InputDecoration(
                   hintText: "Message AURA...",
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 15),
+                  hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5), fontSize: 15),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
                 onSubmitted: (val) => _handleSend(),
               ),
             ),
-            GestureDetector(
-              onTap: _handleSend,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: AppColors.neonBlue,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.neonBlue,
-                      blurRadius: 15,
-                      spreadRadius: -5,
-                    ),
-                  ],
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _handleSend,
+                borderRadius: BorderRadius.circular(8),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _textController.text.trim().isNotEmpty ? AppColors.primaryGreen : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.arrow_upward_rounded, 
+                    color: _textController.text.trim().isNotEmpty ? Colors.white : AppColors.textSecondary, 
+                    size: 20
+                  ),
                 ),
-                child: const Icon(Icons.arrow_upward_rounded, color: Colors.black, size: 24),
               ),
             ),
             const SizedBox(width: 4),
@@ -486,31 +502,38 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildStatusIndicator() {
     return Positioned(
-      bottom: 100,
+      bottom: 110,
       left: 0,
       right: 0,
       child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.background.withOpacity(0.8),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.neonBlue.withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.neonBlue),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              const SizedBox(width: 12),
-              Text(
-                _currentTool.isNotEmpty ? "Searching..." : "AURA is thinking",
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.auto_awesome_rounded, color: AppColors.neonBlue, size: 14),
+                  const SizedBox(width: 10),
+                  Text(
+                    _currentTool.isNotEmpty ? "SEARCHING..." : "THINKING...",
+                    style: const TextStyle(
+                      color: Colors.white70, 
+                      fontSize: 10, 
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -651,18 +674,10 @@ class AuraSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.sidebar,
       child: Container(
-        decoration: BoxDecoration(
-          border: Border(right: BorderSide(color: Colors.white.withOpacity(0.05))),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.surface.withOpacity(0.8),
-              AppColors.background,
-            ],
-          ),
+        decoration: const BoxDecoration(
+          border: Border(right: BorderSide(color: AppColors.border, width: 0.5)),
         ),
         child: SafeArea(
           child: Column(
@@ -692,21 +707,21 @@ class AuraSidebar extends StatelessWidget {
                     onNewChat();
                     Navigator.pop(context);
                   },
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.add_rounded, color: AppColors.neonBlue, size: 20),
+                        Icon(Icons.add_rounded, color: AppColors.primaryGreen, size: 20),
                         SizedBox(width: 12),
                         Text(
-                          "New Conversation",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          "New chat",
+                          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500, fontSize: 13),
                         ),
                       ],
                     ),
@@ -748,7 +763,10 @@ class AuraSidebar extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryItem(BuildContext context, String title) {
+  Widget _buildHistoryItem(BuildContext context, String idWithTitle) {
+    final parts = idWithTitle.split('|');
+    final title = parts.length > 1 ? parts[1] : parts[0];
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       child: ListTile(
@@ -763,7 +781,7 @@ class AuraSidebar extends StatelessWidget {
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         onTap: () {
-          onHistorySelected(title);
+          onHistorySelected(idWithTitle);
           Navigator.pop(context);
         },
       ),

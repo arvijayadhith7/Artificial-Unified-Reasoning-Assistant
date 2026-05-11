@@ -51,7 +51,6 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // Background Glows
           Positioned(
             top: -150,
             right: -100,
@@ -60,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 400,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.neonBlue.withOpacity(0.05),
+                color: AppColors.primaryGreen.withOpacity(0.03),
               ),
             ),
           ),
@@ -140,16 +139,9 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 260,
         width: double.infinity,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(40),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.neonBlue.withOpacity(0.05),
-              AppColors.neonPurple.withOpacity(0.05),
-            ],
-          ),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          borderRadius: BorderRadius.circular(32),
+          color: AppColors.surface,
+          border: Border.all(color: AppColors.border),
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -181,12 +173,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          "INITIALIZE NEURAL LINK",
-                          style: GoogleFonts.spaceGrotesk(
-                            color: Colors.white,
+                          "TAP TO START CHAT",
+                          style: GoogleFonts.inter(
+                            color: AppColors.textPrimary,
                             fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2.0,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.0,
                           ),
                         ),
                       ],
@@ -207,18 +199,19 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Text(
           title,
-          style: GoogleFonts.spaceGrotesk(
-            color: AppColors.neonBlue,
+          style: const TextStyle(
+            color: AppColors.primaryGreen,
             fontSize: 12,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 3.0,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 2.0,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           subtitle,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.white38,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -269,43 +262,28 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(32),
-          border: Border.all(color: Colors.white.withOpacity(0.03)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.05),
-              blurRadius: 40,
-              spreadRadius: -20,
-            ),
-          ],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
+            Icon(icon, color: AppColors.primaryGreen, size: 28),
             const SizedBox(height: 24),
             Text(
               title,
-              style: GoogleFonts.spaceGrotesk(
+              style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 18,
-                color: Colors.white,
+                fontSize: 16,
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               subtitle,
               style: const TextStyle(
-                color: Colors.white38,
+                color: AppColors.textSecondary,
                 fontSize: 12,
-                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -337,23 +315,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildUpdateItem(Map<String, dynamic> item) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
-            height: 44,
-            width: 44,
+            height: 40,
+            width: 40,
             decoration: BoxDecoration(
-              color: AppColors.neonPurple.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.primaryGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.bolt_rounded, color: AppColors.neonPurple, size: 20),
+            child: const Icon(Icons.bolt_rounded, color: AppColors.primaryGreen, size: 18),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -362,18 +340,18 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   item['title'] ?? 'Tool Update',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 14),
                 ),
                 Text(
                   item['description'] ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: Colors.white24),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.border, size: 20),
         ],
       ),
     );
@@ -381,21 +359,47 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomNav() {
     return Container(
-      height: 90,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.transparent, AppColors.background],
-        ),
+      height: 70,
+      decoration: const BoxDecoration(
+        color: AppColors.sidebar,
+        border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          IconButton(icon: const Icon(Icons.home_filled, color: AppColors.neonBlue), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.search_rounded, color: Colors.white38), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.history_rounded, color: Colors.white38), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.person_outline_rounded, color: Colors.white38), onPressed: () {}),
+          _buildNavItem(Icons.home_filled, "Home", true),
+          _buildNavItem(Icons.explore_outlined, "Explore", false),
+          _buildNavItem(Icons.folder_open_rounded, "Files", false),
+          _buildNavItem(Icons.person_outline_rounded, "Profile", false),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, bool isActive) {
+    return InkWell(
+      onTap: () {
+        if (label == "Explore" || label == "Files") {
+           Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen()));
+        }
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: isActive ? AppColors.primaryGreen : AppColors.textSecondary.withOpacity(0.4),
+            size: 22,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive ? AppColors.primaryGreen : AppColors.textSecondary.withOpacity(0.4),
+              fontSize: 10,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );

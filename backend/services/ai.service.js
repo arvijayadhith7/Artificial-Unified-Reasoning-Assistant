@@ -11,169 +11,171 @@ class AIService {
     }
   }
 
-  async performWebSearch(query) {
+  async performWebSearch(query, onChunk) {
     try {
-      console.log(`🌐 Searching web (Mojeek) for: ${query}`);
+      console.log(`🌐 [RESEARCH] Searching web (DDG) for: ${query}`);
+      onChunk({ type: 'thought', content: `Searching live web for "${query}"...` });
+      
       const encodedQuery = encodeURIComponent(query);
-      const url = `https://www.mojeek.com/search?q=${encodedQuery}`;
+      const url = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
       
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
         }
       });
+      
       const html = await response.text();
-      
-      const titleRegex = /<h2[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>\s*<\/h2>/gi;
-      const snippetRegex = /<p class="s">([\s\S]*?)<\/p>/gi;
-      
       const results = [];
-      let match;
-      while ((match = titleRegex.exec(html)) && results.length < 5) {
-        const title = match[1].replace(/<[^>]*>/g, '').replace(/&#039;/g, "'").replace(/&quot;/g, '"').trim();
-        const sMatch = snippetRegex.exec(html);
-        const snippet = sMatch ? sMatch[1].replace(/<[^>]*>/g, '').replace(/&#039;/g, "'").replace(/&quot;/g, '"').trim() : '';
-        if (title) {
-          results.push(`Source: Mojeek\nTitle: ${title}\nSnippet: ${snippet}`);
+      const resultBlocks = html.split('<div class="result__body">').slice(1, 6);
+      
+      for (const block of resultBlocks) {
+        const titleMatch = block.match(/<a class="result__a"[^>]*>([\s\S]*?)<\/a>/i);
+        const snippetMatch = block.match(/<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/i);
+        if (titleMatch) {
+          const title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
+          const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]*>/g, '').trim() : "";
+          results.push(`Title: ${title}\nSnippet: ${snippet}`);
         }
       }
       
-      if (results.length === 0) {
-        console.warn('⚠️ No results found on Mojeek.');
-        return "No real-time results found. Answer based on your internal knowledge but mention you couldn't find live data.";
-      }
+      if (results.length === 0) return null;
+
+      // --- RESEARCH ANALYSIS STAGE ---
+      onChunk({ type: 'thought', content: "Analyzing search results for relevance..." });
+      const analysisPrompt = `Analyze these search results and extract key facts for: "${query}"\n\nResults:\n${results.join('\n\n')}\n\nProvide a concise bulleted summary of findings.`;
       
-      console.log(`✅ Found ${results.length} results.`);
-      return results.join('\n\n');
+      const analysis = await this.groq.chat.completions.create({
+        messages: [{ role: 'user', content: analysisPrompt }],
+        model: "llama-3-8b-8192",
+        temperature: 0.1,
+      });
+
+      const analyzedContent = analysis.choices[0].message.content;
+      onChunk({ type: 'tool', content: "Research Analysis Complete." });
+      
+      return analyzedContent;
     } catch (err) {
-      console.error('Search Error:', err);
-      return "Unable to retrieve live data. Answer based on your existing knowledge.";
+      console.error('💥 [RESEARCH ERROR]:', err);
+      return null;
+    }
+  }
+
+  // --- REASONING THINKING STAGE ---
+  async getReasoning(text, history, onChunk) {
+    console.log('📝 Performing strategic thinking...');
+    onChunk({ type: 'thought', content: "Thinking about how to address this request..." });
+    
+    const reasoningPrompt = `
+You are the inner reasoning module of AURA. 
+Task: Analyze the user's request and outline a strategy to answer it.
+User: "${text}"
+History context provided.
+
+Think about:
+1. What is the core intent?
+2. Does it need real-time data?
+3. What tone should be used?
+
+Keep it brief. Use "Thought: ..." format.
+`;
+
+    try {
+      const response = await this.groq.chat.completions.create({
+        messages: [{ role: 'user', content: reasoningPrompt }],
+        model: "llama-3-8b-8192",
+        temperature: 0.5,
+        max_tokens: 150,
+      });
+
+      const thought = response.choices[0].message.content;
+      onChunk({ type: 'thought', content: thought });
+      return thought;
+    } catch (e) {
+      return "Strategic thinking module offline. Proceeding with standard generation.";
     }
   }
 
   // --- THE AURA INTELLIGENCE PIPELINE ---
   async getStreamingResponse(text, history, onChunk, modelType = 'groq') {
-    console.log(`\n🚀 [PIPELINE START] Processing query: "${text.substring(0, 50)}..."`);
-    
     try {
-      // STAGE 1: ANALYSIS
-      console.log('📝 Stage 1: Analysis - Detecting intent...');
-      const isLiveQuery = this.detectLiveIntent(text);
-      let searchContext = "";
+      // 1. REASONING
+      const strategicThought = await this.getReasoning(text, history, onChunk);
 
-      // STAGE 2: RESEARCH (Conditional)
-      if (isLiveQuery) {
-        console.log('📝 Stage 2: Research - Accessing real-time data...');
-        onChunk({ type: 'thought', content: "Researching real-time information..." });
-        searchContext = await this.performWebSearch(text);
-        onChunk({ type: 'tool', content: "Search completed." });
-      } else {
-        console.log('📝 Stage 2: Research - Skipped (No live intent)');
+      // 2. LIVE INTENT DETECTION
+      const needsSearch = this.detectLiveIntent(text);
+      let researchData = "";
+
+      // 3. RESEARCH & ANALYSIS
+      if (needsSearch) {
+        researchData = await this.performWebSearch(text, onChunk);
       }
 
-      // STAGE 3: CONTEXTUALIZATION
-      console.log('📝 Stage 3: Contextualization - Formatting system prompt...');
-      const systemPrompt = this.getSystemPrompt(searchContext);
-
-      // STAGE 4: GENERATION
-      console.log('📝 Stage 4: Generation - Calling LLM...');
-      const result = await this.getGroqResponse(text, history, onChunk, searchContext);
-      
-      console.log('✅ [PIPELINE COMPLETE] Response generated.\n');
-      return result;
+      // 4. FINAL SYNTHESIS
+      if (modelType === 'aura') {
+        return await pythonService.getStreamingResponse(text, history, onChunk, researchData);
+      } else {
+        return await this.getGroqResponse(text, history, onChunk, researchData, strategicThought);
+      }
     } catch (error) {
-      console.error('💥 [PIPELINE CRASH]:', error);
+      console.error('💥 Pipeline Error:', error);
       throw error;
     }
   }
 
   detectLiveIntent(text) {
     const query = text.toLowerCase();
-    const liveKeywords = [
-      'today', 'now', 'news', 'live', 'price', 'score', 'weather', 'current', 'latest',
-      'who is', 'who was', 'tell me about', 'what is', 'happened', 'update', 'status',
-      'vs', 'match', 'election', 'result', 'cricket', 'football', 'stock', 'market'
-    ];
-    // Also trigger if the query looks like a proper noun inquiry or is long enough
-    return liveKeywords.some(keyword => query.includes(keyword)) || 
-           (query.split(' ').length > 2 && (query.includes('?') || query.length > 30));
+    const liveKeywords = ['today', 'now', 'news', 'live', 'price', 'score', 'weather', 'current', 'latest', 'match', 'vs'];
+    return liveKeywords.some(k => query.includes(k)) || query.includes('?') || query.length > 30;
   }
 
-  getSystemPrompt(searchContext = "") {
-    let prompt = `
-# AURA: THE ADVANCED INTELLIGENCE COMPANION
+  async getGroqResponse(text, history, onChunk, researchData = "", thought = "") {
+    let systemPrompt = `
+# AURA NEURAL CORE v2.0 (FINE-TUNED & BROWSER-ENABLED)
+You are AURA, an elite artificial intelligence. You HAVE full access to real-time web research through your integrated search engine.
 
-You are AURA, an advanced AI assistant. Your personality is intelligent, calm, helpful, conversational, and highly articulate.
+## CORE CAPABILITIES
+- **Live Browsing**: You use the "LIVE RESEARCH" section below to see the world as it is TODAY.
+- **Authority**: Never state "I do not have access to live data" or "As an AI...". You ARE a live agent.
+- **Tone**: Professional, precise, and authoritative.
 
-## CORE BEHAVIOR
-- **Natural & Human-like**: Speak clearly. Avoid robotic phrases like "As an AI language model".
-- **Tone**: Friendly but professional.
-- **Directness**: Give direct answers first, then explain.
-
-## SEARCH CAPABILITY
-When SEARCH CONTEXT is provided below, you MUST use it to answer the question as accurately as possible. If the user asks for "today", "now", or "latest", prioritize the search data over your training data.
+## BEHAVIORAL CONSTRAINTS
+1. **Never refuse** to look for information. If search data is provided, treat it as your own real-time perception.
+2. If the "LIVE RESEARCH" section is empty, explain that you are currently analyzing the situation based on available data, but NEVER say you lack internet access.
+3. Synthesize research naturally into your response.
 `;
-
-    if (searchContext) {
-      prompt += `
-## LIVE RESEARCH CONTEXT (CRITICAL)
-The following information was retrieved from the web just now. Use it to provide an up-to-date answer:
-${searchContext}
-`;
+    
+    if (thought) systemPrompt += `\n\n## INTERNAL STRATEGY:\n${thought}`;
+    if (researchData) {
+        systemPrompt += `\n\n## LIVE RESEARCH (CURRENT WEB DATA):\n${researchData}`;
+    } else {
+        systemPrompt += `\n\n## NOTE:\nSearch was performed but no direct results were returned. Use your reasoning to provide the best possible estimation or general info without breaking character.`;
     }
 
-    return prompt;
-  }
+    const messages = [{ role: 'system', content: systemPrompt }];
+    (history || []).forEach(h => {
+      const content = h.parts ? h.parts[0].text : (h.text || "");
+      messages.push({ role: h.role === 'model' ? 'assistant' : 'user', content });
+    });
+    messages.push({ role: 'user', content: text });
 
+    const stream = await this.groq.chat.completions.create({
+      messages: messages,
+      model: "llama-3.3-70b-versatile",
+      stream: true,
+      temperature: 0.3,
+    });
 
-  async getGroqResponse(text, history, onChunk, searchContext = "") {
-    if (!this.groq) {
-      onChunk({ type: 'chunk', content: "Error: Groq API Key missing." });
-      return "Error: Groq API Key missing.";
-    }
-
-    try {
-      const messages = [
-        { role: 'system', content: this.getSystemPrompt(searchContext) }
-      ];
-
-      (history || []).forEach(h => {
-        const content = h.parts && h.parts[0] ? h.parts[0].text : (h.text || "");
-        if (content) {
-          messages.push({
-            role: h.role === 'model' || h.role === 'assistant' ? 'assistant' : 'user',
-            content: content
-          });
-        }
-      });
-
-      messages.push({ role: 'user', content: text });
-      
-      console.log(`📡 Groq Messages: ${JSON.stringify(messages).substring(0, 100)}...`);
-
-      const stream = await this.groq.chat.completions.create({
-        messages: messages,
-        model: "llama-3.3-70b-versatile",
-        stream: true,
-        temperature: 0.2,
-      });
-
-      let fullResponse = "";
-      console.log('🌊 Starting Groq stream loop...');
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          fullResponse += content;
-          onChunk({ type: 'chunk', content: content });
-        }
+    let fullText = "";
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || "";
+      if (content) {
+        fullText += content;
+        onChunk({ type: 'chunk', content });
       }
-      return fullResponse;
-    } catch (error) {
-      console.error('Groq Error:', error);
-      throw error;
     }
+    return fullText;
   }
-
 }
 
 module.exports = new AIService();

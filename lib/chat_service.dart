@@ -27,8 +27,12 @@ class ChatService {
     });
   }
 
-  void sendMessage(String text, {String modelType = 'aura'}) {
-    socket.emit('message', {'text': text, 'modelType': modelType});
+  void sendMessage(String text, {String? chatId, String modelType = 'aura'}) {
+    socket.emit('message', {
+      'text': text, 
+      'chatId': chatId,
+      'modelType': modelType
+    });
   }
 
   void dispose() {
