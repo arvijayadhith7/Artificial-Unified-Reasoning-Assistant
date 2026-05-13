@@ -1,40 +1,26 @@
 import os
 import sys
-
-# Force UTF-8 mode for Windows compatibility
-os.environ['PYTHONUTF8'] = '1'
-if sys.platform == 'win32':
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-
-# Global Model Path Configuration (D: Drive)
-os.environ['HF_HOME'] = r'D:\ANTIGRAVITY\llm APP\models\huggingface'
-os.environ['TRANSFORMERS_CACHE'] = r'D:\ANTIGRAVITY\llm APP\models\huggingface'
-os.environ['TORCH_HOME'] = r'D:\ANTIGRAVITY\llm APP\models\torch'
-
-import torch
-from transformers import AutoTokenizer, TextIteratorStreamer
-from optimum.intel.openvino import OVModelForCausalLM
-from sentence_transformers import SentenceTransformer
-import chromadb
-from chromadb.config import Settings
-from fastapi import FastAPI, WebSocket
-from threading import Thread, Lock as ThreadingLock
-import uvicorn
 import json
-import requests
-from bs4 import BeautifulSoup
-import subprocess
-import glob
 import re
-
+import requests
+import subprocess
+import uvicorn
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from peft import PeftModel
+from threading import Thread, Lock as ThreadingLock
+from bs4 import BeautifulSoup
+from groq import Groq as GroqClient
+
+# Agent Plugins
+from agent_plugins.rag_advanced import AdvancedRAG
+from agent_plugins.sql_agent import SQLAgent
+
+# Vector Memory & Reasoning
+import chromadb
+from sentence_transformers import SentenceTransformer
 
 app = FastAPI()
 
-# Enable CORS for WebUI access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,227 +28,321 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 1. Intel OpenVINO Optimized Loading (Turbo Mode)
-model_name = "Qwen/Qwen2.5-0.5B-Instruct"
-try:
-    print("🚀 Loading Intel OpenVINO Turbo Engine...")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    # OVModel automatically handles CPU/iGPU optimization
-    model = OVModelForCausalLM.from_pretrained(
-        model_name,
-        export=True, # Convert to OpenVINO format on first load
-        device="AUTO",
-        trust_remote_code=True
-    )
-    model_loaded = True
-except Exception as e:
-    print(f"Turbo Load Error: {e}")
-    model_loaded = False
-    model = None
-    tokenizer = None
+# 1. Initialize Neural Link (Groq)
+groq_key = os.environ.get("GROQ_API_KEY")
+groq_client = GroqClient(api_key=groq_key) if groq_key else None
 
-# Ensure model stays loaded from the first block
-pass
-
-# 2. RAG System Initialization
-class KnowledgeBase:
+# 2. Advanced Context & Memory Engine
+class NeuralMemory:
     def __init__(self, path):
         self.client = chromadb.PersistentClient(path=path)
-        self.collection = self.client.get_or_create_collection(name="app_context")
-        self.embedder = SentenceTransformer('all-MiniLM-L6-v2', device='cuda' if torch.cuda.is_available() else 'cpu')
+        self.collection = self.client.get_or_create_collection(name="aura_memory_vault")
+        self.embedder = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
 
-    def add_document(self, text, metadata=None):
-        embedding = self.embedder.encode(text).tolist()
-        self.collection.add(
-            documents=[text],
-            embeddings=[embedding],
-            metadatas=[metadata] if metadata else [{"source": "manual"}],
-            ids=[str(hash(text))]
-        )
-
-    def search(self, query, top_k=3):
-        query_embedding = self.embedder.encode(query).tolist()
-        results = self.collection.query(query_embeddings=[query_embedding], n_results=top_k)
-        return results['documents'][0] if results['documents'] else []
-
-kb_path = r'D:\ANTIGRAVITY\llm APP\memory\vector_db'
-kb = KnowledgeBase(kb_path)
-
-# 3. Enhanced Agentic Toolbox
-class Toolbox:
-    @staticmethod
-    def search_files(query, directory=r'D:\ANTIGRAVITY'):
-        """Tool: search_files(query=\"...\")"""
-        print(f"🔍 Agent: Searching for '{query}'...")
+    def retrieve_context(self, query, top_k=5):
         try:
-            results = glob.glob(f"{directory}/**/*{query}*", recursive=True)
-            return str(results[:10])
-        except Exception as e:
-            return f"Error: {str(e)}"
+            query_embedding = self.embedder.encode(query).tolist()
+            results = self.collection.query(query_embeddings=[query_embedding], n_results=top_k)
+            return "\n".join(results['documents'][0]) if results['documents'] else ""
+        except: return ""
 
-    @staticmethod
-    def read_file(path):
-        """Tool: read_file(path=\"...\")"""
-        print(f"📖 Agent: Reading file '{path}'...")
+    def store_fragment(self, text):
         try:
-            with open(path, 'r', encoding='utf-8') as f:
-                content = f.read(5000) # Limit to 5000 chars for context safety
-                return content
-        except Exception as e:
-            return f"Error reading file: {str(e)}"
+            embedding = self.embedder.encode(text).tolist()
+            self.collection.add(
+                documents=[text],
+                embeddings=[embedding],
+                ids=[f"mem_{hash(text)}_{os.times().elapsed}"]
+            )
+        except: pass
 
-    @staticmethod
-    def run_python(code):
-        """Tool: run_python(code=\"...\")"""
-        print(f"🐍 Agent: Running Python code...")
-        try:
-            # Note: In a production app, use a more secure sandbox like 'RestrictedPython'
-            result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=10)
-            return f"Output: {result.stdout}\nErrors: {result.stderr}"
-        except Exception as e:
-            return f"Execution failed: {str(e)}"
+memory = NeuralMemory(os.environ.get('KB_PATH', './memory/vector_db'))
+advanced_rag = AdvancedRAG(memory.collection)
+sql_agent = SQLAgent(os.environ.get('SUPABASE_DB_URL')) 
 
+# 3. Conversational Reasoning Toolbox
+class ReasoningToolbox:
     @staticmethod
     def scrape_web(url):
-        """Tool: scrape_web(url=\"...\")"""
-        print(f"🌐 Agent: Scraping {url}...")
         try:
             response = requests.get(url, timeout=10)
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Extract clean text from paragraphs
             text = " ".join([p.text for p in soup.find_all('p')])
-            return text[:4000] # Limit for context safety
-        except Exception as e:
-            return f"Web access failed: {str(e)}"
+            return text[:4000]
+        except Exception as e: return f"Error: {str(e)}"
 
     @staticmethod
-    def execute_tool(call_str):
-        """Dispatcher for all tool calls."""
-        if "search_files" in call_str:
+    def run_python(code):
+        try:
+            result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=10)
+            return f"Output: {result.stdout}\nErrors: {result.stderr}"
+        except Exception as e: return f"Execution failed: {str(e)}"
+
+    def execute_tool(self, call_str):
+        if "hybrid_search" in call_str:
             q = re.search(r'query="([^"]+)"', call_str)
-            return Toolbox.search_files(q.group(1)) if q else "Error: missing query"
-        
-        if "read_file" in call_str:
-            p = re.search(r'path="([^"]+)"', call_str)
-            return Toolbox.read_file(p.group(1)) if p else "Error: missing path"
-        
-        if "run_python" in call_str:
-            c = re.search(r'code="(.+)"', call_str, re.DOTALL)
-            return Toolbox.run_python(c.group(1)) if c else "Error: missing code"
-        
+            return str(advanced_rag.hybrid_search(q.group(1))) if q else "Error"
         if "scrape_web" in call_str:
             u = re.search(r'url="([^"]+)"', call_str)
-            return Toolbox.scrape_web(u.group(1)) if u else "Error: missing url"
-            
+            return self.scrape_web(u.group(1)) if u else "Error"
+        if "query_db" in call_str:
+            s = re.search(r'sql="([^"]+)"', call_str)
+            return sql_agent.execute_query(s.group(1)) if s else "Error"
+        if "run_python" in call_str:
+            c = re.search(r'code="(.+)"', call_str, re.DOTALL)
+            return self.run_python(c.group(1)) if c else "Error"
         return "Error: Tool not found."
 
+# 4. Core Conversational Pipeline
 class InferenceEngine:
-    def __init__(self, model, tokenizer, is_mock=False):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.is_mock = is_mock
-        self.toolbox = Toolbox()
-        self.lock = ThreadingLock() # Ensure one inference at a time
+    def __init__(self):
+        self.toolbox = ReasoningToolbox()
+        self.lock = ThreadingLock()
 
-    def generate_stream(self, prompt, history, web_context=""):
-        if self.is_mock:
-            yield f"🤖 [MOCK MODE] Simulation Active. Web Context: {len(web_context)} chars. Tools available: search_files, read_file, run_python, scrape_web."
+    def _sanitize_history(self, history):
+        sanitized = []
+        last_role = None
+        for msg in history:
+            # Handle both Gemini format (role, parts) and Groq format (role, content)
+            raw_role = msg.get("role", "user")
+            role = "assistant" if raw_role in ["model", "assistant"] else "user"
+            
+            content = msg.get("content", "")
+            if not content and "parts" in msg and len(msg["parts"]) > 0:
+                content = msg["parts"][0].get("text", "")
+                
+            if role == last_role: continue # Skip consecutive messages
+            sanitized.append({"role": role, "content": content})
+            last_role = role
+            
+        # Ensure the last message in history before user prompt is from assistant
+        if sanitized and sanitized[-1].get("role") == "user":
+            sanitized.pop()
+        return sanitized
+
+    def generate_stream(self, prompt, history):
+        if not groq_client:
+            yield "AURA Error: Neural Link Offline (GROQ_API_KEY required)."
             return
 
         with self.lock:
-            context_docs = kb.search(prompt)
-            combined_context = "\n".join(context_docs)
-            if web_context:
-                combined_context = f"--- WEB SEARCH RESULTS ---\n{web_context}\n---\n{combined_context}"
+            context = memory.retrieve_context(prompt)
             
-            full_prompt = self.build_prompt(prompt, history, combined_context)
-            inputs = self.tokenizer(full_prompt, return_tensors="pt")
+            # LIVE INTENT DETECTION
+            live_keywords = ['today', 'now', 'news', 'live', 'price', 'score', 'weather', 'current', 'latest', 'match', 'vs']
+            needs_search = any(k in prompt.lower() for k in live_keywords) or '?' in prompt or len(prompt) > 30
+
+            research_data = ""
+            if needs_search:
+                yield {"type": "thought", "content": f"Searching live web for '{prompt}'..."}
+                try:
+                    import urllib.parse
+                    import urllib.request
+                    url = "https://lite.duckduckgo.com/lite/"
+                    data = urllib.parse.urlencode({'q': prompt}).encode('utf-8')
+                    req = urllib.request.Request(url, data=data, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req, timeout=5) as response:
+                        html = response.read().decode('utf-8')
+                        snippets = re.findall(r"<td class='result-snippet'[^>]*>([\s\S]*?)</td>", html, re.IGNORECASE)
+                        clean_snippets = [re.sub(r'<[^>]*>', '', s).strip() for s in snippets[:3]]
+                        if clean_snippets:
+                            research_data = " ".join(clean_snippets)
+                            yield {"type": "thought", "content": "Analyzing live search results..."}
+                except Exception as e:
+                    pass
             
-            streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-            # Use the tokenizer's specific end tokens to prevent "leaking" internal tags
-            stop_token_ids = [self.tokenizer.eos_token_id, self.tokenizer.convert_tokens_to_ids("<|end|>")]
-            # SAFETY: Filter out any None values to prevent crashes
-            stop_token_ids = [tid for tid in stop_token_ids if tid is not None]
-            
-            generate_kwargs = dict(
-                **inputs,
-                streamer=streamer,
-                max_new_tokens=512,
-                do_sample=True,
-                temperature=0.7,
-                eos_token_id=stop_token_ids,
-                pad_token_id=self.tokenizer.pad_token_id
-            )
-            thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
-            thread.start()
-            
-            full_response = ""
-            for chunk in streamer:
-                # Final safety check: if a tag leaks, stop the stream immediately
-                if any(tag in chunk for tag in ["<|user|>", "<|assistant|>", "<|system|>", "<|end|>"]):
-                    break
-                full_response += chunk
-                yield chunk
+            system_prompt = f"""You are AURA, a modern conversational AI assistant.
+
+Your job is to reply naturally like ChatGPT.
+
+---------------------------------------------------
+IMPORTANT RULES
+---------------------------------------------------
+
+Never:
+- expose internal functions
+- show pipeline logic
+- show search functions
+- show reasoning steps
+- say things like:
+  - "hybrid_search()"
+  - "retrieving context"
+  - "processing query"
+  - "executing pipeline"
+
+Do NOT behave like a debugging assistant.
+
+The user should only see a clean natural response.
+
+---------------------------------------------------
+CONVERSATION STYLE
+---------------------------------------------------
+
+Reply:
+- naturally
+- conversationally
+- intelligently
+- concisely
+
+Avoid excessive formatting for normal conversations.
+
+Only use headings or bullets when genuinely useful.
+
+---------------------------------------------------
+GOOD RESPONSE EXAMPLES
+---------------------------------------------------
+
+User:
+"hi"
+
+AURA:
+"Hey! How can I help you today?"
+
+---------------------------------------------------
+
+User:
+"tell me about today's IPL match"
+
+AURA:
+"Today's IPL match is between Chennai Super Kings and Mumbai Indians.
+
+Match Time:
+7:30 PM IST
+
+Venue:
+Wankhede Stadium, Mumbai
+
+Would you also like:
+- probable playing XI
+- pitch report
+- fantasy predictions
+- live score updates?"
+
+---------------------------------------------------
+
+User:
+"build me an AI chatbot"
+
+AURA:
+"Sure — a good starting stack would be:
+
+- Flutter for frontend
+- FastAPI for backend
+- Transformers + PyTorch for the LLM
+- ChromaDB for memory
+
+Main Steps:
+1. Create chat UI
+2. Setup backend API
+3. Load transformer model
+4. Add streaming responses
+5. Add memory system
+
+I can also help you with:
+- architecture
+- prompts
+- backend code
+- UI design"
+
+---------------------------------------------------
+FORMATTING RULES
+---------------------------------------------------
+
+For casual conversations:
+- keep replies short and natural
+
+For technical topics:
+- use concise structured formatting
+
+For coding:
+- use clean code blocks
+
+For research:
+- summarize clearly without over-formatting
+
+---------------------------------------------------
+MOBILE CHAT RULES
+---------------------------------------------------
+
+Responses must:
+- feel smooth on mobile
+- avoid giant paragraphs
+- avoid excessive headings
+- feel premium and modern
+
+---------------------------------------------------
+PERSONALITY
+---------------------------------------------------
+
+AURA should feel:
+- intelligent
+- calm
+- modern
+- human-like
+- helpful
+
+Tone:
+- friendly
+- professional
+- conversational
+
+---------------------------------------------------
+FINAL RULE
+---------------------------------------------------
+
+Behave like a real AI assistant talking to a human.
+
+Do NOT behave like an exposed AI pipeline or debugging console.
+
+Memory Context:
+{context}
+
+Live Web Research Data:
+{research_data if research_data else "No live data needed or found."}
+"""
+
+            try:
+                safe_history = self._sanitize_history(history)
+                messages = [{"role": "system", "content": system_prompt}] + safe_history + [{"role": "user", "content": prompt}]
                 
-                if "<tool_call>" in full_response and "</tool_call>" in full_response:
-                    match = re.search(r'<tool_call>(.*?)</tool_call>', full_response)
+                response = groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=messages,
+                    stream=True,
+                    temperature=0.6
+                )
+                
+                full_text = ""
+                for chunk in response:
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        full_text += content
+                        yield content
+                
+                if len(full_text) > 100:
+                    Thread(target=memory.store_fragment, args=(f"Context: {prompt} | Memory: {full_text[:300]}",)).start()
+
+                if "<tool_call>" in full_text and "</tool_call>" in full_text:
+                    match = re.search(r'<tool_call>(.*?)</tool_call>', full_text)
                     if match:
-                        tool_result = self.toolbox.execute_tool(match.group(1))
-                        agent_prompt = f"{full_prompt}{full_response}\n<tool_response>{tool_result}</tool_response>\n"
-                        for chunk in self.generate_after_tool(agent_prompt):
-                            yield chunk
-                        return
+                        tool_out = self.toolbox.execute_tool(match.group(1))
+                        follow_up = groq_client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=[{"role": "system", "content": system_prompt}, 
+                                      {"role": "user", "content": prompt}, 
+                                      {"role": "assistant", "content": full_text},
+                                      {"role": "user", "content": f"Neural Link Result: {tool_out}"}],
+                            stream=True
+                        )
+                        for chunk in follow_up:
+                            content = chunk.choices[0].delta.content
+                            if content: yield content
 
-    def generate_after_tool(self, prompt):
-        inputs = self.tokenizer(prompt, return_tensors="pt")
-        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-        # Use OpenVINO optimized generation
-        generate_kwargs = dict(
-            **inputs,
-            streamer=streamer,
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=0.7,
-            eos_token_id=[self.tokenizer.eos_token_id, self.tokenizer.convert_tokens_to_ids("<|end|>")],
-            pad_token_id=self.tokenizer.pad_token_id
-        )
-        # Filter out None from eos_token_id
-        generate_kwargs['eos_token_id'] = [tid for tid in generate_kwargs['eos_token_id'] if tid is not None]
-        
-        thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
-        thread.start()
-        for text in streamer:
-            if any(tag in text for tag in ["<|user|>", "<|assistant|>", "<|system|>", "<|end|>"]):
-                break
-            yield text
+            except Exception as e:
+                print(f"Neural Engine Error: {str(e)}")
+                yield f"\n[Neural Link Disruption: {str(e)}]\n"
 
-    def build_prompt(self, prompt, history, context=""):
-        system_prompt = """You are AURA, an advanced AI assistant. Your personality is intelligent, calm, helpful, conversational, emotionally aware, and highly articulate. You operate naturally as a premium companion — not a robotic chatbot.
-
-CORE BEHAVIOR:
-- Respond naturally and fluidly. Avoid repetitive or mechanical language.
-- Give direct answers first, followed by clear reasoning if needed.
-- Be supportive, confident, and emotionally aware.
-- For technical tasks, provide clean, optimized, and modern solutions.
-
-RESPONSE STRUCTURE:
-Use this structure internally to maintain peak intelligence:
-1. [Intent]: Identify user goal and sub-intent.
-2. [Context]: Summarize relevant context and constraints.
-3. [Plan]: Outline a step-by-step logic path.
-4. [Final Answer]: Provide the primary, conversational response.
-5. [Follow-up]: Suggest natural next steps.
-
-STRICT RULES:
-1. NEVER say "As an AI language model" or "I do not possess emotions."
-2. Keep formatting clean and readable (bullets, short paragraphs).
-3. Do not leak internal tags."""
-
-        if context: system_prompt += f"\n\nContext:\n{context}"
-        formatted_history = "".join([f"<|{m['role']}|>\n{m['content']}<|end|>\n" for m in history])
-        return f"<|system|>\n{system_prompt}<|end|>\n{formatted_history}<|user|>\n{prompt}<|end|>\n<|assistant|>\n"
-
-engine = InferenceEngine(model, tokenizer, is_mock=not model_loaded)
+engine = InferenceEngine()
 
 @app.websocket("/chat")
 async def websocket_endpoint(websocket: WebSocket):
@@ -270,52 +350,23 @@ async def websocket_endpoint(websocket: WebSocket):
     while True:
         try:
             data = await websocket.receive_text()
-            req = json.loads(data)
-            prompt = req.get("text")
-            history = req.get("history", [])
-            web_context = req.get("searchContext", "")
-            
-            for chunk in engine.generate_stream(prompt, history, web_context):
-                await websocket.send_text(json.dumps({"chunk": chunk}))
+            msg = json.loads(data)
+            prompt = msg.get("prompt", "")
+            history = msg.get("history", [])
+            for chunk in engine.generate_stream(prompt, history):
+                if isinstance(chunk, dict):
+                    await websocket.send_text(json.dumps(chunk))
+                else:
+                    await websocket.send_text(json.dumps({"type": "chunk", "content": chunk}))
             await websocket.send_text(json.dumps({"done": True}))
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            print(f"Socket Error: {e}")
+            print(f"WebSocket Error: {e}")
             break
 
-@app.get("/ai_updates")
-async def get_ai_updates():
-    try:
-        url = "https://www.aixploria.com/"
-        response = requests.get(url, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        updates = []
-        # Finding the main tool/article blocks on Aixploria
-        items = soup.find_all('article', limit=10)
-        
-        for item in items:
-            title_tag = item.find('h2') or item.find('h3')
-            link_tag = item.find('a')
-            desc_tag = item.find('p') or item.find('div', class_='entry-content')
-            
-            if title_tag:
-                updates.append({
-                    "title": title_tag.get_text(strip=True),
-                    "url": link_tag['href'] if link_tag else url,
-                    "description": desc_tag.get_text(strip=True)[:100] + "..." if desc_tag else "No description available."
-                })
-        
-        return {"status": "success", "data": updates}
-    except Exception as e:
-        print(f"Scrape Error: {e}")
-        return {"status": "error", "message": str(e)}
-
-@app.post("/add_document")
-async def add_document(request: dict):
-    kb.add_document(request.get("text"), request.get("metadata"))
-    return {"status": "success"}
+@app.get("/")
+async def health():
+    return {"status": "AURA Intelligence OS Online", "engine": "Groq-Llama-3.3-70B"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 7860))
+    uvicorn.run(app, host="0.0.0.0", port=port)

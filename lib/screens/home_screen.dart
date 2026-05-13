@@ -25,22 +25,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<List<dynamic>> _fetchAIUpdates() async {
     try {
-      // Try to fetch from the production backend (Hugging Face)
       final response = await http.get(Uri.parse('https://vijayadhith7-aura-backend.hf.space/status')).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
-        // Just return some mock enterprise updates since it's an enterprise dashboard
         return [
-          {'title': 'Neural Core v1.2', 'description': 'Llama-3.3-70B pipeline optimized.'},
-          {'title': 'Real-time Search', 'description': 'Mojeek indexing synchronization active.'},
-          {'title': 'Memory Sync', 'description': 'Supabase cloud persistence verified.'},
+          {'title': 'AURA v2.0', 'description': 'Neural reasoning core online.'},
+          {'title': 'Predictive Engine', 'description': 'Forecasting confidence at 98.4%.'},
+          {'title': 'Knowledge Sync', 'description': 'Global indexing synchronization active.'},
         ];
       }
       return [];
     } catch (e) {
-      // Fallback data if server is not reachable
       return [
-        {'title': 'System Online', 'description': 'AURA Enterprise is ready for requests.'},
-        {'title': 'Neural Link', 'description': 'Encrypted session established.'},
+        {'title': 'AURA Intelligence', 'description': 'Neural Core is ready for input.'},
+        {'title': 'Secure Link', 'description': 'Encrypted session established.'},
       ];
     }
   }
@@ -51,23 +48,22 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
+          // Background Glow
           Positioned(
-            top: -150,
-            right: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryGreen.withOpacity(0.03),
-              ),
-            ),
+            top: -100,
+            left: -50,
+            child: _buildAmbientGlow(AppColors.electricBlue, 0.1),
+          ),
+          Positioned(
+            bottom: 200,
+            right: -50,
+            child: _buildAmbientGlow(AppColors.violetGlow, 0.05),
           ),
           
           SafeArea(
             child: RefreshIndicator(
               onRefresh: () async => setState(() => _updatesFuture = _fetchAIUpdates()),
-              color: AppColors.neonBlue,
+              color: AppColors.neonCyan,
               backgroundColor: AppColors.surface,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -75,17 +71,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildHeader(),
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 10),
-                          _buildNeuralCore(),
-                          const SizedBox(height: 48),
-                          _buildSectionHeader("AGENTIC TOOLBOX", "Explore your capabilities"),
                           const SizedBox(height: 20),
-                          _buildQuickActions(),
-                          const SizedBox(height: 48),
+                          _buildNeuralCore(),
+                          const SizedBox(height: 40),
+                          _buildSectionHeader("AURA ECOSYSTEM", "Integrated Intelligence"),
+                          const SizedBox(height: 20),
+                          _buildModularDashboard(),
+                          const SizedBox(height: 40),
                           _buildSectionHeader("KNOWLEDGE FEED", "Latest AI synchronization"),
                           const SizedBox(height: 20),
                           _buildUpdatesList(),
@@ -98,9 +94,31 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+          
+          Positioned(
+            bottom: 100,
+            right: 20,
+            child: _buildFloatingVoiceButton(),
+          ),
         ],
       ),
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildAmbientGlow(Color color, double opacity) {
+    return Container(
+      width: 400,
+      height: 400,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            color.withOpacity(opacity),
+            Colors.transparent,
+          ],
+        ),
+      ),
     );
   }
 
@@ -108,26 +126,38 @@ class _HomeScreenState extends State<HomeScreen> {
     return SliverAppBar(
       backgroundColor: Colors.transparent,
       floating: true,
+      elevation: 0,
       centerTitle: false,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Welcome, user",
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            "Welcome back, Commander",
+            style: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 13, letterSpacing: 0.5),
           ),
           Text(
-            "AURA Hub",
-            style: Theme.of(context).textTheme.displayMedium?.copyWith(fontSize: 24),
+            "AURA Intelligence",
+            style: GoogleFonts.outfit(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.5,
+            ),
           ),
         ],
       ),
       actions: [
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+        Container(
+          margin: const EdgeInsets.only(right: 16),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.glassBorder),
+          ),
+          child: IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.grid_view_rounded, color: AppColors.neonCyan, size: 20),
+          ),
         ),
-        const SizedBox(width: 8),
       ],
     );
   }
@@ -136,120 +166,135 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
       child: Container(
-        height: 260,
+        height: 280,
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
-          color: AppColors.surface,
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: AppColors.glassBorder.withOpacity(0.1)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.05),
+              Colors.white.withOpacity(0.01),
+            ],
+          ),
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            const GlowingOrb(size: 200),
-            Positioned(
-              bottom: 30,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppColors.neonBlue,
-                            shape: BoxShape.circle,
-                          ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const GlowingOrb(size: 240),
+                Positioned(
+                  bottom: 30,
+                  child: Column(
+                    children: [
+                      Text(
+                        "AURA CORE ONLINE",
+                        style: GoogleFonts.outfit(
+                          color: AppColors.neonCyan,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 3.0,
                         ),
-                        const SizedBox(width: 12),
-                        Text(
-                          "TAP TO START CHAT",
-                          style: GoogleFonts.inter(
-                            color: AppColors.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                          ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Artificial Unified Reasoning Assistant",
+                        style: GoogleFonts.outfit(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSectionHeader(String title, String subtitle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.primaryGreen,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 2.0,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActions() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: _buildActionCard(
-            icon: Icons.chat_bubble_outline_rounded,
-            title: "Smart Chat",
-            subtitle: "Neural Reasoning",
-            color: AppColors.neonBlue,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.outfit(
+                color: AppColors.electricBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.0,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: GoogleFonts.outfit(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildActionCard(
-            icon: Icons.auto_awesome_mosaic_rounded,
-            title: "Tools",
-            subtitle: "System Plugins",
-            color: AppColors.neonPurple,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("AURA Tools coming soon in v1.3")),
-              );
-            },
-          ),
+        const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.border, size: 14),
+      ],
+    );
+  }
+
+  Widget _buildModularDashboard() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 16,
+      crossAxisSpacing: 16,
+      childAspectRatio: 1.1,
+      children: [
+        _buildModuleCard(
+          icon: Icons.chat_bubble_rounded,
+          title: "Smart Chat",
+          subtitle: "Neural Reasoning",
+          color: AppColors.neonCyan,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
+        ),
+        _buildModuleCard(
+          icon: Icons.insights_rounded,
+          title: "Predictive",
+          subtitle: "Analytics Engine",
+          color: AppColors.violetGlow,
+          onTap: () {},
+        ),
+        _buildModuleCard(
+          icon: Icons.auto_awesome_rounded,
+          title: "Tools",
+          subtitle: "System Plugins",
+          color: AppColors.electricBlue,
+          onTap: () {},
+        ),
+        _buildModuleCard(
+          icon: Icons.storage_rounded,
+          title: "Memory",
+          subtitle: "Neural Vault",
+          color: Colors.white,
+          onTap: () {},
         ),
       ],
     );
   }
 
-  Widget _buildActionCard({
+  Widget _buildModuleCard({
     required IconData icon, 
     required String title, 
     required String subtitle, 
@@ -259,31 +304,45 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: AppColors.primaryGreen, size: 28),
-            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const Spacer(),
             Text(
               title,
-              style: const TextStyle(
+              style: GoogleFonts.outfit(
                 fontWeight: FontWeight.w700,
                 fontSize: 16,
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               subtitle,
-              style: const TextStyle(
+              style: GoogleFonts.outfit(
                 color: AppColors.textSecondary,
-                fontSize: 12,
+                fontSize: 11,
               ),
             ),
           ],
@@ -297,15 +356,9 @@ class _HomeScreenState extends State<HomeScreen> {
       future: _updatesFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 40),
-            child: Center(child: CircularProgressIndicator(color: AppColors.neonBlue)),
-          );
+          return const Center(child: CircularProgressIndicator(color: AppColors.neonCyan));
         }
         final items = snapshot.data ?? [];
-        if (items.isEmpty) {
-          return const Center(child: Text("No updates available", style: TextStyle(color: Colors.white24)));
-        }
         return Column(
           children: items.map((item) => _buildUpdateItem(item)).toList(),
         );
@@ -318,20 +371,20 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.surface.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
-            height: 40,
-            width: 40,
+            height: 45,
+            width: 45,
             decoration: BoxDecoration(
-              color: AppColors.primaryGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.electricBlue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.bolt_rounded, color: AppColors.primaryGreen, size: 18),
+            child: const Icon(Icons.bolt_rounded, color: AppColors.neonCyan, size: 20),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -339,29 +392,58 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item['title'] ?? 'Tool Update',
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 14),
+                  item['title'] ?? 'Neural Update',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 14),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   item['description'] ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 12),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.border, size: 20),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.border, size: 18),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingVoiceButton() {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [AppColors.electricBlue, AppColors.violetGlow],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.electricBlue.withOpacity(0.4),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {},
+          borderRadius: BorderRadius.circular(32),
+          child: const Icon(Icons.mic_none_rounded, color: Colors.white, size: 30),
+        ),
       ),
     );
   }
 
   Widget _buildBottomNav() {
     return Container(
-      height: 70,
-      decoration: const BoxDecoration(
-        color: AppColors.sidebar,
+      height: 80,
+      decoration: BoxDecoration(
+        color: AppColors.background,
         border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Row(
@@ -369,8 +451,8 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _buildNavItem(Icons.home_filled, "Home", true),
           _buildNavItem(Icons.explore_outlined, "Explore", false),
-          _buildNavItem(Icons.folder_open_rounded, "Files", false),
-          _buildNavItem(Icons.person_outline_rounded, "Profile", false),
+          _buildNavItem(Icons.auto_graph_rounded, "Insight", false),
+          _buildNavItem(Icons.settings_outlined, "Settings", false),
         ],
       ),
     );
@@ -378,24 +460,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavItem(IconData icon, String label, bool isActive) {
     return InkWell(
-      onTap: () {
-        if (label == "Explore" || label == "Files") {
-           Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen()));
-        }
-      },
+      onTap: () {},
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
-            color: isActive ? AppColors.primaryGreen : AppColors.textSecondary.withOpacity(0.4),
-            size: 22,
+            color: isActive ? AppColors.neonCyan : AppColors.textSecondary.withOpacity(0.4),
+            size: 24,
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
-              color: isActive ? AppColors.primaryGreen : AppColors.textSecondary.withOpacity(0.4),
+            style: GoogleFonts.outfit(
+              color: isActive ? AppColors.neonCyan : AppColors.textSecondary.withOpacity(0.4),
               fontSize: 10,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
             ),

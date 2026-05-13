@@ -54,8 +54,8 @@ class _AuraPulseState extends State<AuraPulse> with TickerProviderStateMixin {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primaryGreen.withOpacity(0.15 * (1 - pulse * 0.5)),
-                    AppColors.hoverGreen.withOpacity(0.05 * (1 - pulse * 0.5)),
+                    AppColors.neonCyan.withOpacity(0.15 * (1 - pulse * 0.5)),
+                    AppColors.electricBlue.withOpacity(0.05 * (1 - pulse * 0.5)),
                     Colors.transparent,
                   ],
                 ),
@@ -68,7 +68,7 @@ class _AuraPulseState extends State<AuraPulse> with TickerProviderStateMixin {
               child: CustomPaint(
                 size: const Size(200, 200),
                 painter: _OrbRingPainter(
-                  color: AppColors.primaryGreen.withOpacity(0.3),
+                  color: AppColors.neonCyan.withOpacity(0.3),
                   progress: 0.7,
                   thickness: 1,
                 ),
@@ -81,7 +81,7 @@ class _AuraPulseState extends State<AuraPulse> with TickerProviderStateMixin {
               child: CustomPaint(
                 size: const Size(180, 180),
                 painter: _OrbRingPainter(
-                  color: AppColors.hoverGreen.withOpacity(0.2),
+                  color: AppColors.electricBlue.withOpacity(0.2),
                   progress: 0.4,
                   thickness: 0.5,
                 ),
@@ -96,7 +96,7 @@ class _AuraPulseState extends State<AuraPulse> with TickerProviderStateMixin {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primaryGreen.withOpacity(0.4),
+                    color: AppColors.neonCyan.withOpacity(0.4),
                     blurRadius: 40,
                     spreadRadius: -10,
                   ),
@@ -105,8 +105,8 @@ class _AuraPulseState extends State<AuraPulse> with TickerProviderStateMixin {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppColors.primaryGreen,
-                    AppColors.hoverGreen.withOpacity(0.8),
+                    AppColors.neonCyan,
+                    AppColors.electricBlue.withOpacity(0.8),
                   ],
                 ),
               ),
@@ -124,7 +124,7 @@ class _AuraPulseState extends State<AuraPulse> with TickerProviderStateMixin {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primaryGreen.withOpacity(0.8),
+                          color: AppColors.neonCyan.withOpacity(0.8),
                           blurRadius: 20 * pulse,
                           spreadRadius: 5 * pulse,
                         ),

@@ -1,42 +1,65 @@
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:async';
+import 'dart:convert';
 
 class ChatService {
-  late io.Socket socket;
+  WebSocketChannel? _channel;
   final _controller = StreamController<Map<String, dynamic>>.broadcast();
   
   Stream<Map<String, dynamic>> get responseStream => _controller.stream;
 
+  bool _isConnected = false;
+
   void connect() {
-    socket = io.io('https://vijayadhith7-aura-backend.hf.space', io.OptionBuilder()
-      .setTransports(['websocket'])
-      .enableForceNew()
-      .build());
-
-    socket.onConnect((_) => print('🚀 SUCCESS: Connected to AURA Backend'));
-    socket.onConnectError((data) => print('❌ Connection Error: $data'));
-    socket.onDisconnect((data) => print('🔌 Disconnected: $data'));
+    const url = 'wss://vijayadhith7-aura-backend.hf.space/chat';
     
-    socket.on('chunk', (data) {
-      print('📥 Received chunk: $data');
-      _controller.add(Map<String, dynamic>.from(data));
-    });
+    try {
+      _channel = WebSocketChannel.connect(Uri.parse(url));
+      _isConnected = true;
+      print('🚀 NEURAL LINK: Initializing WebSocket Connection...');
 
-    socket.on('error', (data) {
-      print('💥 Socket Logic Error: $data');
-    });
+      _channel!.stream.listen(
+        (data) {
+          final decoded = json.decode(data);
+          _controller.add(Map<String, dynamic>.from(decoded));
+        },
+        onError: (error) {
+          print('❌ Neural Link Error: $error');
+          _isConnected = false;
+        },
+        onDone: () {
+          print('🔌 Neural Link Terminated');
+          _isConnected = false;
+        },
+      );
+    } catch (e) {
+      print('💥 Connection Failed: $e');
+      _isConnected = false;
+    }
   }
 
-  void sendMessage(String text, {String? chatId, String modelType = 'aura'}) {
-    socket.emit('message', {
-      'text': text, 
+  void sendMessage(String text, {String? chatId, List<Map<String, dynamic>> history = const []}) {
+    if (!_isConnected || _channel == null) {
+      print('🔄 Reconnecting Neural Link...');
+      connect();
+    }
+    
+    final payload = json.encode({
+      'prompt': text,
+      'history': history,
       'chatId': chatId,
-      'modelType': modelType
     });
+
+    try {
+      _channel!.sink.add(payload);
+    } catch (e) {
+      print('💥 Failed to send message: $e');
+    }
   }
 
   void dispose() {
+    _isConnected = false;
     _controller.close();
-    socket.disconnect();
+    _channel?.sink.close();
   }
 }

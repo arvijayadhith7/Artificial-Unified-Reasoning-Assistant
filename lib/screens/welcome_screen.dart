@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:ui';
 import '../app_theme.dart';
-import 'chat_screen.dart';
+import 'home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -14,22 +15,8 @@ class WelcomeScreen extends StatelessWidget {
     if (context.mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const ChatScreen()),
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
-    }
-  }
-
-  Future<void> _handleGoogleSignIn(BuildContext context) async {
-    try {
-      // Mock Google Sign-In for demo purposes
-      // In a real app, you'd use: final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚡ Authenticating with Google Cloud...')),
-      );
-      await Future.delayed(const Duration(seconds: 2));
-      await _completeOnboarding(context);
-    } catch (error) {
-      print(error);
     }
   }
 
@@ -39,119 +26,106 @@ class WelcomeScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // Background Gradient
-          Positioned.fill(
+          // Background Glows
+          Positioned(
+            bottom: -50,
+            left: -50,
             child: Container(
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.bottomRight,
-                  radius: 1.5,
-                  colors: [
-                    Color(0xFF1A1A2E),
-                    AppColors.background,
-                  ],
-                ),
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.electricBlue.withOpacity(0.1),
               ),
             ),
           ),
           
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 40),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.neonCyan.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.auto_awesome_rounded, color: AppColors.neonCyan, size: 28),
+                  ),
+                  const SizedBox(height: 30),
+                  Text(
+                    "ELEVATE YOUR\nINTELLIGENCE.",
+                    style: GoogleFonts.outfit(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      height: 1.1,
+                      letterSpacing: -1,
+                    ),
+                  ),
                   const SizedBox(height: 20),
-                  // Neural Core Image
-                  Center(
+                  Text(
+                    "Welcome to AURA. Experience a billion-dollar neural operating system designed for the future of autonomous reasoning.",
+                    style: GoogleFonts.outfit(
+                      color: AppColors.textSecondary,
+                      fontSize: 16,
+                      height: 1.6,
+                    ),
+                  ),
+                  const Spacer(),
+                  
+                  // Primary Action Button
+                  GestureDetector(
+                    onTap: () => _completeOnboarding(context),
                     child: Container(
-                      height: 280,
+                      width: double.infinity,
+                      height: 64,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
+                        gradient: const LinearGradient(
+                          colors: [AppColors.electricBlue, AppColors.violetGlow],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.neonBlue.withOpacity(0.2),
-                            blurRadius: 40,
-                            spreadRadius: 5,
+                            color: AppColors.electricBlue.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(30),
-                        child: Image.asset(
-                          'assets/neural_core.png',
-                          fit: BoxFit.cover,
+                      child: Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "INITIALIZE AURA",
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Icon(Icons.power_settings_new_rounded, color: Colors.white, size: 20),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                  const Spacer(),
-                  ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [AppColors.neonBlue, Colors.white],
-                    ).createShader(bounds),
-                    child: Text(
-                      "Elevate Your\nIntelligence.",
-                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        height: 1.1,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Experience AURA — the next generation of autonomous reasoning and cognitive assistance.",
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
                   
-                  // Google Auth Button
-                  GestureDetector(
-                    onTap: () => _handleGoogleSignIn(context),
-                    child: Container(
-                      width: double.infinity,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.network(
-                            'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_\"G\"_logo.svg/1200px-Google_\"G\"_logo.svg.png',
-                            height: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            "Continue with Google",
-                            style: TextStyle(
-                              color: Colors.black87,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Secondary Initialize Button
                   Center(
-                    child: TextButton(
-                      onPressed: () => _completeOnboarding(context),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "Initialize System",
-                            style: TextStyle(color: Colors.white70, fontSize: 16),
-                          ),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward_rounded, color: AppColors.neonBlue, size: 20),
-                        ],
+                    child: Text(
+                      "Secure Neural Link Established",
+                      style: GoogleFonts.outfit(
+                        color: AppColors.neonCyan.withOpacity(0.4),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
                       ),
                     ),
                   ),

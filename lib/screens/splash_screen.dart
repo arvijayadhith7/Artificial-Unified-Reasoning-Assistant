@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../widgets/glowing_orb.dart';
 import '../app_theme.dart';
 import 'welcome_screen.dart';
 import 'home_screen.dart';
+import 'main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 2000),
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
@@ -37,12 +39,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     final isFirstTime = prefs.getBool('isFirstTime') ?? true;
 
     Timer(const Duration(seconds: 4), () {
-      Widget nextScreen;
-      if (isFirstTime) {
-        nextScreen = const WelcomeScreen();
-      } else {
-        nextScreen = const HomeScreen();
-      }
+      Widget nextScreen = isFirstTime ? const WelcomeScreen() : const MainScreen();
 
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
@@ -68,62 +65,50 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // Background Glows
-          Positioned(
-            top: -100,
-            left: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.neonBlue.withOpacity(0.05),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -150,
-            right: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.neonPurple.withOpacity(0.05),
-              ),
-            ),
-          ),
           Center(
             child: FadeTransition(
               opacity: _fadeAnimation,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const GlowingOrb(size: 180),
-                  const SizedBox(height: 40),
-                  ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [AppColors.neonBlue, AppColors.neonPurple],
-                    ).createShader(bounds),
-                    child: Text(
-                      "AURA",
-                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        letterSpacing: 12,
-                        fontWeight: FontWeight.w900,
-                      ),
+                  const GlowingOrb(size: 200),
+                  const SizedBox(height: 50),
+                  Text(
+                    "AURA",
+                    style: GoogleFonts.outfit(
+                      fontSize: 48,
+                      letterSpacing: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     "NEURAL INTELLIGENCE ENGINE",
-                    style: TextStyle(
-                      color: AppColors.neonBlue.withOpacity(0.6),
-                      fontSize: 10,
-                      letterSpacing: 4,
+                    style: GoogleFonts.outfit(
+                      color: AppColors.neonCyan.withOpacity(0.7),
+                      fontSize: 11,
+                      letterSpacing: 5,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+          
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Text(
+                "AURA OS v2.0",
+                style: GoogleFonts.outfit(
+                  color: Colors.white24,
+                  fontSize: 10,
+                  letterSpacing: 2,
+                ),
               ),
             ),
           ),

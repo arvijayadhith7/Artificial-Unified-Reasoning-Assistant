@@ -1,9 +1,13 @@
 const { createClient } = require('@supabase/supabase-js');
+const WebSocket = require('ws');
 const config = require('../config/config');
 
 class MemoryService {
   constructor() {
-    this.supabase = createClient(config.supabaseUrl, config.supabaseKey);
+    this.supabase = createClient(config.supabaseUrl, config.supabaseKey, {
+      auth: { persistSession: false },
+      realtime: { transport: WebSocket }
+    });
     console.log('✅ Supabase Cloud Memory connected');
   }
 

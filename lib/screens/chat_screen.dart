@@ -5,10 +5,10 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../app_theme.dart';
 import '../chat_service.dart';
 import '../widgets/glowing_orb.dart';
-import '../widgets/aura_pulse.dart';
 
 class ChatMessage {
   final String text;
@@ -36,13 +36,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final String _selectedModel = 'aura';
 
   // Code Canvas State
-  String _canvasTitle = "Code Canvas";
+  String _canvasTitle = "Neural Output";
   String _canvasContent = "";
   String _canvasLanguage = "dart";
   bool _isCanvasMarkdown = false;
 
-  // Chat history for sidebar
-  List<String> _chatHistory = []; // Stores "id|title" strings
+  // Chat history
+  List<String> _chatHistory = [];
   bool _chatSaved = false;
   String? _currentChatId;
   String? _currentChatTitle;
@@ -54,10 +54,10 @@ class _ChatScreenState extends State<ChatScreen> {
     _chatService.connect();
     _chatService.responseStream.listen((data) {
       final type = data['type'];
-      final content = data['content'] as String;
+      final content = data['content'] as String?;
 
       setState(() {
-        if (type == 'chunk') {
+        if (type == 'chunk' && content != null) {
           _orbState = OrbState.speaking;
           if (_messages.isNotEmpty && !_messages.last.isUser && _currentResponse.isNotEmpty) {
             _currentResponse += content;
@@ -68,12 +68,11 @@ class _ChatScreenState extends State<ChatScreen> {
           }
           _currentThought = "";
           _currentTool = "";
-          // Auto-detect code blocks for Canvas
           _detectCodeInResponse(_currentResponse);
-        } else if (type == 'thought') {
+        } else if (type == 'thought' && content != null) {
           _orbState = OrbState.thinking;
           _currentThought = content;
-        } else if (type == 'tool') {
+        } else if (type == 'tool' && content != null) {
           _currentTool = content;
         } else if (data['done'] == true) {
           _orbState = OrbState.idle;
@@ -82,10 +81,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _scrollToBottom();
     });
     
-    // Add listener to update send button state in real-time
-    _textController.addListener(() {
-      setState(() {});
-    });
+    _textController.addListener(() => setState(() {}));
   }
 
   void _scrollToBottom() {
@@ -113,7 +109,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // --- Chat History Persistence ---
   Future<void> _loadChatHistory() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -125,14 +120,10 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_currentChatId == null) return;
     final prefs = await SharedPreferences.getInstance();
     final entry = "${_currentChatId!}|$title";
-    
-    // Remove old entry for this ID if it exists
     _chatHistory.removeWhere((item) => item.startsWith("${_currentChatId!}|"));
     _chatHistory.insert(0, entry);
-    
     if (_chatHistory.length > 20) _chatHistory = _chatHistory.sublist(0, 20);
     await prefs.setStringList('chat_history', _chatHistory);
-    
     _currentChatTitle = title;
     setState(() {});
   }
@@ -144,7 +135,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _canvasContent = "";
       _chatSaved = false;
       _currentChatTitle = null;
-      // Generate a stable ID immediately for chat continuity
       _currentChatId = "chat_${DateTime.now().millisecondsSinceEpoch}";
       _textController.clear();
     });
@@ -154,7 +144,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final parts = idWithTitle.split('|');
     final id = parts[0];
     final title = parts.length > 1 ? parts[1] : id;
-
     final prefs = await SharedPreferences.getInstance();
     final key = 'chat_content_$id';
     final content = prefs.getStringList(key) ?? [];
@@ -182,7 +171,6 @@ class _ChatScreenState extends State<ChatScreen> {
       final title = text.length > 40 ? '${text.substring(0, 40)}...' : text;
       _saveChatTitle(title);
       _chatSaved = true;
-      // Keep the currentChatId stable, but we can associate it with the title in storage
     }
 
     if (_currentChatId == null) {
@@ -196,7 +184,16 @@ class _ChatScreenState extends State<ChatScreen> {
       _orbState = OrbState.thinking;
     });
     
-    _chatService.sendMessage(text, chatId: _currentChatId, modelType: _selectedModel);
+    // Construct history for context awareness
+    final history = _messages
+        .take(_messages.length - 1) // exclude current user message
+        .map((m) => {
+              'role': m.isUser ? 'user' : 'assistant',
+              'content': m.text,
+            })
+        .toList();
+
+    _chatService.sendMessage(text, chatId: _currentChatId, history: history);
     _scrollToBottom();
     _persistCurrentChat();
   }
@@ -205,7 +202,6 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_currentChatId == null) return;
     final prefs = await SharedPreferences.getInstance();
     final key = 'chat_content_${_currentChatId!}';
-    
     final List<String> data = _messages.map((m) => '${m.isUser ? "user" : "aura"}:${m.text}').toList();
     await prefs.setStringList(key, data);
   }
@@ -231,8 +227,13 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: _buildAppBar(),
       body: Stack(
         children: [
-          // Static background for professional look
+          // Deep Space Background
           Container(color: AppColors.background),
+          Positioned(
+            top: -100,
+            right: -100,
+            child: _buildAmbientGlow(AppColors.electricBlue, 0.05),
+          ),
           
           Column(
             children: [
@@ -248,6 +249,19 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildAmbientGlow(Color color, double opacity) {
+    return Container(
+      width: 400,
+      height: 400,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color.withOpacity(opacity), Colors.transparent],
+        ),
+      ),
+    );
+  }
+
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.transparent,
@@ -255,15 +269,15 @@ class _ChatScreenState extends State<ChatScreen> {
       centerTitle: true,
       leading: Builder(
         builder: (context) => IconButton(
-          icon: const Icon(Icons.grid_view_rounded, color: Colors.white70, size: 22),
+          icon: const Icon(Icons.menu_rounded, color: AppColors.neonCyan, size: 24),
           onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
       title: Text(
         "AURA",
-        style: Theme.of(context).textTheme.displayMedium?.copyWith(
-          fontSize: 16,
-          letterSpacing: 5,
+        style: GoogleFonts.outfit(
+          fontSize: 18,
+          letterSpacing: 10,
           fontWeight: FontWeight.w900,
           color: Colors.white.withOpacity(0.9),
         ),
@@ -273,14 +287,14 @@ class _ChatScreenState extends State<ChatScreen> {
           onPressed: () => setState(() => _isVoiceMode = !_isVoiceMode),
           icon: Icon(
             _isVoiceMode ? Icons.chat_bubble_outline_rounded : Icons.mic_rounded,
-            color: AppColors.textSecondary,
-            size: 22,
+            color: _isVoiceMode ? AppColors.neonCyan : AppColors.textSecondary,
+            size: 24,
           ),
         ),
         if (_canvasContent.isNotEmpty)
           IconButton(
             onPressed: _showCanvasSheet,
-            icon: const Icon(Icons.auto_awesome_mosaic_rounded, color: AppColors.primaryGreen, size: 22),
+            icon: const Icon(Icons.auto_awesome_mosaic_rounded, color: AppColors.electricBlue, size: 24),
           ),
         const SizedBox(width: 8),
       ],
@@ -291,47 +305,12 @@ class _ChatScreenState extends State<ChatScreen> {
     return Expanded(
       child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        itemCount: _messages.length + (_orbState == OrbState.thinking ? 1 : 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        itemCount: _messages.length,
         itemBuilder: (context, index) {
-          if (index < _messages.length) {
-            final msg = _messages[index];
-            return _buildMessageBubble(msg);
-          } else {
-            return _buildThinkingIndicator();
-          }
+          final msg = _messages[index];
+          return _buildMessageBubble(msg);
         },
-      ),
-    );
-  }
-
-  Widget _buildThinkingIndicator() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 24, left: 24),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                color: AppColors.neonBlue,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              "AURA is processing",
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.4),
-                fontSize: 13,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -341,23 +320,28 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          AuraPulse(isSpeaking: _orbState == OrbState.speaking),
-          const SizedBox(height: 40),
+          GlowingOrb(size: 260, state: _orbState),
+          const SizedBox(height: 60),
           Text(
-            _orbState == OrbState.listening ? "Listening..." : 
-            _orbState == OrbState.thinking ? "Thinking..." :
-            _orbState == OrbState.speaking ? "AURA is speaking" : "Ready to listen",
-            style: const TextStyle(color: Colors.white70, fontSize: 18, letterSpacing: 1.5),
+            _orbState == OrbState.listening ? "LISTENING" : 
+            _orbState == OrbState.thinking ? "THINKING" :
+            _orbState == OrbState.speaking ? "AURA SPEAKING" : "STANDBY",
+            style: GoogleFonts.outfit(
+              color: AppColors.neonCyan, 
+              fontSize: 14, 
+              letterSpacing: 4.0,
+              fontWeight: FontWeight.w900
+            ),
           ),
           if (_currentResponse.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.all(40.0),
+              padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20),
               child: Text(
                 _currentResponse,
                 textAlign: TextAlign.center,
-                maxLines: 3,
+                maxLines: 4,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white38, fontSize: 14),
+                style: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 16, height: 1.5),
               ),
             ),
         ],
@@ -366,135 +350,189 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageBubble(ChatMessage msg) {
+    if (msg.isUser) {
+      return _buildUserBubble(msg.text);
+    } else {
+      return _buildAuraResponse(msg.text);
+    }
+  }
+
+  Widget _buildUserBubble(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
+      padding: const EdgeInsets.only(bottom: 24.0, left: 60),
       child: Align(
-        alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+        alignment: Alignment.centerRight,
         child: Container(
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-          child: Column(
-            crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-            children: [
-              if (!msg.isUser)
-                Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 8),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryGreen,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        "AURA",
-                        style: TextStyle(
-                          color: AppColors.textPrimary.withOpacity(0.5),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                decoration: BoxDecoration(
-                  color: msg.isUser ? AppColors.userBubble : AppColors.aiBubble,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.border.withOpacity(0.3),
-                  ),
-                ),
-                child: MarkdownBody(
-                  data: msg.text,
-                  styleSheet: MarkdownStyleSheet(
-                    p: TextStyle(
-                      color: AppColors.textPrimary.withOpacity(0.9),
-                      fontSize: 15,
-                      height: 1.6,
-                    ),
-                    code: const TextStyle(
-                      backgroundColor: Colors.black12,
-                      color: AppColors.hoverGreen,
-                      fontFamily: 'monospace',
-                      fontSize: 13,
-                    ),
-                    codeblockPadding: const EdgeInsets.all(16),
-                    codeblockDecoration: BoxDecoration(
-                      color: Colors.black26,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border.withOpacity(0.5)),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.electricBlue.withOpacity(0.1),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+              bottomLeft: Radius.circular(24),
+              bottomRight: Radius.circular(4),
+            ),
+            border: Border.all(color: AppColors.electricBlue.withOpacity(0.2)),
+          ),
+          child: Text(
+            text,
+            style: GoogleFonts.outfit(color: AppColors.textPrimary, fontSize: 16),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildAuraResponse(String text) {
+    // Basic detection for structured tiers
+    final hasSummary = text.contains('[Quick Summary]');
+    final hasInsights = text.contains('[Key Insights]');
+    final hasSuggestions = text.contains('[Suggestions]');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 32.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const GlowingOrb(size: 24),
+              const SizedBox(width: 12),
+              Text(
+                "AURA INTELLIGENCE",
+                style: GoogleFonts.outfit(
+                  color: AppColors.neonCyan,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: MarkdownBody(
+              data: text,
+              selectable: true,
+              onTapLink: (text, href, title) {},
+              styleSheet: MarkdownStyleSheet(
+                p: GoogleFonts.outfit(color: AppColors.textPrimary, fontSize: 16, height: 1.7),
+                h1: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 22, fontWeight: FontWeight.bold),
+                h2: GoogleFonts.outfit(color: AppColors.electricBlue, fontSize: 18, fontWeight: FontWeight.bold),
+                code: GoogleFonts.firaCode(backgroundColor: Colors.transparent, color: AppColors.neonCyan, fontSize: 14),
+                codeblockPadding: const EdgeInsets.all(16),
+                codeblockDecoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                blockquote: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 16, fontStyle: FontStyle.italic),
+                blockquoteDecoration: const BoxDecoration(
+                  border: Border(left: BorderSide(color: AppColors.neonCyan, width: 4)),
+                ),
+              ),
+            ),
+          ),
+          if (hasSuggestions) _buildFollowUpSuggestions(text),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFollowUpSuggestions(String text) {
+    // Extract suggestions between [Suggestions] tags
+    final match = RegExp(r'\[Suggestions\]\n([\s\S]*)').firstMatch(text);
+    if (match == null) return const SizedBox();
+    
+    final suggestionLines = match.group(1)?.split('\n') ?? [];
+    final suggestions = suggestionLines
+        .where((l) => l.startsWith('- '))
+        .map((l) => l.replaceFirst('- ', ''))
+        .toList();
+
+    if (suggestions.isEmpty) return const SizedBox();
+
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.only(top: 24),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: suggestions.length,
+        itemBuilder: (context, i) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: ActionChip(
+              onPressed: () {
+                _textController.text = suggestions[i];
+                _handleSend();
+              },
+              backgroundColor: AppColors.surface,
+              label: Text(
+                suggestions[i],
+                style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              side: BorderSide(color: AppColors.neonCyan.withOpacity(0.2)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildInputSection() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.attach_file_rounded, color: AppColors.textSecondary, size: 20),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
+      color: Colors.transparent,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            Expanded(
-              child: TextField(
-                controller: _textController,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: "Message AURA...",
-                  hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5), fontSize: 15),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                onSubmitted: (val) => _handleSend(),
-              ),
-            ),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _handleSend,
-                borderRadius: BorderRadius.circular(8),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _textController.text.trim().isNotEmpty ? AppColors.primaryGreen : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.arrow_upward_rounded, 
-                    color: _textController.text.trim().isNotEmpty ? Colors.white : AppColors.textSecondary, 
-                    size: 20
+            child: Row(
+              children: [
+                const Icon(Icons.add_rounded, color: AppColors.textSecondary, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _textController,
+                    style: GoogleFonts.outfit(color: AppColors.textPrimary, fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: "Message Aura...",
+                      hintStyle: GoogleFonts.outfit(color: AppColors.textSecondary.withOpacity(0.4), fontSize: 15),
+                      border: InputBorder.none,
+                    ),
+                    onSubmitted: (val) => _handleSend(),
                   ),
                 ),
-              ),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _handleSend,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _textController.text.isNotEmpty ? AppColors.neonCyan : Colors.transparent,
+                      ),
+                      child: Icon(
+                        Icons.arrow_upward_rounded, 
+                        color: _textController.text.isNotEmpty ? Colors.black : AppColors.textSecondary, 
+                        size: 20
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-          ],
+          ),
         ),
       ),
     );
@@ -502,38 +540,36 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildStatusIndicator() {
     return Positioned(
-      bottom: 110,
+      bottom: 120,
       left: 0,
       right: 0,
       child: Center(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.neonCyan.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.neonCyan),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.auto_awesome_rounded, color: AppColors.neonBlue, size: 14),
-                  const SizedBox(width: 10),
-                  Text(
-                    _currentTool.isNotEmpty ? "SEARCHING..." : "THINKING...",
-                    style: const TextStyle(
-                      color: Colors.white70, 
-                      fontSize: 10, 
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 12),
+              Text(
+                _currentTool.isNotEmpty ? "SYNCING..." : "REASONING...",
+                style: GoogleFonts.outfit(
+                  color: AppColors.textPrimary, 
+                  fontSize: 10, 
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.0,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -546,68 +582,47 @@ class _ChatScreenState extends State<ChatScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
-        minChildSize: 0.4,
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
         maxChildSize: 0.95,
         builder: (context, scrollController) => Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            border: Border.all(color: AppColors.glassBorder),
           ),
           child: Column(
             children: [
-              // Handle bar
               Container(
                 margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
               ),
-              // Header
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+                padding: const EdgeInsets.all(24),
                 child: Row(
                   children: [
-                    const Icon(Icons.code_rounded, color: AppColors.neonBlue, size: 20),
-                    const SizedBox(width: 10),
-                    Text(_canvasTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                    const Icon(Icons.code_rounded, color: AppColors.neonCyan, size: 24),
+                    const SizedBox(width: 12),
+                    Text(_canvasTitle, style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.neonBlue.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(_canvasLanguage.toUpperCase(), style: const TextStyle(color: AppColors.neonBlue, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
                     IconButton(
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: _canvasContent));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Copied!"), duration: Duration(seconds: 1)),
-                        );
-                      },
-                      icon: const Icon(Icons.copy_rounded, color: Colors.white38, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded, color: Colors.white38),
                     ),
                   ],
                 ),
               ),
-              const Divider(color: Colors.white10, height: 1),
-              // Code body
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
                   child: HighlightView(
                     _canvasContent,
                     language: _canvasLanguage,
                     theme: atomOneDarkTheme,
-                    padding: const EdgeInsets.all(16),
-                    textStyle: const TextStyle(fontFamily: 'monospace', fontSize: 13, height: 1.5),
+                    padding: const EdgeInsets.all(20),
+                    textStyle: GoogleFonts.firaCode(fontSize: 13, height: 1.5),
                   ),
                 ),
               ),
@@ -619,47 +634,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class _AnimatedThinkingDots extends StatefulWidget {
-  @override
-  State<_AnimatedThinkingDots> createState() => _AnimatedThinkingDotsState();
-}
-
-class _AnimatedThinkingDotsState extends State<_AnimatedThinkingDots> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<int> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-    _animation = IntTween(begin: 0, end: 3).animate(_controller);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        String dots = "." * (_animation.value + 1);
-        return Text(
-          dots,
-          style: const TextStyle(color: AppColors.neonBlue, fontSize: 18, fontWeight: FontWeight.bold),
-        );
-      },
-    );
-  }
-}
-
-class AuraSidebar extends StatelessWidget {
+class AuraSidebar extends StatefulWidget {
   final List<String> chatHistory;
   final VoidCallback onNewChat;
   final Function(String) onHistorySelected;
@@ -672,146 +647,209 @@ class AuraSidebar extends StatelessWidget {
   });
 
   @override
+  State<AuraSidebar> createState() => _AuraSidebarState();
+}
+
+class _AuraSidebarState extends State<AuraSidebar> {
+  String _activeWorkspace = "PERSONAL";
+
+  Map<String, List<String>> _groupHistory() {
+    final Map<String, List<String>> groups = {
+      "TODAY": [],
+      "YESTERDAY": [],
+      "ARCHIVE": [],
+    };
+
+    final now = DateTime.now();
+    for (var item in widget.chatHistory) {
+      final parts = item.split('|');
+      final id = parts[0];
+      // Basic heuristic: check id for timestamp
+      if (id.startsWith('chat_')) {
+        final ts = int.tryParse(id.substring(5)) ?? 0;
+        final date = DateTime.fromMillisecondsSinceEpoch(ts);
+        final diff = now.difference(date).inDays;
+        
+        if (diff == 0) groups["TODAY"]!.add(item);
+        else if (diff == 1) groups["YESTERDAY"]!.add(item);
+        else groups["ARCHIVE"]!.add(item);
+      } else {
+        groups["ARCHIVE"]!.add(item);
+      }
+    }
+    return groups;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final grouped = _groupHistory();
+
     return Drawer(
-      backgroundColor: AppColors.sidebar,
-      child: Container(
-        decoration: const BoxDecoration(
-          border: Border(right: BorderSide(color: AppColors.border, width: 0.5)),
+      backgroundColor: AppColors.background,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Workspace Hub
+            _buildWorkspaceHub(),
+            
+            const Divider(color: AppColors.border, height: 1),
+            
+            // New Session Action
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ListTile(
+                onTap: () {
+                  widget.onNewChat();
+                  Navigator.pop(context);
+                },
+                leading: const Icon(Icons.add_rounded, color: AppColors.neonCyan),
+                title: Text(
+                  "NEW SESSION", 
+                  style: GoogleFonts.outfit(
+                    color: AppColors.textPrimary, 
+                    fontWeight: FontWeight.w900, 
+                    fontSize: 12, 
+                    letterSpacing: 2.0
+                  )
+                ),
+                tileColor: AppColors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16), 
+                  side: BorderSide(color: AppColors.neonCyan.withOpacity(0.2))
+                ),
+              ),
+            ),
+
+            // History Sections
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  if (grouped["TODAY"]!.isNotEmpty) _buildSectionHeader("TODAY"),
+                  ...grouped["TODAY"]!.map(_buildHistoryItem),
+                  
+                  if (grouped["YESTERDAY"]!.isNotEmpty) _buildSectionHeader("YESTERDAY"),
+                  ...grouped["YESTERDAY"]!.map(_buildHistoryItem),
+                  
+                  if (grouped["ARCHIVE"]!.isNotEmpty) _buildSectionHeader("ARCHIVE"),
+                  ...grouped["ARCHIVE"]!.map(_buildHistoryItem),
+                ],
+              ),
+            ),
+            
+            _buildUserProfile(),
+          ],
         ),
-        child: SafeArea(
-          child: Column(
+      ),
+    );
+  }
+
+  Widget _buildWorkspaceHub() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Row(
-                  children: [
-                    const GlowingOrb(size: 32),
-                    const SizedBox(width: 12),
-                    Text(
-                      "AURA WORKSPACE",
-                      style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                        fontSize: 14,
-                        letterSpacing: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+              const GlowingOrb(size: 32),
+              const SizedBox(width: 12),
+              Text(
+                "AURA HUB",
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  letterSpacing: 6,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
                 ),
               ),
-              const Divider(color: Colors.white10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-                child: InkWell(
-                  onTap: () {
-                    onNewChat();
-                    Navigator.pop(context);
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.add_rounded, color: AppColors.primaryGreen, size: 20),
-                        SizedBox(width: 12),
-                        Text(
-                          "New chat",
-                          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: chatHistory.isEmpty
-                    ? Center(
-                        child: Text(
-                          "No conversations yet",
-                          style: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 13),
-                        ),
-                      )
-                    : ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        children: [
-                          _buildSectionHeader("RECENT CHATS"),
-                          ...chatHistory.map((title) => _buildHistoryItem(context, title)),
-                        ],
-                      ),
-              ),
-              const Divider(color: Colors.white10),
-              _buildUserSection(),
             ],
           ),
-        ),
+          const SizedBox(height: 20),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: ["PERSONAL", "RESEARCH", "CODING"].map((ws) {
+                final isActive = _activeWorkspace == ws;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(ws, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold)),
+                    selected: isActive,
+                    onSelected: (val) => setState(() => _activeWorkspace = ws),
+                    backgroundColor: Colors.transparent,
+                    selectedColor: AppColors.neonCyan.withOpacity(0.2),
+                    side: BorderSide(color: isActive ? AppColors.neonCyan : Colors.white10),
+                    labelStyle: TextStyle(color: isActive ? AppColors.neonCyan : Colors.white38),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 8.0, top: 12, bottom: 8),
+      padding: const EdgeInsets.only(top: 24, bottom: 12, left: 8),
       child: Text(
-        title,
-        style: const TextStyle(color: Colors.white24, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+        title, 
+        style: GoogleFonts.outfit(
+          color: Colors.white24, 
+          fontSize: 10, 
+          fontWeight: FontWeight.w900, 
+          letterSpacing: 3.0
+        )
       ),
     );
   }
 
-  Widget _buildHistoryItem(BuildContext context, String idWithTitle) {
+  Widget _buildHistoryItem(String idWithTitle) {
     final parts = idWithTitle.split('|');
     final title = parts.length > 1 ? parts[1] : parts[0];
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      child: ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-        leading: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white24, size: 16),
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.white70, fontSize: 13),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        onTap: () {
-          onHistorySelected(idWithTitle);
-          Navigator.pop(context);
-        },
+    return ListTile(
+      onTap: () {
+        widget.onHistorySelected(idWithTitle);
+        Navigator.pop(context);
+      },
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      leading: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white24, size: 18),
+      title: Text(
+        title, 
+        style: GoogleFonts.outfit(color: Colors.white70, fontSize: 14), 
+        maxLines: 1, 
+        overflow: TextOverflow.ellipsis
       ),
+      trailing: const Icon(Icons.more_horiz_rounded, color: Colors.white10, size: 16),
     );
   }
 
-  Widget _buildUserSection() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
+  Widget _buildUserProfile() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.border)),
+        color: AppColors.surface,
+      ),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(colors: [AppColors.neonBlue, AppColors.neonPurple]),
-            ),
-            child: const Center(child: Text("A", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))),
+          CircleAvatar(
+            backgroundColor: AppColors.electricBlue.withOpacity(0.2),
+            radius: 16,
+            child: const Icon(Icons.person_rounded, color: AppColors.electricBlue, size: 16),
           ),
           const SizedBox(width: 12),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("AURA PRO", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-              Text("Enterprise Account", style: TextStyle(color: Colors.white38, fontSize: 11)),
+              Text("USER_NEURAL_LINK", style: GoogleFonts.outfit(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text("PRO PLAN ACTIVE", style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 8, fontWeight: FontWeight.w900)),
             ],
           ),
           const Spacer(),
-          const Icon(Icons.settings_outlined, color: Colors.white38, size: 20),
+          const Icon(Icons.settings_outlined, color: Colors.white24, size: 20),
         ],
       ),
     );

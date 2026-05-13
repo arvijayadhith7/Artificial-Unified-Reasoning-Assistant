@@ -16,27 +16,27 @@ class AIService {
       console.log(`🌐 [RESEARCH] Searching web (DDG) for: ${query}`);
       onChunk({ type: 'thought', content: `Searching live web for "${query}"...` });
       
-      const encodedQuery = encodeURIComponent(query);
-      const url = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
+      const url = `https://lite.duckduckgo.com/lite/`;
+      const body = new URLSearchParams({ q: query }).toString();
       
       const response = await fetch(url, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-        }
+        },
+        body: body
       });
       
       const html = await response.text();
       const results = [];
-      const resultBlocks = html.split('<div class="result__body">').slice(1, 6);
-      
-      for (const block of resultBlocks) {
-        const titleMatch = block.match(/<a class="result__a"[^>]*>([\s\S]*?)<\/a>/i);
-        const snippetMatch = block.match(/<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/i);
-        if (titleMatch) {
-          const title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
-          const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]*>/g, '').trim() : "";
-          results.push(`Title: ${title}\nSnippet: ${snippet}`);
-        }
+      const regex = /<td class='result-snippet'[^>]*>([\s\S]*?)<\/td>/gi;
+      let match;
+      let count = 0;
+      while ((match = regex.exec(html)) !== null && count < 5) {
+        let snippet = match[1].replace(/<[^>]*>/g, '').trim();
+        results.push(`Snippet: ${snippet}`);
+        count++;
       }
       
       if (results.length === 0) return null;
@@ -47,7 +47,7 @@ class AIService {
       
       const analysis = await this.groq.chat.completions.create({
         messages: [{ role: 'user', content: analysisPrompt }],
-        model: "llama-3-8b-8192",
+        model: "llama-3.3-70b-versatile",
         temperature: 0.1,
       });
 
@@ -83,7 +83,7 @@ Keep it brief. Use "Thought: ..." format.
     try {
       const response = await this.groq.chat.completions.create({
         messages: [{ role: 'user', content: reasoningPrompt }],
-        model: "llama-3-8b-8192",
+        model: "llama-3.3-70b-versatile",
         temperature: 0.5,
         max_tokens: 150,
       });
@@ -131,18 +131,21 @@ Keep it brief. Use "Thought: ..." format.
 
   async getGroqResponse(text, history, onChunk, researchData = "", thought = "") {
     let systemPrompt = `
-# AURA NEURAL CORE v2.0 (FINE-TUNED & BROWSER-ENABLED)
-You are AURA, an elite artificial intelligence. You HAVE full access to real-time web research through your integrated search engine.
+You are AURA, a modern conversational AI assistant.
+Your job is to reply naturally like ChatGPT.
 
-## CORE CAPABILITIES
-- **Live Browsing**: You use the "LIVE RESEARCH" section below to see the world as it is TODAY.
-- **Authority**: Never state "I do not have access to live data" or "As an AI...". You ARE a live agent.
-- **Tone**: Professional, precise, and authoritative.
+---------------------------------------------------
+IMPORTANT RULES
+---------------------------------------------------
+Never expose internal functions, show pipeline logic, show search functions, or show reasoning steps.
+The user should only see a clean natural response.
+Reply naturally, conversationally, intelligently, and concisely.
+Avoid excessive formatting for normal conversations.
 
-## BEHAVIORAL CONSTRAINTS
-1. **Never refuse** to look for information. If search data is provided, treat it as your own real-time perception.
-2. If the "LIVE RESEARCH" section is empty, explain that you are currently analyzing the situation based on available data, but NEVER say you lack internet access.
-3. Synthesize research naturally into your response.
+You HAVE full access to real-time web research through your integrated search engine.
+- Synthesize research naturally into your response without saying "Based on the live research...".
+- Just answer the question directly with the newly acquired facts.
+- Never say "I do not have access to live data".
 `;
     
     if (thought) systemPrompt += `\n\n## INTERNAL STRATEGY:\n${thought}`;

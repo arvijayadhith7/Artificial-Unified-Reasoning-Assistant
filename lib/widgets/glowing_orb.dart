@@ -11,7 +11,7 @@ class GlowingOrb extends StatefulWidget {
   const GlowingOrb({
     super.key,
     this.state = OrbState.idle,
-    this.size = 200,
+    this.size = 220,
   });
 
   @override
@@ -21,18 +21,24 @@ class GlowingOrb extends StatefulWidget {
 class _GlowingOrbState extends State<GlowingOrb> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _rotationController;
+  late AnimationController _innerRotationController;
 
   @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
 
     _rotationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 20),
+      duration: const Duration(seconds: 15),
+    )..repeat();
+
+    _innerRotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
     )..repeat();
   }
 
@@ -40,16 +46,18 @@ class _GlowingOrbState extends State<GlowingOrb> with TickerProviderStateMixin {
   void dispose() {
     _pulseController.dispose();
     _rotationController.dispose();
+    _innerRotationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_pulseController, _rotationController]),
+      animation: Listenable.merge([_pulseController, _rotationController, _innerRotationController]),
       builder: (context, child) {
-        final double pulse = _pulseController.value;
+        final double pulse = Curves.easeInOut.transform(_pulseController.value);
         final double rotation = _rotationController.value;
+        final double innerRotation = _innerRotationController.value;
 
         return SizedBox(
           width: widget.size,
@@ -57,58 +65,79 @@ class _GlowingOrbState extends State<GlowingOrb> with TickerProviderStateMixin {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Outer Ambient Glow
+              // Outer Ambient Glow (Electric Blue)
               Container(
-                width: widget.size * (0.8 + 0.1 * pulse),
-                height: widget.size * (0.8 + 0.1 * pulse),
+                width: widget.size * (0.85 + 0.1 * pulse),
+                height: widget.size * (0.85 + 0.1 * pulse),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.primaryGreen.withOpacity(0.15),
-                      AppColors.hoverGreen.withOpacity(0.05),
+                      AppColors.electricBlue.withOpacity(0.2),
+                      AppColors.violetGlow.withOpacity(0.05),
                       Colors.transparent,
                     ],
                   ),
                 ),
               ),
 
-              // Rotating Energy Ring 1
+              // Outer Ring (Neon Cyan)
               Transform.rotate(
                 angle: rotation * 2 * math.pi,
                 child: CustomPaint(
-                  size: Size(widget.size * 0.9, widget.size * 0.9),
+                  size: Size(widget.size * 0.95, widget.size * 0.95),
                   painter: _OrbRingPainter(
-                    color: AppColors.primaryGreen.withOpacity(0.4),
-                    progress: 0.6,
+                    color: AppColors.neonCyan.withOpacity(0.4),
+                    segments: 3,
+                    gap: 0.2,
+                    thickness: 1.0,
+                  ),
+                ),
+              ),
+
+              // Middle Ring (Electric Blue)
+              Transform.rotate(
+                angle: -rotation * 3 * math.pi,
+                child: CustomPaint(
+                  size: Size(widget.size * 0.85, widget.size * 0.85),
+                  painter: _OrbRingPainter(
+                    color: AppColors.electricBlue.withOpacity(0.3),
+                    segments: 4,
+                    gap: 0.15,
                     thickness: 1.5,
                   ),
                 ),
               ),
 
-              // Rotating Energy Ring 2
+              // Inner Data Ring (Violet)
               Transform.rotate(
-                angle: -rotation * 3 * math.pi,
+                angle: innerRotation * 2 * math.pi,
                 child: CustomPaint(
-                  size: Size(widget.size * 0.8, widget.size * 0.8),
+                  size: Size(widget.size * 0.75, widget.size * 0.75),
                   painter: _OrbRingPainter(
-                    color: AppColors.hoverGreen.withOpacity(0.3),
-                    progress: 0.3,
-                    thickness: 1,
+                    color: AppColors.violetGlow.withOpacity(0.5),
+                    segments: 8,
+                    gap: 0.05,
+                    thickness: 2.0,
                   ),
                 ),
               ),
 
               // The Core Glass Orb
               Container(
-                width: widget.size * 0.65,
-                height: widget.size * 0.65,
+                width: widget.size * 0.6,
+                height: widget.size * 0.6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryGreen.withOpacity(0.4),
-                      blurRadius: 40,
+                      color: AppColors.electricBlue.withOpacity(0.5),
+                      blurRadius: 50 * pulse,
+                      spreadRadius: -5,
+                    ),
+                    BoxShadow(
+                      color: AppColors.violetGlow.withOpacity(0.3),
+                      blurRadius: 30,
                       spreadRadius: -10,
                     ),
                   ],
@@ -116,46 +145,52 @@ class _GlowingOrbState extends State<GlowingOrb> with TickerProviderStateMixin {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppColors.primaryGreen,
-                      AppColors.hoverGreen.withOpacity(0.8),
+                      AppColors.electricBlue.withOpacity(0.8),
+                      AppColors.violetGlow.withOpacity(0.6),
                     ],
                   ),
                 ),
                 child: Container(
-                  margin: const EdgeInsets.all(2),
+                  margin: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.black.withOpacity(0.85),
+                    color: Colors.black.withOpacity(0.9),
                   ),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Inner pulse
+                      // Central White Core
                       Container(
-                        width: widget.size * 0.2 * (1 + 0.2 * pulse),
-                        height: widget.size * 0.2 * (1 + 0.2 * pulse),
+                        width: widget.size * 0.15 * (1 + 0.1 * pulse),
+                        height: widget.size * 0.15 * (1 + 0.1 * pulse),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primaryGreen.withOpacity(0.8),
-                              blurRadius: 20 * pulse,
-                              spreadRadius: 5 * pulse,
+                              color: AppColors.neonCyan,
+                              blurRadius: 15 * pulse,
+                              spreadRadius: 2,
+                            ),
+                            const BoxShadow(
+                              color: Colors.white,
+                              blurRadius: 5,
                             ),
                           ],
                         ),
                       ),
                       
-                      // Status Visualization
+                      // State-specific visualizers
                       if (widget.state == OrbState.listening)
-                         _buildListeningEffect(widget.size * 0.6),
+                        _buildListeningEffect(widget.size * 0.55),
+                      if (widget.state == OrbState.thinking)
+                        _buildThinkingEffect(widget.size * 0.55),
                     ],
                   ),
                 ),
               ),
               
-              // Top Surface Highlight
+              // Gloss / Glass Highlight
               IgnorePointer(
                 child: Container(
                   width: widget.size * 0.6,
@@ -163,10 +198,10 @@ class _GlowingOrbState extends State<GlowingOrb> with TickerProviderStateMixin {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
-                      center: const Alignment(-0.4, -0.4),
-                      radius: 0.8,
+                      center: const Alignment(-0.35, -0.35),
+                      radius: 0.7,
                       colors: [
-                        Colors.white.withOpacity(0.15),
+                        Colors.white.withOpacity(0.2),
                         Colors.transparent,
                       ],
                     ),
@@ -186,14 +221,27 @@ class _GlowingOrbState extends State<GlowingOrb> with TickerProviderStateMixin {
       painter: _ListeningPainter(_pulseController.value),
     );
   }
+
+  Widget _buildThinkingEffect(double size) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _ThinkingPainter(_rotationController.value),
+    );
+  }
 }
 
 class _OrbRingPainter extends CustomPainter {
   final Color color;
-  final double progress;
+  final int segments;
+  final double gap;
   final double thickness;
 
-  _OrbRingPainter({required this.color, required this.progress, required this.thickness});
+  _OrbRingPainter({
+    required this.color, 
+    required this.segments, 
+    required this.gap, 
+    required this.thickness
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -204,8 +252,13 @@ class _OrbRingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final rect = Offset.zero & size;
-    canvas.drawArc(rect, 0, progress * 2 * math.pi, false, paint);
-    canvas.drawArc(rect, math.pi * 0.8, progress * 0.4 * math.pi, false, paint);
+    final segmentAngle = (2 * math.pi) / segments;
+    final gapAngle = segmentAngle * gap;
+    final arcAngle = segmentAngle - gapAngle;
+
+    for (var i = 0; i < segments; i++) {
+      canvas.drawArc(rect, i * segmentAngle, arcAngle, false, paint);
+    }
   }
 
   @override
@@ -219,21 +272,46 @@ class _ListeningPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = AppColors.neonCyan.withOpacity(0.6)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 2.0;
 
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
-    for (var i = 0; i < 12; i++) {
-      final angle = (i * math.pi / 6) + (animationValue * math.pi * 0.2);
-      final waveHeight = 10 * math.sin(animationValue * 2 * math.pi + i);
-      final x1 = center.dx + math.cos(angle) * (radius * 0.6);
-      final y1 = center.dy + math.sin(angle) * (radius * 0.6);
-      final x2 = center.dx + math.cos(angle) * (radius * 0.6 + waveHeight);
-      final y2 = center.dy + math.sin(angle) * (radius * 0.6 + waveHeight);
+    for (var i = 0; i < 32; i++) {
+      final angle = (i * math.pi / 16);
+      final noise = math.sin(animationValue * 10 + i * 0.5) * 5;
+      final x1 = center.dx + math.cos(angle) * (radius * 0.5);
+      final y1 = center.dy + math.sin(angle) * (radius * 0.5);
+      final x2 = center.dx + math.cos(angle) * (radius * 0.6 + noise);
+      final y2 = center.dy + math.sin(angle) * (radius * 0.6 + noise);
       canvas.drawLine(Offset(x1, y1), Offset(x2, y2), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+class _ThinkingPainter extends CustomPainter {
+  final double rotation;
+  _ThinkingPainter(this.rotation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.violetGlow.withOpacity(0.8)
+      ..style = PaintingStyle.fill;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    for (var i = 0; i < 4; i++) {
+      final angle = (rotation * 2 * math.pi) + (i * math.pi / 2);
+      final x = center.dx + math.cos(angle) * (radius * 0.4);
+      final y = center.dy + math.sin(angle) * (radius * 0.4);
+      canvas.drawCircle(Offset(x, y), 3, paint);
     }
   }
 
