@@ -526,44 +526,68 @@ async def research_socket(websocket: WebSocket):
             
             # 1. Search Phase
             await websocket.send_text(json.dumps({"type": "status", "content": "Scanning Neural Web..."}))
+            # 1. INTENT & SEARCH PHASE
+            await websocket.send_text(json.dumps({"type": "status", "content": "Analyzing Research Intent..."}))
             from agent_plugins.search_agent import ResearchAgent
-            researcher = ResearchAgent()
+            if not hasattr(self, '_researcher'):
+                self._researcher = ResearchAgent()
             
             search_query = prompt
             if category == "GitHub": search_query += " site:github.com"
             elif category == "Academic": search_query += " research papers journals"
             
-            raw_results = researcher.ddgs.text(search_query, max_results=5)
-            sources = [r['href'] for r in raw_results]
-            snippets = [f"Source: {r['title']}\nSnippet: {r['body']}" for r in raw_results]
+            await websocket.send_text(json.dumps({"type": "status", "content": "Scanning Neural Web & Verifying Sources..."}))
+            raw_results = self._researcher.ddgs.text(search_query, max_results=8)
             
-            await websocket.send_text(json.dumps({"type": "sources", "content": sources}))
+            snippets = [f"Source: {r['title']}\nURL: {r['href']}\nContent: {r['body']}" for r in raw_results]
+            sources = [{"title": r['title'], "url": r['href']} for r in raw_results]
+            await websocket.send_text(json.dumps({"type": "sources", "content": [s['url'] for s in sources]}))
             
-            # 2. Synthesis Phase
-            await websocket.send_text(json.dumps({"type": "status", "content": "Synthesizing Intelligence..."}))
+            # 2. AI REASONING & STRUCTURED SYNTHESIS PHASE
+            await websocket.send_text(json.dumps({"type": "status", "content": "Synthesizing Structured Intelligence..."}))
             
-            summary_prompt = f"Synthesize the following search results into a concise research report for the query: '{prompt}'. Use markdown. Results:\n\n" + "\n\n".join(snippets)
+            reasoning_prompt = f"""You are the AURA Research Engine. Synthesize the following data into a HIGH-FIDELITY STRUCTURED JSON response.
+            
+QUERY: {prompt}
+CATEGORY: {category}
+DATA CLUSTERS:
+{"\n---\n".join(snippets)}
+
+RULES:
+- Return ONLY a JSON object.
+- Provide deep technical analysis.
+- Key findings must be actionable.
+- References must be strictly from the provided data.
+- Detect future trends and community insights.
+
+JSON SCHEMA:
+{{
+  "query": "{prompt}",
+  "title": "Title of Research",
+  "summary": "Concise high-level summary",
+  "key_findings": ["Finding 1", "Finding 2"],
+  "technical_analysis": "Deep dive into the tech/mechanics",
+  "statistics": ["Data point 1", "Data point 2"],
+  "community_insights": ["Reddit/GitHub sentiment/trends"],
+  "comparisons": ["A vs B analysis"],
+  "future_scope": "Predicted trajectory",
+  "references": [{{ "title": "", "url": "", "source": "", "published_date": "" }}]
+}}"""
             
             if groq_client:
+                # Use the fast 8B model for synthesis
                 response = groq_client.chat.completions.create(
                     model="llama-3.1-8b-instant",
-                    messages=[{"role": "user", "content": summary_prompt}],
-                    stream=True
+                    messages=[{"role": "user", "content": reasoning_prompt}],
+                    response_format={"type": "json_object"}
                 )
-                for chunk in response:
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        await websocket.send_text(json.dumps({"type": "synthesis", "content": chunk.choices[0].delta.content}))
+                structured_data = json.loads(response.choices[0].message.content)
+                await websocket.send_text(json.dumps({"type": "synthesis", "content": structured_data}))
             else:
-                await websocket.send_text(json.dumps({"type": "synthesis", "content": "Neural Link Offline. Partial data displayed."}))
+                await websocket.send_text(json.dumps({"type": "status", "content": "Neural Link Offline."}))
 
-            # 3. Correlation Phase
-            await websocket.send_text(json.dumps({"type": "status", "content": "Mapping Visual Correlations..."}))
-            correlations = []
-            for i, r in enumerate(raw_results[:4]):
-                correlations.append({"topic": r['title'][:20], "strength": 0.5 + (i * 0.1)})
-            
-            await websocket.send_text(json.dumps({"type": "correlation", "content": correlations}))
             await websocket.send_text(json.dumps({"done": True}))
+
             
     except Exception as e:
         print(f"WS Research Error: {e}")
