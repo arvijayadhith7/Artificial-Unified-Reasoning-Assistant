@@ -17,40 +17,46 @@ class ResearchAgent:
             results = []
             
             with DDGS() as ddgs:
-                # Use text search for general queries (faster and more stable)
+                # Optimized High-Speed Retrieval with Priority Ranking
                 ddgs_gen = ddgs.text(query, region='wt-wt', safesearch='moderate', max_results=max_results)
                 for r in ddgs_gen:
+                    # Verification Layer: Prioritize authoritative sources
+                    priority = 1
+                    href = r.get('href', '')
+                    if any(domain in href for domain in ['github.com', 'wikipedia.org', 'reuters.com', 'espncricinfo.com', 'espn.in', 'official', 'docs.']):
+                        priority = 2
+                    
                     results.append({
                         'title': r.get('title', 'Source'),
                         'body': r.get('body', ''),
-                        'href': r.get('href', '#')
+                        'href': href,
+                        'priority': priority
                     })
                 
                 if not results:
-                    # Quick fallback within the same connection
                     news_gen = ddgs.news(query, region='wt-wt', safesearch='moderate', max_results=max_results)
                     for r in news_gen:
                         results.append({
                             'title': r.get('title', 'News'),
                             'body': r.get('body', ''),
-                            'href': r.get('url', '#')
+                            'href': r.get('url', '#'),
+                            'priority': 1
                         })
 
-
             if not results:
-                return "AURA Intelligence: No rapid data clusters found for this query."
+                return "AURA Intelligence: No rapid data clusters found. Defaulting to knowledge-base reasoning."
                 
+            # Neural Sort: Deliver the most verified data first
+            results.sort(key=lambda x: x['priority'], reverse=True)
+            
             formatted = []
             seen_urls = set()
             for r in results:
                 if len(formatted) >= max_results: break
-                title = r['title']
-                body = r['body']
-                href = r['href']
-                
-                if href not in seen_urls:
-                    formatted.append(f"Source: {title}\nURL: {href}\nSnippet: {body}\n")
-                    seen_urls.add(href)
+                if r['href'] not in seen_urls:
+                    formatted.append(f"Source: {r['title']}\nURL: {r['href']}\nSnippet: {r['body']}\n")
+                    seen_urls.add(r['href'])
+
             
             return "\n".join(formatted)
         except Exception as e:
