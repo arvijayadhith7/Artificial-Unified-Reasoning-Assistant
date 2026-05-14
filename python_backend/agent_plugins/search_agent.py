@@ -18,26 +18,24 @@ class ResearchAgent:
             
             with DDGS() as ddgs:
                 # Use text search for general queries (faster and more stable)
-                # We use the 'wt-wt' region for global results
-                ddgs_gen = ddgs.text(query, region='wt-wt', safesearch='moderate', timelimit=None, max_results=max_results)
-                
+                ddgs_gen = ddgs.text(query, region='wt-wt', safesearch='moderate', max_results=max_results)
                 for r in ddgs_gen:
                     results.append({
-                        'title': r.get('title', 'Unknown Source'),
+                        'title': r.get('title', 'Source'),
                         'body': r.get('body', ''),
                         'href': r.get('href', '#')
                     })
-            
-            if not results:
-                # Quick fallback to news if general text returns nothing
-                with DDGS() as ddgs:
-                    news_gen = ddgs.news(query, region='wt-wt', safesearch='moderate', timelimit='d', max_results=max_results)
+                
+                if not results:
+                    # Quick fallback within the same connection
+                    news_gen = ddgs.news(query, region='wt-wt', safesearch='moderate', max_results=max_results)
                     for r in news_gen:
                         results.append({
-                            'title': r.get('title', 'News Source'),
+                            'title': r.get('title', 'News'),
                             'body': r.get('body', ''),
                             'href': r.get('url', '#')
                         })
+
 
             if not results:
                 return "AURA Intelligence: No rapid data clusters found for this query."

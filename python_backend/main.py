@@ -160,14 +160,16 @@ class InferenceEngine:
 
         print(f"NEURAL INFERENCE: Processing prompt...")
         with self.lock:
-            # 1. Research Trigger
+            # 1. Research Trigger (Optimized Speed)
             research_context = ""
             keywords = ["score", "ipl", "news", "today", "weather", "match", "latest", "cricket", "who is", "what is", "how is", "price", "stock", "search"]
             if any(k in prompt.lower() for k in keywords):
                 try:
                     from agent_plugins.search_agent import ResearchAgent
-                    researcher = ResearchAgent()
-                    research_context = "\nLIVE RESEARCH DATA:\n" + researcher.search_live(prompt)
+                    # Reuse static instance for speed
+                    if not hasattr(self, '_researcher'):
+                        self._researcher = ResearchAgent()
+                    research_context = "\nLIVE RESEARCH DATA:\n" + self._researcher.search_live(prompt, max_results=3)
                 except Exception as e:
                     print(f"Search failed: {e}")
 
@@ -180,12 +182,13 @@ class InferenceEngine:
                 safe_history = self._sanitize_history(history)
                 messages = [{"role": "system", "content": system_prompt}] + safe_history + [{"role": "user", "content": prompt}]
                 
-                # Using the latest Llama 3.3 model (Decommissioned 70b-8192 replaced)
+                # Use lightning-fast 8B model for maximum responsiveness
                 response = groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile", 
+                    model="llama-3.1-8b-instant", 
                     messages=messages, 
                     stream=True, 
-                    temperature=0.7
+                    temperature=0.7,
+                    max_tokens=2048
                 )
                 
                 for chunk in response:
@@ -466,12 +469,20 @@ async def secured_chat(websocket: WebSocket):
             chat_manager.save_message(user_id, conv_id, project_id, "user", prompt)
             
             full_reply = ""
+            buffer = ""
             for chunk in engine.generate_stream(prompt, msg.get("history", [])):
                 full_reply += chunk
-                await websocket.send_text(json.dumps({"type": "chunk", "content": chunk}))
+                buffer += chunk
+                if len(buffer) > 10 or "\n" in buffer:
+                    await websocket.send_text(json.dumps({"type": "chunk", "content": buffer}))
+                    buffer = ""
+            
+            if buffer:
+                await websocket.send_text(json.dumps({"type": "chunk", "content": buffer}))
             
             chat_manager.save_message(user_id, conv_id, project_id, "assistant", full_reply)
             await websocket.send_text(json.dumps({"done": True}))
+
     except Exception as e:
         print(f"WS Chat Error: {e}")
         try:
