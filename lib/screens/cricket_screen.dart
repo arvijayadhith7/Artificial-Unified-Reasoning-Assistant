@@ -70,7 +70,6 @@ class _CricketScreenState extends State<CricketScreen> {
               FutureBuilder<String?>(
                 future: _cricketService.getAuraIPLScore(),
                 builder: (context, snapshot) {
-                  if (snapshot.hasData && snapshot.data != null) {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 24),
                       padding: const EdgeInsets.all(20),
@@ -82,9 +81,6 @@ class _CricketScreenState extends State<CricketScreen> {
                         ),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(color: const Color(0xFFFF4B2B).withOpacity(0.3)),
-                        boxShadow: [
-                           BoxShadow(color: const Color(0xFFFF4B2B).withOpacity(0.1), blurRadius: 20, spreadRadius: -5),
-                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,35 +88,20 @@ class _CricketScreenState extends State<CricketScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.flash_on_rounded, color: Color(0xFFFF4B2B), size: 18),
-                                  const SizedBox(width: 8),
-                                  Text("IPL 2026 LIVE TICKER", style: GoogleFonts.outfit(color: const Color(0xFFFF4B2B), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: const Color(0xFFFF4B2B), borderRadius: BorderRadius.circular(8)),
-                                child: Text("LIVE", style: GoogleFonts.outfit(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
-                              ),
+                              Text("IPL LIVE INTELLIGENCE", style: GoogleFonts.outfit(color: const Color(0xFFFF4B2B), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                              if (snapshot.connectionState == ConnectionState.waiting)
+                                const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF4B2B))),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Text(snapshot.data!, style: GoogleFonts.outfit(color: Colors.white, fontSize: 15, height: 1.6, fontWeight: FontWeight.w500)),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              const Icon(Icons.auto_awesome, color: Color(0xFFFF4B2B), size: 14),
-                              const SizedBox(width: 8),
-                              Text("AURA Real-time Analysis", style: GoogleFonts.outfit(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
-                            ],
-                          )
+                          Text(
+                            snapshot.data ?? "AURA is scanning neural data clusters for live IPL scores...", 
+                            style: GoogleFonts.outfit(color: Colors.white, fontSize: 14, height: 1.6)
+                          ),
                         ],
                       ),
                     );
-                  }
-                  return const SizedBox.shrink();
+
                 },
               ),
 

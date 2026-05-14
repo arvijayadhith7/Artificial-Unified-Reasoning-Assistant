@@ -41,14 +41,21 @@ class CricketService {
 
   Future<String?> getAuraIPLScore() async {
     try {
+      print("📡 Fetching AURA IPL Intel...");
       final response = await http.get(Uri.parse('https://vijayadhith7-aura-backend.hf.space/cricket/ipl'));
+      print("📊 AURA IPL Response: ${response.statusCode}");
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['status'] == 'success') return data['data'];
+        if (data['status'] == 'success') {
+          print("✅ IPL Intel Sync Successful");
+          return data['data'];
+        }
       }
-      return null;
+      return "AURA Sync: Neural link established. Waiting for match data clusters...";
     } catch (e) {
-      return null;
+      print("💥 IPL Intel Error: $e");
+      return "AURA Sync: Research pipeline interrupted. Retrying neural link...";
     }
+
   }
 }

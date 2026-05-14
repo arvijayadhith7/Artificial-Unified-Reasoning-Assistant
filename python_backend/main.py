@@ -614,8 +614,14 @@ async def get_ipl_scores():
     try:
         from agent_plugins.search_agent import ResearchAgent
         researcher = ResearchAgent()
-        # Specific search for 2026 season
-        score_data = researcher.search_live("IPL 2026 match live score today and schedule", max_results=3)
+        # Robust query for better strike rate on live scores
+        query = "IPL match live score today schedule results 2026"
+        score_data = researcher.search_live(query, max_results=4)
+        
+        if "No rapid data clusters" in score_data:
+            # Secondary attempt with broader terms
+            score_data = researcher.search_live("IPL cricket live score", max_results=3)
+            
         return {"status": "success", "data": score_data}
     except Exception as e:
         return {"status": "error", "message": str(e)}
