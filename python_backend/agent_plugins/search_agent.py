@@ -17,34 +17,31 @@ class ResearchAgent:
             results = []
             
             with DDGS() as ddgs:
-                # Optimized High-Speed Retrieval with Priority Ranking
-                ddgs_gen = ddgs.text(query, region='wt-wt', safesearch='moderate', max_results=max_results)
-                for r in ddgs_gen:
-                    # Verification Layer: Prioritize authoritative sources
-                    priority = 1
-                    href = r.get('href', '')
-                    if any(domain in href for domain in ['github.com', 'wikipedia.org', 'reuters.com', 'espncricinfo.com', 'espn.in', 'official', 'docs.']):
-                        priority = 2
-                    
-                    results.append({
-                        'title': r.get('title', 'Source'),
-                        'body': r.get('body', ''),
-                        'href': href,
-                        'priority': priority
-                    })
+                # 403 Ratelimit Guard: Shorten and sanitize the query
+                safe_query = " ".join(query.split()[:6])
+                print(f"NEURAL SEARCH: Stealth scanning for '{safe_query}'...")
                 
-                if not results:
-                    news_gen = ddgs.news(query, region='wt-wt', safesearch='moderate', max_results=max_results)
-                    for r in news_gen:
+                try:
+                    # Optimized Retrieval without the high-latency news fallback
+                    ddgs_gen = ddgs.text(safe_query, region='wt-wt', safesearch='moderate', max_results=max_results)
+                    for r in ddgs_gen:
+                        priority = 1
+                        href = r.get('href', '')
+                        if any(domain in href for domain in ['github.com', 'wikipedia.org', 'reuters.com', 'espncricinfo.com', 'espn.in', 'official', 'docs.']):
+                            priority = 2
+                        
                         results.append({
-                            'title': r.get('title', 'News'),
+                            'title': r.get('title', 'Source'),
                             'body': r.get('body', ''),
-                            'href': r.get('url', '#'),
-                            'priority': 1
+                            'href': href,
+                            'priority': priority
                         })
+                except Exception as e:
+                    print(f"Search Rate Limit Hit: {e}")
+                    return "AURA Sync: Neural Search gateway is currently rate-limited. Relying on internal knowledge base for instant response."
 
             if not results:
-                return "AURA Intelligence: No rapid data clusters found. Defaulting to knowledge-base reasoning."
+                return "AURA Intelligence: Neural data sync delayed. Proceeding with knowledge-base analysis."
                 
             # Neural Sort: Deliver the most verified data first
             results.sort(key=lambda x: x['priority'], reverse=True)
@@ -56,6 +53,7 @@ class ResearchAgent:
                 if r['href'] not in seen_urls:
                     formatted.append(f"Source: {r['title']}\nURL: {r['href']}\nSnippet: {r['body']}\n")
                     seen_urls.add(r['href'])
+
 
             
             return "\n".join(formatted)
