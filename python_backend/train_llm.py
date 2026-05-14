@@ -18,12 +18,11 @@ from trl import SFTTrainer
 # 1. Configuration
 model_path = r'D:\ANTIGRAVITY\llm APP\models\custom_model'
 output_dir = r'D:\ANTIGRAVITY\llm APP\models\trained_adapters'
-dataset_name = "SEACrowd/cc100"
-config_name = "cc100_zlm_source" # Standard Malay source config
+dataset_name = "Open-Orca/OpenOrca"
 
-print(f"🚀 Connecting to SEACrowd Stream: {dataset_name} ({config_name})...")
-# CC100 is 2TB+. We use streaming=True to pull data on-demand.
-dataset = load_dataset(dataset_name, config_name, split="train", streaming=True, trust_remote_code=True)
+print(f"🚀 Connecting to OpenOrca Stream: {dataset_name}...")
+# OpenOrca is large. We use streaming=True to pull data on-demand.
+dataset = load_dataset(dataset_name, split="train", streaming=True)
 dataset = dataset.take(5000) # Take a manageable subset for fine-tuning
 
 # 2. Model Loading with 4-bit Quantization (QLoRA)
@@ -74,8 +73,14 @@ training_args = TrainingArguments(
 
 # 5. Initialize SFTTrainer
 def formatting_func(example):
-    # CC100 is raw text. We return it as-is for causal language modeling.
-    return example['text']
+    # OpenOrca structure: system_prompt, question, response
+    system = example.get('system_prompt', "You are a helpful assistant.")
+    question = example.get('question', "")
+    response = example.get('response', "")
+    
+    # Format into a chat-like structure for the causal model
+    text = f"### System: {system}\n### Question: {question}\n### Response: {response}"
+    return text
 
 trainer = SFTTrainer(
     model=model,

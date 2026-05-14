@@ -1,60 +1,61 @@
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class ChatService {
   WebSocketChannel? _channel;
   final _controller = StreamController<Map<String, dynamic>>.broadcast();
+  static const String baseUrl = 'https://vijayadhith7-aura-backend.hf.space';
+  static const String wsUrl = 'wss://vijayadhith7-aura-backend.hf.space/chat';
   
   Stream<Map<String, dynamic>> get responseStream => _controller.stream;
 
   bool _isConnected = false;
 
   void connect() {
-    const url = 'wss://vijayadhith7-aura-backend.hf.space/chat';
-    
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(url));
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
       _isConnected = true;
-      print('🚀 NEURAL LINK: Initializing WebSocket Connection...');
-
       _channel!.stream.listen(
         (data) {
           final decoded = json.decode(data);
           _controller.add(Map<String, dynamic>.from(decoded));
         },
-        onError: (error) {
-          print('❌ Neural Link Error: $error');
-          _isConnected = false;
-        },
-        onDone: () {
-          print('🔌 Neural Link Terminated');
-          _isConnected = false;
-        },
+        onError: (_) => _isConnected = false,
+        onDone: () => _isConnected = false,
       );
     } catch (e) {
-      print('💥 Connection Failed: $e');
       _isConnected = false;
     }
   }
 
-  void sendMessage(String text, {String? chatId, List<Map<String, dynamic>> history = const []}) {
-    if (!_isConnected || _channel == null) {
-      print('🔄 Reconnecting Neural Link...');
-      connect();
-    }
+  Future<List<dynamic>> fetchRecentChats({String? projectId}) async {
+    final url = projectId != null ? '$baseUrl/chats?project_id=$projectId' : '$baseUrl/chats';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) return json.decode(response.body);
+    return [];
+  }
+
+  Future<List<dynamic>> fetchChatHistory(String convId) async {
+    final response = await http.get(Uri.parse('$baseUrl/chats/$convId'));
+    if (response.statusCode == 200) return json.decode(response.body);
+    return [];
+  }
+
+  void sendMessage(String text, {String? conversationId, String? projectId, List<Map<String, dynamic>> history = const []}) {
+    if (!_isConnected || _channel == null) connect();
     
     final payload = json.encode({
       'prompt': text,
       'history': history,
-      'chatId': chatId,
+      'conversationId': conversationId ?? 'conv_${DateTime.now().millisecondsSinceEpoch}',
+      'projectId': projectId ?? 'global',
     });
 
     try {
       _channel!.sink.add(payload);
-    } catch (e) {
-      print('💥 Failed to send message: $e');
-    }
+    } catch (_) {}
   }
 
   void dispose() {

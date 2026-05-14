@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/glowing_orb.dart';
 import '../app_theme.dart';
 import 'welcome_screen.dart';
+import 'login_screen.dart';
 import 'home_screen.dart';
 import 'main_screen.dart';
 
@@ -24,34 +25,23 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1500),
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
     _controller.forward();
-
-    _handleNavigation();
-  }
-
-  Future<void> _handleNavigation() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isFirstTime = prefs.getBool('isFirstTime') ?? true;
-
-    Timer(const Duration(seconds: 4), () {
-      Widget nextScreen = isFirstTime ? const WelcomeScreen() : const MainScreen();
-
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 1000),
-        ),
-      );
+    
+    // Direct navigation after 2 seconds - no SharedPreferences dependency here
+    Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+      }
     });
   }
+
 
   @override
   void dispose() {
@@ -103,7 +93,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             right: 0,
             child: Center(
               child: Text(
-                "AURA OS v2.0",
+                "AURA OS v2.2.0",
                 style: GoogleFonts.outfit(
                   color: Colors.white24,
                   fontSize: 10,

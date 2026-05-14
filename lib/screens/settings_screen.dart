@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_theme.dart';
+import 'login_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -156,21 +158,33 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 32),
 
             // Sign Out Button
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.logout_rounded, color: Color(0xFFFFA07A), size: 18),
-                  const SizedBox(width: 8),
-                  Text("SIGN OUT", style: GoogleFonts.outfit(color: const Color(0xFFFFA07A), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                ],
+            GestureDetector(
+              onTap: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('isLoggedIn', false);
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.logout_rounded, color: Color(0xFFFFA07A), size: 18),
+                    const SizedBox(width: 8),
+                    Text("SIGN OUT", style: GoogleFonts.outfit(color: const Color(0xFFFFA07A), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 20),

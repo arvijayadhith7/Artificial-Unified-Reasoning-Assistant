@@ -4,11 +4,13 @@ import 'dart:ui';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/chat_provider.dart';
 import '../app_theme.dart';
 import '../chat_service.dart';
 import '../widgets/glowing_orb.dart';
+import '../widgets/neural_send_button.dart';
 
 class ChatMessage {
   final String text;
@@ -16,14 +18,14 @@ class ChatMessage {
   ChatMessage({required this.text, required this.isUser});
 }
 
-class ChatScreen extends StatefulWidget {
+class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen> {
   final List<ChatMessage> _messages = [];
   final TextEditingController _textController = TextEditingController();
   final ChatService _chatService = ChatService();
@@ -33,13 +35,13 @@ class _ChatScreenState extends State<ChatScreen> {
   String _currentResponse = "";
   String _currentThought = "";
   String _currentTool = "";
+  String _canvasContent = "";
+  String _canvasLanguage = "plaintext";
+  bool _isCanvasMarkdown = false;
+  bool _isSending = false;
   final String _selectedModel = 'aura';
 
-  // Code Canvas State
   String _canvasTitle = "Neural Output";
-  String _canvasContent = "";
-  String _canvasLanguage = "dart";
-  bool _isCanvasMarkdown = false;
 
   // Chat history
   List<String> _chatHistory = [];
@@ -50,38 +52,53 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _loadChatHistory();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatProvider.notifier).loadRecentChats();
+    });
+    _textController.addListener(() {
+      if (mounted) setState(() {});
+    });
+    
     _chatService.connect();
     _chatService.responseStream.listen((data) {
       final type = data['type'];
       final content = data['content'] as String?;
 
-      setState(() {
-        if (type == 'chunk' && content != null) {
+      if (type == 'chunk' && content != null) {
+        setState(() {
           _orbState = OrbState.speaking;
-          if (_messages.isNotEmpty && !_messages.last.isUser && _currentResponse.isNotEmpty) {
-            _currentResponse += content;
-            _messages[_messages.length - 1] = ChatMessage(text: _currentResponse, isUser: false);
-          } else {
-            _currentResponse = content;
-            _messages.add(ChatMessage(text: _currentResponse, isUser: false));
-          }
+          _currentResponse += content;
           _currentThought = "";
           _currentTool = "";
-          _detectCodeInResponse(_currentResponse);
-        } else if (type == 'thought' && content != null) {
+        });
+        ref.read(chatProvider.notifier).updateLastMessage(content);
+        _detectCodeInResponse(_currentResponse);
+      } else if (type == 'thought' && content != null) {
+        setState(() {
           _orbState = OrbState.thinking;
           _currentThought = content;
-        } else if (type == 'tool' && content != null) {
-          _currentTool = content;
-        } else if (data['done'] == true) {
+        });
+      } else if (data['done'] == true) {
+        setState(() {
           _orbState = OrbState.idle;
-        }
-      });
+          _isSending = false;
+        });
+      }
       _scrollToBottom();
     });
-    
-    _textController.addListener(() => setState(() {}));
+
+    // Listen to conversation changes to reset local state
+    ref.listenManual(chatProvider.select((s) => s.activeConvId), (prev, next) {
+      if (prev != next) {
+        setState(() {
+          _currentResponse = "";
+          _currentThought = "";
+          _currentTool = "";
+          _canvasContent = "";
+          _orbState = OrbState.idle;
+        });
+      }
+    });
   }
 
   void _scrollToBottom() {
@@ -109,101 +126,29 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _loadChatHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _chatHistory = prefs.getStringList('chat_history') ?? [];
-    });
-  }
-
-  Future<void> _saveChatTitle(String title) async {
-    if (_currentChatId == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    final entry = "${_currentChatId!}|$title";
-    _chatHistory.removeWhere((item) => item.startsWith("${_currentChatId!}|"));
-    _chatHistory.insert(0, entry);
-    if (_chatHistory.length > 20) _chatHistory = _chatHistory.sublist(0, 20);
-    await prefs.setStringList('chat_history', _chatHistory);
-    _currentChatTitle = title;
-    setState(() {});
-  }
-
-  void _startNewChat() {
-    setState(() {
-      _messages.clear();
-      _currentResponse = "";
-      _canvasContent = "";
-      _chatSaved = false;
-      _currentChatTitle = null;
-      _currentChatId = "chat_${DateTime.now().millisecondsSinceEpoch}";
-      _textController.clear();
-    });
-  }
-
-  Future<void> _loadMessagesForChat(String idWithTitle) async {
-    final parts = idWithTitle.split('|');
-    final id = parts[0];
-    final title = parts.length > 1 ? parts[1] : id;
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'chat_content_$id';
-    final content = prefs.getStringList(key) ?? [];
-    
-    setState(() {
-      _messages.clear();
-      _currentChatId = id;
-      _currentChatTitle = title;
-      for (var msgJson in content) {
-        if (msgJson.startsWith('user:')) {
-          _messages.add(ChatMessage(text: msgJson.substring(5), isUser: true));
-        } else if (msgJson.startsWith('aura:')) {
-          _messages.add(ChatMessage(text: msgJson.substring(5), isUser: false));
-        }
-      }
-      _chatSaved = true; 
-    });
-  }
-
   void _handleSend() {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    if (!_chatSaved && _messages.isEmpty) {
-      final title = text.length > 40 ? '${text.substring(0, 40)}...' : text;
-      _saveChatTitle(title);
-      _chatSaved = true;
-    }
-
-    if (_currentChatId == null) {
-      _currentChatId = "chat_${DateTime.now().millisecondsSinceEpoch}";
-    }
+    final chatState = ref.read(chatProvider);
+    final conversationId = chatState.activeConvId ?? "conv_${DateTime.now().millisecondsSinceEpoch}";
 
     setState(() {
-      _messages.add(ChatMessage(text: text, isUser: true));
       _currentResponse = "";
       _textController.clear();
       _orbState = OrbState.thinking;
+      _isSending = true;
     });
+
+    ref.read(chatProvider.notifier).addMessage({'role': 'user', 'content': text});
     
-    // Construct history for context awareness
-    final history = _messages
-        .take(_messages.length - 1) // exclude current user message
-        .map((m) => {
-              'role': m.isUser ? 'user' : 'assistant',
-              'content': m.text,
-            })
-        .toList();
-
-    _chatService.sendMessage(text, chatId: _currentChatId, history: history);
+    _chatService.sendMessage(
+      text, 
+      conversationId: conversationId,
+      history: chatState.currentMessages.map((m) => {'role': m['role'], 'content': m['content']}).toList(),
+    );
+    
     _scrollToBottom();
-    _persistCurrentChat();
-  }
-
-  Future<void> _persistCurrentChat() async {
-    if (_currentChatId == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'chat_content_${_currentChatId!}';
-    final List<String> data = _messages.map((m) => '${m.isUser ? "user" : "aura"}:${m.text}').toList();
-    await prefs.setStringList(key, data);
   }
 
   @override
@@ -218,11 +163,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: AuraSidebar(
-        chatHistory: _chatHistory,
-        onNewChat: _startNewChat,
-        onHistorySelected: _loadMessagesForChat,
-      ),
+      drawer: const AuraSidebar(),
       extendBodyBehindAppBar: true,
       appBar: _buildAppBar(),
       body: Stack(
@@ -302,14 +243,16 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildChatView() {
+    final messages = ref.watch(chatProvider).currentMessages;
     return Expanded(
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        itemCount: _messages.length,
+        itemCount: messages.length,
         itemBuilder: (context, index) {
-          final msg = _messages[index];
-          return _buildMessageBubble(msg);
+          final msg = messages[index];
+          final isUser = msg['role'] == 'user';
+          return _buildMessageBubble(isUser, msg['content'] ?? '');
         },
       ),
     );
@@ -349,11 +292,11 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage msg) {
-    if (msg.isUser) {
-      return _buildUserBubble(msg.text);
+  Widget _buildMessageBubble(bool isUser, String text) {
+    if (isUser) {
+      return _buildUserBubble(text);
     } else {
-      return _buildAuraResponse(msg.text);
+      return _buildAuraResponse(text);
     }
   }
 
@@ -512,23 +455,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     onSubmitted: (val) => _handleSend(),
                   ),
                 ),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _handleSend,
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _textController.text.isNotEmpty ? AppColors.neonCyan : Colors.transparent,
-                      ),
-                      child: Icon(
-                        Icons.arrow_upward_rounded, 
-                        color: _textController.text.isNotEmpty ? Colors.black : AppColors.textSecondary, 
-                        size: 20
-                      ),
-                    ),
-                  ),
+                NeuralSendButton(
+                  onTap: _handleSend,
+                  isActive: _textController.text.isNotEmpty,
+                  isSending: _isSending,
                 ),
               ],
             ),
@@ -634,112 +564,90 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class AuraSidebar extends StatefulWidget {
-  final List<String> chatHistory;
-  final VoidCallback onNewChat;
-  final Function(String) onHistorySelected;
-
-  const AuraSidebar({
-    super.key, 
-    required this.chatHistory, 
-    required this.onNewChat,
-    required this.onHistorySelected,
-  });
+class AuraSidebar extends ConsumerStatefulWidget {
+  const AuraSidebar({super.key});
 
   @override
-  State<AuraSidebar> createState() => _AuraSidebarState();
+  ConsumerState<AuraSidebar> createState() => _AuraSidebarState();
 }
 
-class _AuraSidebarState extends State<AuraSidebar> {
+class _AuraSidebarState extends ConsumerState<AuraSidebar> {
   String _activeWorkspace = "PERSONAL";
-
-  Map<String, List<String>> _groupHistory() {
-    final Map<String, List<String>> groups = {
-      "TODAY": [],
-      "YESTERDAY": [],
-      "ARCHIVE": [],
-    };
-
-    final now = DateTime.now();
-    for (var item in widget.chatHistory) {
-      final parts = item.split('|');
-      final id = parts[0];
-      // Basic heuristic: check id for timestamp
-      if (id.startsWith('chat_')) {
-        final ts = int.tryParse(id.substring(5)) ?? 0;
-        final date = DateTime.fromMillisecondsSinceEpoch(ts);
-        final diff = now.difference(date).inDays;
-        
-        if (diff == 0) groups["TODAY"]!.add(item);
-        else if (diff == 1) groups["YESTERDAY"]!.add(item);
-        else groups["ARCHIVE"]!.add(item);
-      } else {
-        groups["ARCHIVE"]!.add(item);
-      }
-    }
-    return groups;
-  }
 
   @override
   Widget build(BuildContext context) {
-    final grouped = _groupHistory();
+    final chatState = ref.watch(chatProvider);
+    final recentChats = chatState.recentChats;
 
     return Drawer(
       backgroundColor: AppColors.background,
       child: SafeArea(
         child: Column(
           children: [
-            // Workspace Hub
             _buildWorkspaceHub(),
-            
             const Divider(color: AppColors.border, height: 1),
             
-            // New Session Action
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: ListTile(
                 onTap: () {
-                  widget.onNewChat();
+                  ref.read(chatProvider.notifier).startNewChat();
                   Navigator.pop(context);
                 },
                 leading: const Icon(Icons.add_rounded, color: AppColors.neonCyan),
-                title: Text(
-                  "NEW SESSION", 
-                  style: GoogleFonts.outfit(
-                    color: AppColors.textPrimary, 
-                    fontWeight: FontWeight.w900, 
-                    fontSize: 12, 
-                    letterSpacing: 2.0
-                  )
-                ),
+                title: Text("NEW SESSION", style: GoogleFonts.outfit(color: AppColors.textPrimary, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 2.0)),
                 tileColor: AppColors.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16), 
-                  side: BorderSide(color: AppColors.neonCyan.withOpacity(0.2))
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.neonCyan.withOpacity(0.2))),
               ),
             ),
 
-            // History Sections
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  if (grouped["TODAY"]!.isNotEmpty) _buildSectionHeader("TODAY"),
-                  ...grouped["TODAY"]!.map(_buildHistoryItem),
-                  
-                  if (grouped["YESTERDAY"]!.isNotEmpty) _buildSectionHeader("YESTERDAY"),
-                  ...grouped["YESTERDAY"]!.map(_buildHistoryItem),
-                  
-                  if (grouped["ARCHIVE"]!.isNotEmpty) _buildSectionHeader("ARCHIVE"),
-                  ...grouped["ARCHIVE"]!.map(_buildHistoryItem),
-                ],
-              ),
+              child: chatState.isLoading 
+                ? const Center(child: CircularProgressIndicator(color: AppColors.neonCyan))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: recentChats.length,
+                    itemBuilder: (context, index) {
+                      final chat = recentChats[index];
+                      final isActive = chatState.activeConvId == chat['id'];
+                      return _buildHistoryItem(chat, isActive);
+                    },
+                  ),
             ),
             
             _buildUserProfile(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryItem(Map<String, dynamic> chat, bool isActive) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isActive ? AppColors.neonCyan.withOpacity(0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isActive ? AppColors.neonCyan.withOpacity(0.3) : Colors.transparent),
+      ),
+      child: ListTile(
+        onTap: () {
+          ref.read(chatProvider.notifier).openChat(chat['id']);
+          Navigator.pop(context);
+        },
+        title: Text(
+          chat['title'] ?? "Neural Session",
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.outfit(color: isActive ? AppColors.neonCyan : Colors.white70, fontSize: 13, fontWeight: isActive ? FontWeight.bold : FontWeight.normal),
+        ),
+        subtitle: Text(
+          chat['last_message'] ?? "No message",
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.outfit(color: Colors.white24, fontSize: 11),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white10, size: 16),
       ),
     );
   }
@@ -754,15 +662,7 @@ class _AuraSidebarState extends State<AuraSidebar> {
             children: [
               const GlowingOrb(size: 32),
               const SizedBox(width: 12),
-              Text(
-                "AURA HUB",
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  letterSpacing: 6,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
-              ),
+              Text("AURA HUB", style: GoogleFonts.outfit(fontSize: 14, letterSpacing: 6, fontWeight: FontWeight.w900, color: Colors.white)),
             ],
           ),
           const SizedBox(height: 20),
@@ -791,65 +691,24 @@ class _AuraSidebarState extends State<AuraSidebar> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 12, left: 8),
-      child: Text(
-        title, 
-        style: GoogleFonts.outfit(
-          color: Colors.white24, 
-          fontSize: 10, 
-          fontWeight: FontWeight.w900, 
-          letterSpacing: 3.0
-        )
-      ),
-    );
-  }
-
-  Widget _buildHistoryItem(String idWithTitle) {
-    final parts = idWithTitle.split('|');
-    final title = parts.length > 1 ? parts[1] : parts[0];
-    return ListTile(
-      onTap: () {
-        widget.onHistorySelected(idWithTitle);
-        Navigator.pop(context);
-      },
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-      leading: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white24, size: 18),
-      title: Text(
-        title, 
-        style: GoogleFonts.outfit(color: Colors.white70, fontSize: 14), 
-        maxLines: 1, 
-        overflow: TextOverflow.ellipsis
-      ),
-      trailing: const Icon(Icons.more_horiz_rounded, color: Colors.white10, size: 16),
-    );
-  }
-
   Widget _buildUserProfile() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.border)),
-        color: AppColors.surface,
-      ),
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border, width: 0.5))),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: AppColors.electricBlue.withOpacity(0.2),
-            radius: 16,
-            child: const Icon(Icons.person_rounded, color: AppColors.electricBlue, size: 16),
-          ),
+          const CircleAvatar(radius: 18, backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11')),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("USER_NEURAL_LINK", style: GoogleFonts.outfit(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text("PRO PLAN ACTIVE", style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 8, fontWeight: FontWeight.w900)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Julian Thorne", style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                Text("PRO PLAN", style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
+              ],
+            ),
           ),
-          const Spacer(),
-          const Icon(Icons.settings_outlined, color: Colors.white24, size: 20),
+          const Icon(Icons.more_vert_rounded, color: Colors.white24, size: 18),
         ],
       ),
     );

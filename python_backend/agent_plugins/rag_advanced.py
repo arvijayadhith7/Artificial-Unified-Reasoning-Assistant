@@ -2,31 +2,35 @@ import os
 import torch
 from sentence_transformers import SentenceTransformer
 
-# Resilient LangChain Imports
-try:
-    from langchain_community.retrievers import BM25Retriever
-    from langchain.retrievers import EnsembleRetriever
-    from langchain_core.documents import Document
-except ImportError:
-    # Fallback for older versions or missing community package
-    from langchain.retrievers import BM25Retriever, EnsembleRetriever
-    from langchain.schema import Document
-
 class AdvancedRAG:
     """Advanced RAG system with Hybrid Search (BM25 + Vector) and Reranking."""
     
     def __init__(self, vector_db_collection, embedder_model='all-MiniLM-L6-v2'):
         self.collection = vector_db_collection
+        # Lazy load torch/st only if needed, but keeping here as they are stable
         self.embedder = SentenceTransformer(embedder_model, device='cuda' if torch.cuda.is_available() else 'cpu')
         self.bm25_retriever = None
 
+    def _get_langchain_doc(self):
+        try:
+            from langchain_core.documents import Document
+            return Document
+        except:
+            class Document: 
+                def __init__(self, page_content): self.page_content = page_content
+            return Document
+
     def initialize_bm25(self, texts):
         """Initialize BM25 with a corpus of texts."""
-        if not texts:
-            return
-        documents = [Document(page_content=t) for t in texts]
-        self.bm25_retriever = BM25Retriever.from_documents(documents)
-        self.bm25_retriever.k = 5
+        if not texts: return
+        try:
+            from langchain_community.retrievers import BM25Retriever
+            DocClass = self._get_langchain_doc()
+            documents = [DocClass(page_content=t) for t in texts]
+            self.bm25_retriever = BM25Retriever.from_documents(documents)
+            self.bm25_retriever.k = 5
+        except Exception as e:
+            print(f"BM25 Initialization Failed (Non-Critical): {e}")
 
     def hybrid_search(self, query, top_k=5):
         """Perform hybrid search combining vector similarity and keyword matching."""

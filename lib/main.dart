@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_theme.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
-  runApp(const AIChatbotApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Catch any errors during initialization
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
+
+  runApp(const ProviderScope(child: AIChatbotApp()));
 }
 
 class AIChatbotApp extends StatelessWidget {
@@ -12,10 +20,11 @@ class AIChatbotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AURA Enterprise',
+      title: 'AURA',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: SplashScreen(),
+      home: const SplashScreen(),
     );
   }
 }
+
