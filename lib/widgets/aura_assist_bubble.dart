@@ -17,6 +17,7 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
   double _xPosition = 24.0;
   double _yPosition = 120.0;
   
+  bool _isVisible = true;
   bool _isExpanded = false;
   bool _voiceEnabled = false;
   String _currentLanguage = "English";
@@ -91,6 +92,10 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    if (!_isVisible) {
+      return const SizedBox.shrink();
+    }
+
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;
@@ -152,6 +157,16 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
   Widget _buildCompactBubble() {
     return GestureDetector(
       onTap: () => setState(() => _isExpanded = true),
+      onDoubleTap: () {
+        setState(() => _isVisible = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("AURA Assist closed. Reload screen to reactivate."),
+            duration: Duration(seconds: 2),
+            backgroundColor: Color(0xFF0D1527),
+          ),
+        );
+      },
       child: Center(
         child: Stack(
           alignment: Alignment.center,
@@ -217,11 +232,25 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
                   ),
                 ],
               ),
-              IconButton(
-                icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () => setState(() => _isExpanded = false),
+              GestureDetector(
+                onTap: () => setState(() => _isExpanded = false),
+                onLongPress: () {
+                  setState(() {
+                    _isExpanded = false;
+                    _isVisible = false;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("AURA Assist completely closed."),
+                      duration: Duration(seconds: 2),
+                      backgroundColor: Color(0xFF0D1527),
+                    ),
+                  );
+                },
+                child: const Padding(
+                  padding: EdgeInsets.all(4.0),
+                  child: Icon(Icons.close_rounded, size: 18, color: Colors.white54),
+                ),
               )
             ],
           ),
