@@ -12,8 +12,9 @@ import '../chat_service.dart';
 import '../widgets/glowing_orb.dart';
 import '../widgets/neural_send_button.dart';
 import '../widgets/neural_thinking_indicator.dart';
-import '../widgets/semantic_reveal.dart';
 import '../widgets/aura_assist_bubble.dart';
+import '../widgets/neural_halo.dart';
+import '../widgets/semantic_reveal.dart';
 
 class ChatMessage {
   final String text;
@@ -222,6 +223,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
         style: GoogleFonts.outfit(fontSize: 18, letterSpacing: 10, fontWeight: FontWeight.w900, color: Colors.white.withOpacity(0.9)),
       ),
       actions: [
+        const Center(
+          child: NeuralHaloWidget(),
+        ),
+        const SizedBox(width: 4),
         IconButton(
           onPressed: () => setState(() => _isVoiceMode = !_isVoiceMode),
           icon: Icon(

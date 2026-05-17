@@ -1,16 +1,18 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/chat_provider.dart';
 
-class AuraAssistBubble extends StatefulWidget {
+class AuraAssistBubble extends ConsumerStatefulWidget {
   final Map<String, dynamic>? initialContext;
   const AuraAssistBubble({super.key, this.initialContext});
 
   @override
-  State<AuraAssistBubble> createState() => _AuraAssistBubbleState();
+  ConsumerState<AuraAssistBubble> createState() => _AuraAssistBubbleState();
 }
 
-class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerProviderStateMixin {
+class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   
   // Draggable physics states
@@ -92,7 +94,8 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    if (!_isVisible) {
+    final isOverlayVisible = ref.watch(overlayVisibleProvider);
+    if (!isOverlayVisible) {
       return const SizedBox.shrink();
     }
 
@@ -158,10 +161,10 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
     return GestureDetector(
       onTap: () => setState(() => _isExpanded = true),
       onDoubleTap: () {
-        setState(() => _isVisible = false);
+        ref.read(overlayVisibleProvider.notifier).state = false;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("AURA Assist closed. Reload screen to reactivate."),
+            content: Text("AURA Assist closed. Tap Neural Halo in header to reactivate."),
             duration: Duration(seconds: 2),
             backgroundColor: Color(0xFF0D1527),
           ),
@@ -237,8 +240,8 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
                 onLongPress: () {
                   setState(() {
                     _isExpanded = false;
-                    _isVisible = false;
                   });
+                  ref.read(overlayVisibleProvider.notifier).state = false;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("AURA Assist completely closed."),

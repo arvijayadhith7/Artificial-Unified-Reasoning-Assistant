@@ -102,3 +102,6 @@ final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   final service = ref.watch(chatServiceProvider);
   return ChatNotifier(service);
 });
+
+final overlayVisibleProvider = StateProvider<bool>((ref) => false);
+final neuralHaloStateProvider = StateProvider<String>((ref) => 'idle');

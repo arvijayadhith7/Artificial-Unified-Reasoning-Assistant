@@ -11,6 +11,7 @@ import '../services/workspace_service.dart';
 import '../widgets/glowing_orb.dart';
 import '../widgets/neural_send_button.dart';
 import '../widgets/aura_assist_bubble.dart';
+import '../widgets/neural_halo.dart';
 
 class WorkspaceChatScreen extends ConsumerStatefulWidget {
   final Project project;
@@ -181,6 +182,10 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
         ],
       ),
       actions: [
+        const Center(
+          child: NeuralHaloWidget(),
+        ),
+        const SizedBox(width: 4),
         IconButton(
           icon: const Icon(Icons.history_rounded, color: Colors.white24),
           onPressed: () {}, // History filtered by project
