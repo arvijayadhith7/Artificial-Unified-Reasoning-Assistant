@@ -315,7 +315,7 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
             Text(
               label,
               style: GoogleFonts.outfit(
-                color: Colors.white80,
+                color: Colors.white.withOpacity(0.8),
                 fontSize: 10.5,
                 fontWeight: FontWeight.w500,
               ),
@@ -333,7 +333,7 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
       offset: const Offset(0, -180),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: Border.all(color: Colors.white.withOpacity(0.08)),
+        side: BorderSide(color: Colors.white.withOpacity(0.08)),
       ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -350,7 +350,7 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
             Text(
               _currentLanguage,
               style: GoogleFonts.outfit(
-                color: Colors.white80,
+                color: Colors.white.withOpacity(0.8),
                 fontSize: 10.5,
                 fontWeight: FontWeight.w500,
               ),
@@ -376,7 +376,7 @@ class _AuraAssistBubbleState extends State<AuraAssistBubble> with SingleTickerPr
       child: Text(
         lang,
         style: GoogleFonts.outfit(
-          color: _currentLanguage == lang ? const Color(0xFF06B6D4) : Colors.white90,
+          color: _currentLanguage == lang ? const Color(0xFF06B6D4) : Colors.white.withOpacity(0.9),
           fontSize: 12,
         ),
       ),
