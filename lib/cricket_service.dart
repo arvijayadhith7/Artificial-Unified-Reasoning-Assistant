@@ -8,17 +8,19 @@ class CricketService {
   Future<List<dynamic>> getCurrentMatches() async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl/currentMatches?apikey=$_apiKey'));
-      print("📡 Cricket API Status: ${response.statusCode}");
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print("📊 Cricket API Response: ${data['status']}");
         if (data['status'] == 'success') {
-          return data['data'] ?? [];
+          final List<dynamic> allMatches = data['data'] ?? [];
+          // Strict Filter: Only IPL and Indian National Team
+          return allMatches.where((m) {
+            final name = m['name'].toString().toLowerCase();
+            return name.contains('ipl') || name.contains('indian premier league') || name.contains('india');
+          }).toList();
         }
       }
       return [];
     } catch (e) {
-      print("💥 Cricket API Error: $e");
       return [];
     }
   }
@@ -39,23 +41,20 @@ class CricketService {
     }
   }
 
-  Future<String?> getAuraIPLScore() async {
+  Future<Map<String, dynamic>?> getAuraIPLIntel() async {
     try {
-      print("📡 Fetching AURA IPL Intel...");
+      print("📡 Synchronizing AURA IPL Intel...");
       final response = await http.get(Uri.parse('https://vijayadhith7-aura-backend.hf.space/cricket/ipl'));
-      print("📊 AURA IPL Response: ${response.statusCode}");
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'success') {
-          print("✅ IPL Intel Sync Successful");
           return data['data'];
         }
       }
-      return "AURA Sync: Neural link established. Waiting for match data clusters...";
+      return null;
     } catch (e) {
-      print("💥 IPL Intel Error: $e");
-      return "AURA Sync: Research pipeline interrupted. Retrying neural link...";
+      print("💥 IPL Intel Sync Error: $e");
+      return null;
     }
-
   }
 }

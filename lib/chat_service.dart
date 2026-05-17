@@ -43,6 +43,23 @@ class ChatService {
     return [];
   }
 
+  Future<String?> refineMessage(String text) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/neural/refine'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'text': text}),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['refined'];
+      }
+    } catch (e) {
+      print("Refine Error: $e");
+    }
+    return null;
+  }
+
   void sendMessage(String text, {String? conversationId, String? projectId, List<Map<String, dynamic>> history = const []}) {
     if (!_isConnected || _channel == null) connect();
     

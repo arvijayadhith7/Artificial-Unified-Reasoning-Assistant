@@ -11,6 +11,8 @@ import '../app_theme.dart';
 import '../chat_service.dart';
 import '../widgets/glowing_orb.dart';
 import '../widgets/neural_send_button.dart';
+import '../widgets/neural_thinking_indicator.dart';
+import '../widgets/semantic_reveal.dart';
 
 class ChatMessage {
   final String text;
@@ -19,14 +21,14 @@ class ChatMessage {
 }
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  final String? projectId;
+  const ChatScreen({super.key, this.projectId});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
-  final List<ChatMessage> _messages = [];
+class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
@@ -38,22 +40,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String _canvasContent = "";
   String _canvasLanguage = "plaintext";
   bool _isCanvasMarkdown = false;
+  String _canvasTitle = "Neural Output";
   bool _isSending = false;
   final String _selectedModel = 'aura';
-
-  String _canvasTitle = "Neural Output";
-
-  // Chat history
-  List<String> _chatHistory = [];
-  bool _chatSaved = false;
-  String? _currentChatId;
-  String? _currentChatTitle;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatProvider.notifier).loadRecentChats();
+      ref.read(chatProvider.notifier).loadRecentChats(projectId: widget.projectId);
     });
     _textController.addListener(() {
       if (mounted) setState(() {});
@@ -68,7 +63,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         setState(() {
           _orbState = OrbState.speaking;
           _currentResponse += content;
-          _currentThought = "";
+          // Keep _currentThought intact so cognitive trace block isn't erased
           _currentTool = "";
         });
         ref.read(chatProvider.notifier).updateLastMessage(content);
@@ -76,8 +71,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       } else if (type == 'thought' && content != null) {
         setState(() {
           _orbState = OrbState.thinking;
-          _currentThought = content;
+          _currentThought += content; // Append to accumulate the thought process!
         });
+        ref.read(chatProvider.notifier).updateLastMessageThought(_currentThought);
       } else if (data['done'] == true) {
         setState(() {
           _orbState = OrbState.idle;
@@ -87,7 +83,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _scrollToBottom();
     });
 
-    // Listen to conversation changes to reset local state
     ref.listenManual(chatProvider.select((s) => s.activeConvId), (prev, next) {
       if (prev != next) {
         setState(() {
@@ -102,15 +97,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   void _detectCodeInResponse(String text) {
@@ -135,6 +128,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     setState(() {
       _currentResponse = "";
+      _currentThought = ""; // Clear for the new request!
       _textController.clear();
       _orbState = OrbState.thinking;
       _isSending = true;
@@ -145,6 +139,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _chatService.sendMessage(
       text, 
       conversationId: conversationId,
+      projectId: widget.projectId,
       history: chatState.currentMessages.map((m) => {'role': m['role'], 'content': m['content']}).toList(),
     );
     
@@ -168,14 +163,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: _buildAppBar(),
       body: Stack(
         children: [
-          // Deep Space Background
-          Container(color: AppColors.background),
-          Positioned(
-            top: -100,
-            right: -100,
-            child: _buildAmbientGlow(AppColors.electricBlue, 0.05),
-          ),
-          
+          _buildNeuralAtmosphere(),
           Column(
             children: [
               const SizedBox(height: kToolbarHeight + 40),
@@ -183,22 +171,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               _buildInputSection(),
             ],
           ),
-          
-          if (_currentThought.isNotEmpty || _currentTool.isNotEmpty) _buildStatusIndicator(),
+          _buildThinkingAura(),
         ],
       ),
     );
   }
 
+  Widget _buildNeuralAtmosphere() {
+    return Stack(
+      children: [
+        Positioned(
+          top: -100,
+          right: -100,
+          child: _buildAmbientGlow(AppColors.electricBlue, 0.05),
+        ),
+        Positioned(
+          bottom: 200,
+          left: -50,
+          child: _buildAmbientGlow(AppColors.violetGlow, 0.03),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAmbientGlow(Color color, double opacity) {
     return Container(
-      width: 400,
-      height: 400,
+      width: 400, height: 400,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [color.withOpacity(opacity), Colors.transparent],
-        ),
+        gradient: RadialGradient(colors: [color.withOpacity(opacity), Colors.transparent]),
       ),
     );
   }
@@ -216,12 +217,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       title: Text(
         "AURA",
-        style: GoogleFonts.outfit(
-          fontSize: 18,
-          letterSpacing: 10,
-          fontWeight: FontWeight.w900,
-          color: Colors.white.withOpacity(0.9),
-        ),
+        style: GoogleFonts.outfit(fontSize: 18, letterSpacing: 10, fontWeight: FontWeight.w900, color: Colors.white.withOpacity(0.9)),
       ),
       actions: [
         IconButton(
@@ -247,14 +243,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Expanded(
       child: ListView.builder(
         controller: _scrollController,
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        itemCount: messages.length,
+        itemCount: messages.length + (_isSending && _currentResponse.isEmpty ? 1 : 0),
         itemBuilder: (context, index) {
-          final msg = messages[index];
-          final isUser = msg['role'] == 'user';
-          return _buildMessageBubble(isUser, msg['content'] ?? '');
+          if (index < messages.length) {
+            final msg = messages[index];
+            final isUser = msg['role'] == 'user';
+            return _buildAnimatedBubble(isUser, msg, index);
+          } else {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 40),
+              child: NeuralThinkingIndicator(),
+            );
+          }
         },
       ),
+    );
+  }
+
+  Widget _buildAnimatedBubble(bool isUser, Map<String, dynamic> msg, int index) {
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: 0, end: 1),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: _buildMessageBubble(isUser, msg),
     );
   }
 
@@ -269,112 +291,82 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             _orbState == OrbState.listening ? "LISTENING" : 
             _orbState == OrbState.thinking ? "THINKING" :
             _orbState == OrbState.speaking ? "AURA SPEAKING" : "STANDBY",
-            style: GoogleFonts.outfit(
-              color: AppColors.neonCyan, 
-              fontSize: 14, 
-              letterSpacing: 4.0,
-              fontWeight: FontWeight.w900
-            ),
+            style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 14, letterSpacing: 4.0, fontWeight: FontWeight.w900),
           ),
           if (_currentResponse.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20),
-              child: Text(
-                _currentResponse,
-                textAlign: TextAlign.center,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 16, height: 1.5),
-              ),
+              child: SemanticReveal(text: _currentResponse, isStreaming: true),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildMessageBubble(bool isUser, String text) {
+  Widget _buildMessageBubble(bool isUser, Map<String, dynamic> msg) {
+    final text = msg['content'] ?? '';
+    final timestamp = msg['timestamp'] != null 
+        ? TimeOfDay.fromDateTime(DateTime.parse(msg['timestamp'])).format(context) 
+        : "";
+
     if (isUser) {
-      return _buildUserBubble(text);
+      return _buildUserBubble(text, timestamp);
     } else {
-      return _buildAuraResponse(text);
+      return _buildAuraResponse(text, timestamp, msg['thought']);
     }
   }
 
-  Widget _buildUserBubble(String text) {
+  Widget _buildUserBubble(String text, String time) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0, left: 60),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.electricBlue.withOpacity(0.1),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-              bottomLeft: Radius.circular(24),
-              bottomRight: Radius.circular(4),
+      padding: const EdgeInsets.only(bottom: 24.0, left: 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.electricBlue.withOpacity(0.05),
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24), bottomLeft: Radius.circular(24), bottomRight: Radius.circular(4)),
+              border: Border.all(color: AppColors.electricBlue.withOpacity(0.1)),
             ),
-            border: Border.all(color: AppColors.electricBlue.withOpacity(0.2)),
+            child: Text(text, style: GoogleFonts.outfit(color: AppColors.textPrimary, fontSize: 15)),
           ),
-          child: Text(
-            text,
-            style: GoogleFonts.outfit(color: AppColors.textPrimary, fontSize: 16),
-          ),
-        ),
+          const SizedBox(height: 6),
+          Text(time, style: GoogleFonts.outfit(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
 
-  Widget _buildAuraResponse(String text) {
-    // Basic detection for structured tiers
-    final hasSummary = text.contains('[Quick Summary]');
-    final hasInsights = text.contains('[Key Insights]');
+  Widget _buildAuraResponse(String text, String time, [String? thought]) {
     final hasSuggestions = text.contains('[Suggestions]');
+    final cleanText = text.split('[Suggestions]')[0].trim();
+    final displayThought = (thought ?? "").isNotEmpty ? thought : (text == _currentResponse ? _currentThought : null);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 32.0),
+      padding: const EdgeInsets.only(bottom: 40.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const GlowingOrb(size: 24),
+              const GlowingOrb(size: 16),
               const SizedBox(width: 12),
-              Text(
-                "AURA INTELLIGENCE",
-                style: GoogleFonts.outfit(
-                  color: AppColors.neonCyan,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 3,
-                ),
-              ),
+              Text("AURA NEURAL OS", style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 2)),
+              const Spacer(),
+              Text(time, style: GoogleFonts.outfit(color: Colors.white24, fontSize: 9, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              _buildRefineButton(cleanText),
             ],
           ),
           const SizedBox(height: 16),
+
+          
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: MarkdownBody(
-              data: text,
-              selectable: true,
-              onTapLink: (text, href, title) {},
-              styleSheet: MarkdownStyleSheet(
-                p: GoogleFonts.outfit(color: AppColors.textPrimary, fontSize: 16, height: 1.7),
-                h1: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 22, fontWeight: FontWeight.bold),
-                h2: GoogleFonts.outfit(color: AppColors.electricBlue, fontSize: 18, fontWeight: FontWeight.bold),
-                code: GoogleFonts.firaCode(backgroundColor: Colors.transparent, color: AppColors.neonCyan, fontSize: 14),
-                codeblockPadding: const EdgeInsets.all(16),
-                codeblockDecoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
-                blockquote: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 16, fontStyle: FontStyle.italic),
-                blockquoteDecoration: const BoxDecoration(
-                  border: Border(left: BorderSide(color: AppColors.neonCyan, width: 4)),
-                ),
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: SemanticReveal(
+              text: cleanText, 
+              isStreaming: text == _currentResponse,
             ),
           ),
           if (hasSuggestions) _buildFollowUpSuggestions(text),
@@ -383,55 +375,122 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Widget _buildRefineButton(String text) {
+    return GestureDetector(
+      onTap: () => _handleRefine(text),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.neonCyan.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.neonCyan.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.auto_fix_high_rounded, color: AppColors.neonCyan, size: 10),
+            const SizedBox(width: 4),
+            Text("REFINE", style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 8, fontWeight: FontWeight.w900)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleRefine(String text) async {
+    setState(() => _orbState = OrbState.thinking);
+    final refined = await _chatService.refineMessage(text);
+    if (refined != null && mounted) {
+      setState(() {
+        _currentResponse = refined;
+        _orbState = OrbState.idle;
+      });
+      ref.read(chatProvider.notifier).updateLastMessage(refined, isFullReplace: true);
+    }
+  }
+
+  Widget _buildReasoningBlock(String thought) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.neonCyan.withOpacity(0.05)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.psychology_rounded, color: AppColors.neonCyan, size: 14),
+                const SizedBox(width: 8),
+                Text("COGNITIVE TRACE", style: GoogleFonts.outfit(color: AppColors.neonCyan.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(thought, style: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 13, height: 1.6, fontStyle: FontStyle.italic)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFollowUpSuggestions(String text) {
-    // Extract suggestions between [Suggestions] tags
     final match = RegExp(r'\[Suggestions\]\n([\s\S]*)').firstMatch(text);
     if (match == null) return const SizedBox();
-    
     final suggestionLines = match.group(1)?.split('\n') ?? [];
-    final suggestions = suggestionLines
-        .where((l) => l.startsWith('- '))
-        .map((l) => l.replaceFirst('- ', ''))
-        .toList();
-
+    final suggestions = suggestionLines.where((l) => l.startsWith('- ')).map((l) => l.replaceFirst('- ', '')).toList();
     if (suggestions.isEmpty) return const SizedBox();
 
-    return Container(
-      height: 50,
-      margin: const EdgeInsets.only(top: 24),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: suggestions.length,
-        itemBuilder: (context, i) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: ActionChip(
-              onPressed: () {
-                _textController.text = suggestions[i];
-                _handleSend();
-              },
-              backgroundColor: AppColors.surface,
-              label: Text(
-                suggestions[i],
-                style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              side: BorderSide(color: AppColors.neonCyan.withOpacity(0.2)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            ),
-          );
-        },
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 32),
+        SizedBox(
+          height: 40,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: suggestions.length,
+            itemBuilder: (context, i) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: InkWell(
+                  onTap: () {
+                    _textController.text = suggestions[i];
+                    _handleSend();
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: AppColors.neonCyan.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.neonCyan.withOpacity(0.2)),
+                    ),
+                    child: Center(
+                      child: Text(suggestions[i], style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildInputSection() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
-      color: Colors.transparent,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
@@ -448,18 +507,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     controller: _textController,
                     style: GoogleFonts.outfit(color: AppColors.textPrimary, fontSize: 16),
                     decoration: InputDecoration(
-                      hintText: "Message Aura...",
-                      hintStyle: GoogleFonts.outfit(color: AppColors.textSecondary.withOpacity(0.4), fontSize: 15),
+                      hintText: "Initialize Command...",
+                      hintStyle: GoogleFonts.outfit(color: AppColors.textSecondary.withOpacity(0.3), fontSize: 15),
                       border: InputBorder.none,
                     ),
                     onSubmitted: (val) => _handleSend(),
                   ),
                 ),
-                NeuralSendButton(
-                  onTap: _handleSend,
-                  isActive: _textController.text.isNotEmpty,
-                  isSending: _isSending,
-                ),
+                NeuralSendButton(onTap: _handleSend, isActive: _textController.text.isNotEmpty, isSending: _isSending),
               ],
             ),
           ),
@@ -468,42 +523,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildStatusIndicator() {
-    return Positioned(
-      bottom: 120,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.neonCyan.withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.neonCyan),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                _currentTool.isNotEmpty ? "SYNCING..." : "REASONING...",
-                style: GoogleFonts.outfit(
-                  color: AppColors.textPrimary, 
-                  fontSize: 10, 
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2.0,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Widget _buildThinkingAura() {
+    return const SizedBox();
   }
 
   void _showCanvasSheet() {
@@ -536,10 +557,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     const SizedBox(width: 12),
                     Text(_canvasTitle, style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                     const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded, color: Colors.white38),
-                    ),
+                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded, color: Colors.white38)),
                   ],
                 ),
               ),
@@ -547,13 +565,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: SingleChildScrollView(
                   controller: scrollController,
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-                  child: HighlightView(
-                    _canvasContent,
-                    language: _canvasLanguage,
-                    theme: atomOneDarkTheme,
-                    padding: const EdgeInsets.all(20),
-                    textStyle: GoogleFonts.firaCode(fontSize: 13, height: 1.5),
-                  ),
+                  child: HighlightView(_canvasContent, language: _canvasLanguage, theme: atomOneDarkTheme, padding: const EdgeInsets.all(20), textStyle: GoogleFonts.firaCode(fontSize: 13, height: 1.5)),
                 ),
               ),
             ],

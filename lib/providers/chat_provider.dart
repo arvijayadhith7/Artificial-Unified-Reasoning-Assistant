@@ -53,20 +53,47 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   void addMessage(Map<String, dynamic> msg) {
+    msg['timestamp'] = DateTime.now().toIso8601String();
     state = state.copyWith(currentMessages: [...state.currentMessages, msg]);
   }
   
-  void updateLastMessage(String chunk) {
-    if (state.currentMessages.isEmpty) return;
+  void updateLastMessage(String content, {bool isFullReplace = false}) {
+    if (state.currentMessages.isEmpty) {
+      addMessage({'role': 'assistant', 'content': content});
+      return;
+    }
     
     final lastMsg = Map<String, dynamic>.from(state.currentMessages.last);
     if (lastMsg['role'] == 'assistant') {
-      lastMsg['content'] = (lastMsg['content'] ?? '') + chunk;
+      if (isFullReplace) {
+        lastMsg['content'] = content;
+      } else {
+        lastMsg['content'] = (lastMsg['content'] ?? '') + content;
+      }
+      lastMsg['timestamp'] = DateTime.now().toIso8601String();
       final newList = List<dynamic>.from(state.currentMessages);
       newList[newList.length - 1] = lastMsg;
       state = state.copyWith(currentMessages: newList);
     } else {
-      addMessage({'role': 'assistant', 'content': chunk});
+      addMessage({'role': 'assistant', 'content': content});
+    }
+  }
+
+  void updateLastMessageThought(String thought) {
+    if (state.currentMessages.isEmpty) {
+      addMessage({'role': 'assistant', 'content': '', 'thought': thought});
+      return;
+    }
+    
+    final lastMsg = Map<String, dynamic>.from(state.currentMessages.last);
+    if (lastMsg['role'] == 'assistant') {
+      lastMsg['thought'] = thought;
+      lastMsg['timestamp'] = DateTime.now().toIso8601String();
+      final newList = List<dynamic>.from(state.currentMessages);
+      newList[newList.length - 1] = lastMsg;
+      state = state.copyWith(currentMessages: newList);
+    } else {
+      addMessage({'role': 'assistant', 'content': '', 'thought': thought});
     }
   }
 }

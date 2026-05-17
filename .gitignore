@@ -52,3 +52,6 @@ app.*.map.json
 /python_backend/__pycache__/
 /python_backend/venv/
 /backend/node_modules/
+/python_backend/memory/
+/python_backend/scratch_scrape_test.py
+/searxng-master/

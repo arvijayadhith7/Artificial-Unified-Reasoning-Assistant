@@ -1,0 +1,202 @@
+# 🌌 How AURA Works Now — Full Architecture
+
+## The Big Picture
+
+```mermaid
+graph LR
+    A["📱 AURA Mobile App\n(Flutter)"] -->|WebSocket| B["⚡ FastAPI Backend\n(Port 7860)"]
+    B -->|HTTP JSON API| C["🔍 SearXNG\n(Port 8888)"]
+    B -->|Groq API| D["🧠 Llama 3.3 70B\n(Cloud LLM)"]
+    B -->|Embeddings| E["💾 ChromaDB\n(Vector Memory)"]
+    C -->|Aggregates| F["Google\nBing\nDDG\nWikipedia\n+ 70 more"]
+```
+
+---
+
+## Step-by-Step: What Happens When You Send a Message
+
+### 1️⃣ User Types a Message in AURA Mobile
+```
+"What's the latest IPL score today?"
+```
+The Flutter app sends this via **WebSocket** to your FastAPI backend.
+
+### 2️⃣ Backend Decides: Does This Need Live Search?
+
+[main.py](file:///d:/ANTIGRAVITY/llm%20APP/python_backend/main.py#L165-L172) checks for trigger keywords:
+
+```python
+keywords = ["score", "ipl", "news", "today", "weather", "match", 
+            "latest", "cricket", "who is", "what is", "how is", 
+            "price", "stock", "search"]
+```
+
+| Message | Triggers Search? |
+|---|---|
+| "What's the IPL score?" | ✅ Yes (`score`, `ipl`) |
+| "Explain quantum physics" | ❌ No (pure LLM) |
+| "Latest news on AI" | ✅ Yes (`latest`, `news`) |
+| "Hello, how are you?" | ❌ No |
+
+### 3️⃣ If Search Triggered → SearXNG Pipeline
+
+```mermaid
+sequenceDiagram
+    participant B as FastAPI Backend
+    participant S as SearXNG (localhost:8888)
+    participant E as Google/Bing/DDG/etc.
+    
+    B->>S: GET /search?q=IPL+score&format=json&categories=general
+    S->>E: Fan-out to 70+ engines simultaneously
+    E-->>S: Aggregated results (deduplicated)
+    S-->>B: JSON response with titles, URLs, snippets, engine source
+    Note over B: Formats into "LIVE RESEARCH DATA" context
+```
+
+The [search_agent.py](file:///d:/ANTIGRAVITY/llm%20APP/python_backend/agent_plugins/search_agent.py) sends a simple HTTP GET:
+
+```
+GET http://127.0.0.1:8888/search?q=IPL+score+today&format=json&categories=general&language=en
+```
+
+SearXNG returns:
+```json
+{
+  "results": [
+    {
+      "title": "IPL 2026 Live Score - CSK vs MI",
+      "url": "https://example.com/ipl-live",
+      "content": "Chennai Super Kings 185/4 after 18 overs...",
+      "engine": "google"
+    }
+  ]
+}
+```
+
+> [!TIP]
+> **Fallback:** If `general` returns nothing, it automatically retries with `categories=news` and `time_range=day` for real-time events.
+
+### 4️⃣ Memory Context (ChromaDB)
+
+Simultaneously, [NeuralMemory](file:///d:/ANTIGRAVITY/llm%20APP/python_backend/main.py#L78-L111) searches your local vector database for relevant past conversations:
+
+```
+User asked about IPL before → retrieves past context
+```
+
+### 5️⃣ Everything Gets Combined → Sent to Llama 3.3
+
+The backend builds a single prompt:
+
+```
+┌─────────────────────────────────────────────┐
+│ SYSTEM: You are AURA. Be natural. Context:  │
+│                                             │
+│ [Memory Context from ChromaDB]              │
+│                                             │
+│ LIVE RESEARCH DATA:                         │
+│ Source: IPL 2026 Live Score - CSK vs MI      │
+│ URL: https://example.com/ipl-live           │
+│ Engine: google                              │
+│ Snippet: Chennai Super Kings 185/4...       │
+│                                             │
+│ [Chat History]                              │
+│                                             │
+│ USER: What's the latest IPL score today?    │
+└─────────────────────────────────────────────┘
+```
+
+This is sent to **Groq's Llama 3.3 70B** via streaming API.
+
+### 6️⃣ Streamed Back to Mobile
+
+Each token from Llama streams back via WebSocket:
+
+```
+Backend → {"type": "chunk", "content": "The"} → Mobile
+Backend → {"type": "chunk", "content": " latest"} → Mobile
+Backend → {"type": "chunk", "content": " IPL"} → Mobile
+...
+Backend → {"done": true} → Mobile
+```
+
+The Flutter app renders each chunk in real-time with the neural typing animation.
+
+---
+
+## The Two Search Modes
+
+### Mode 1: Chat Search (Automatic)
+Happens inside the `/chat` WebSocket — triggered by keywords in your message.
+
+```mermaid
+graph TD
+    A["User sends message"] --> B{"Contains keywords?"}
+    B -->|Yes| C["SearXNG search"]
+    B -->|No| D["Skip to LLM"]
+    C --> E["Inject results as context"]
+    E --> F["Send to Llama 3.3"]
+    D --> F
+    F --> G["Stream response to mobile"]
+```
+
+### Mode 2: Research Hub (Dedicated)
+The `/research` WebSocket endpoint — a full research pipeline with **3 phases**:
+
+| Phase | What Happens | What User Sees |
+|---|---|---|
+| 🔍 **Scan** | SearXNG searches with category routing | "Scanning Neural Web..." |
+| 🧪 **Synthesize** | Llama 3.3 writes a research report from results | Streaming markdown report |
+| 🔗 **Correlate** | Builds topic correlation map | Visual correlation chart |
+
+Category routing in the Research Hub:
+```
+"GitHub" → search_query += " site:github.com"    (general category)
+"Academic" → search_query += " research papers"   (science category)  
+"News" → news category with time_range=day
+```
+
+---
+
+## What You Need Running
+
+```mermaid
+graph TB
+    subgraph "Your Machine"
+        A["🔍 SearXNG\nPort 8888\n(Start first)"]
+        B["⚡ FastAPI\nPort 7860\n(Start second)"]
+    end
+    subgraph "Cloud"
+        C["🧠 Groq API\n(Llama 3.3)"]
+    end
+    subgraph "Mobile"
+        D["📱 AURA App"]
+    end
+    
+    B --> A
+    B --> C
+    D --> B
+```
+
+| Service | Command | Port |
+|---|---|---|
+| **SearXNG** | `cd searxng-master && python -m searx.webapp` | 8888 |
+| **AURA Backend** | `cd python_backend && uvicorn main:app --host 0.0.0.0 --port 7860` | 7860 |
+
+> [!IMPORTANT]
+> **Start SearXNG first**, then the AURA backend. If SearXNG isn't running when a search-triggering message comes in, AURA will return: *"No live data clusters found. Ensure SearXNG is running."*
+
+---
+
+## Before vs After
+
+| Aspect | ❌ Before (Tavily + DDG) | ✅ Now (SearXNG) |
+|---|---|---|
+| **Cost** | Tavily paid API | Free, self-hosted |
+| **Rate Limits** | DDG blocks after ~20 requests | Zero limits |
+| **API Keys** | Needed `TAVILY_API_KEY` | No API key needed |
+| **Search Sources** | Tavily (1 engine) or DDG (1 engine) | 70+ engines simultaneously |
+| **Privacy** | Data sent to Tavily servers | Everything stays local |
+| **Reliability** | DDG 403 blocks were common | Self-hosted = always available |
+| **Result Quality** | Good (single source) | Excellent (aggregated + deduplicated) |
+| **Dependencies** | `tavily-python`, `duckduckgo-search` | Only `requests` (already installed) |

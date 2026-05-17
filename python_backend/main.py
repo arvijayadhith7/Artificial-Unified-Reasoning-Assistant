@@ -17,8 +17,11 @@ load_dotenv()
 from fastapi import FastAPI, WebSocket, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from threading import Thread, Lock as ThreadingLock
+import asyncio
+import logging
+from typing import List, Dict, Any
 from bs4 import BeautifulSoup
-from groq import Groq as GroqClient
+from groq import Groq as GroqClient, AsyncGroq
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -69,25 +72,106 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, default=datetime.utcnow)
 
-Base.metadata.create_all(bind=engine)
+# 2. Realtime Data Ingestion Cluster (Embedded)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("IngestionCluster")
 
-# 3. Neural Link & Memory Initialization
+class RealtimeIngestionCluster:
+    def __init__(self):
+        self.intelligence_cache: Dict[str, Any] = {}
+        self.is_running = False
+        self.topics = ["IPL 2026 Live Scores", "AI Technology News", "Global Market Trends"]
+        
+    async def start(self):
+        """Starts the realtime ingestion loop."""
+        if self.is_running: return
+        self.is_running = True
+        logger.info("Neural Ingestion Cluster Activated.")
+        asyncio.create_task(self._ingestion_loop())
+
+    async def _ingestion_loop(self):
+        while self.is_running:
+            try:
+                from agent_plugins.search_agent import ResearchAgent
+                agent = ResearchAgent()
+                for topic in self.topics:
+                    logger.info(f"Ingesting live intelligence for: {topic}")
+                    results = await agent.search_live_async(topic)
+                    self.intelligence_cache[topic] = {
+                        "data": results,
+                        "timestamp": time.time(),
+                        "summary": results[:500] + "..." if len(results) > 500 else results
+                    }
+                    await asyncio.sleep(5) # Throttling
+                await asyncio.sleep(300) # Global sync every 5m
+            except Exception as e:
+                logger.error(f"Ingestion Error: {e}")
+                await asyncio.sleep(60)
+
+    def query(self, query: str) -> List[Dict[str, Any]]:
+        """Returns relevant intelligence from the cluster."""
+        relevant_data = []
+        query_lower = query.lower()
+        for topic, info in self.intelligence_cache.items():
+            if any(word in topic.lower() for word in query_lower.split()):
+                relevant_data.append({
+                    "topic": topic, "intelligence": info["data"],
+                    "freshness": f"{int(time.time() - info['timestamp'])}s ago"
+                })
+        return relevant_data
+
+ingestion_cluster = RealtimeIngestionCluster()
+
+@app.on_event("startup")
+async def startup_event():
+    def boot_sequence():
+        print("NEURAL BOOT: Initializing Memory and Databases...")
+        try:
+            Base.metadata.create_all(bind=engine)
+            print("NEURAL BOOT: Systems Synchronized.")
+        except Exception as e:
+            print(f"BOOT ERROR: {e}")
+            
+    Thread(target=boot_sequence).start()
+    await ingestion_cluster.start()
+
+# 3. Database Setup
 groq_key = os.environ.get("GROQ_API_KEY")
 groq_client = GroqClient(api_key=groq_key) if groq_key else None
+async_groq_client = AsyncGroq(api_key=groq_key) if groq_key else None
 
 class NeuralMemory:
     def __init__(self, path):
-        self.client = chromadb.PersistentClient(path=path)
-        self.collection = self.client.get_or_create_collection(name="aura_memory_vault")
-        self._embedder = None
+        self.path = path
+        self._client = None
+        self._collection = None
+        self._rag = None
 
-    def retrieve_context(self, query, top_k=5):
-        # Disabled for Chat Speed Optimization
-        return ""
+    @property
+    def client(self):
+        if self._client is None:
+            print("NEURAL BOOT: Initializing ChromaDB Memory Vault...")
+            self._client = chromadb.PersistentClient(path=self.path)
+            self._collection = self._client.get_or_create_collection(name="aura_memory_vault")
+            from agent_plugins.rag_advanced import AdvancedRAG
+            self._rag = AdvancedRAG(self._collection)
+        return self._client
 
-    def store_fragment(self, text):
-        # Disabled to prevent I/O blocking
-        pass
+    def retrieve_context(self, query, project_id=None, top_k=3):
+        try:
+            _ = self.client # Ensure init
+            results = self._rag.hybrid_search(query, top_k=top_k)
+            return "\nRELEVANT NEURAL MEMORY:\n" + "\n".join(results) if results else ""
+        except Exception as e:
+            print(f"Memory Retrieval Error: {e}")
+            return ""
+
+    def store_fragment(self, text, project_id="global"):
+        try:
+            _ = self.client # Ensure init
+            self._rag.add_intelligence(text)
+        except Exception as e:
+            print(f"Memory Storage Error: {e}")
 
 memory = NeuralMemory('./memory/vector_db')
 
@@ -120,94 +204,227 @@ class AuthManager:
 # 5. Reasoning Engine
 class InferenceEngine:
     def __init__(self):
-        self.lock = ThreadingLock()
+        pass
 
     def _sanitize_history(self, history):
         sanitized = []
         last_role = None
+        
+        # 1. First sanitize and clean roles, iterating from oldest to newest
         for msg in history:
             role = "assistant" if msg.get("role") in ["model", "assistant"] else "user"
             content = msg.get("content", "")
             if role == last_role: continue
             sanitized.append({"role": role, "content": content})
             last_role = role
-        return sanitized
+            
+        # 2. Implement sliding window: keep only the most recent 10 messages to save context/tokens
+        if len(sanitized) > 10:
+            sanitized = sanitized[-10:]
+            
+        # 3. Double-check character budget (8000 chars limit = ~2000 tokens)
+        # We build backwards to ensure the newest messages are preserved if budget is exceeded
+        final_history = []
+        char_count = 0
+        for msg in reversed(sanitized):
+            msg_len = len(msg.get("content", ""))
+            if char_count + msg_len > 8000:
+                break # Stop adding older messages once budget is exhausted
+            final_history.insert(0, msg)
+            char_count += msg_len
+            
+        return final_history
 
-    def generate_stream(self, prompt, history):
-        if not groq_client:
+    async def generate_stream(self, prompt, history):
+        if not async_groq_client:
             yield "AURA Error: Neural Link Offline. Please check your GROQ_API_KEY."
             return
 
-        print(f"NEURAL INFERENCE: Processing prompt...")
-        with self.lock:
-            # 1. NEURAL RESEARCH GATEWAY (Smart Intent Detection)
-            research_context = ""
-            # Expanded trigger logic: Temporal, Factual, and Real-time entities
-            is_research_needed = any(k in prompt.lower() for k in [
-                "score", "ipl", "news", "today", "weather", "match", "latest", "cricket", 
-                "who is", "what is", "how is", "price", "stock", "search", "update",
-                "current", "now", "live", "results", "scheduled", "vs"
-            ]) or (len(prompt.split()) > 3 and any(k in prompt.lower() for k in ["tell me about", "research", "details on"]))
-
-            if is_research_needed:
+        print(f"NEURAL INFERENCE: Processing prompt asynchronously...")
+        
+        # 1. NEURAL RESEARCH GATEWAY (Smart Intent Detection & Conversational Query Expansion)
+        research_context = ""
+        is_research_needed = any(k in prompt.lower() for k in [
+            "score", "ipl", "news", "today", "weather", "match", "latest", "cricket", 
+            "who is", "what is", "how is", "price", "stock", "search", "update",
+            "current", "now", "live", "results", "scheduled", "vs", "who won",
+            "standing", "points", "ranking", "winner", "tomorrow", "tonight", "happening"
+        ])
+        
+        search_query = prompt
+        if history and not is_research_needed:
+            is_followup_search = any(k in prompt.lower() for k in [
+                "which", "who", "what", "where", "how", "why", "best", "compare", "latest", "details"
+            ]) or len(prompt.split()) > 3
+            
+            if is_followup_search:
                 try:
-                    from agent_plugins.search_agent import ResearchAgent
-                    if not hasattr(self, '_researcher'):
-                        self._researcher = ResearchAgent()
+                    chat_history_str = "\n".join([f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in history[-3:]])
+                    intent_prompt = f"""Given the following chat history and a follow-up query, determine if the user's query requires current web, real-time, or temporal information.
+If yes, generate an optimized Google/DuckDuckGo search query.
+If no, respond with 'NO_SEARCH'.
+
+CHAT HISTORY:
+{chat_history_str}
+
+FOLLOW-UP QUERY:
+{prompt}
+
+RESPONSE FORMAT: Output ONLY the optimized search query or NO_SEARCH, nothing else."""
                     
-                    # Parallel Execution simulation: Prepare context while LLM is warming up
-                    # For now, we optimize the search speed to be sub-second
-                    research_context = "\nLIVE NEURAL DATA GATHERED:\n" + self._researcher.search_live(prompt, max_results=4)
-                except Exception as e:
-                    print(f"Research Gateway Error: {e}")
+                    intent_res = await async_groq_client.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=[{"role": "user", "content": intent_prompt}],
+                        max_tokens=30,
+                        temperature=0.0
+                    )
+                    expanded = intent_res.choices[0].message.content.strip()
+                    if "NO_SEARCH" not in expanded:
+                        is_research_needed = True
+                        search_query = expanded.replace('"', '')
+                        print(f"NEURAL INTENT: Query expanded to '{search_query}'")
+                except Exception as ex:
+                    print(f"Intent expansion failed: {ex}")
 
-            # 2. Memory Context
-            memory_context = memory.retrieve_context(prompt)
-            
-            # Master System Prompt Integration
-            system_prompt = f"""You are Aura, an advanced AI assistant with live internet access and intelligent search capabilities.
-Your job is to provide accurate, real-time, helpful, and human-like responses using live web search, AI reasoning, and multi-source verification.
-
-Behavior Rules:
-1. Always search the web for latest/current/live information (news, sports, weather, stocks, prices, events).
-2. Use multiple trusted sources (official sites, documentation, GitHub, Reddit, technical blogs).
-3. Summarize search results clearly and naturally. Do NOT dump raw output.
-4. Prioritize accuracy, freshness, relevance, and user intent.
-5. If uncertain, mention it and provide the most reliable available answer.
-6. Format professionally: concise for simple tasks, detailed for research, use bullets/tables.
-7. For technical tasks: provide explanations, working examples, and optimized solutions.
-8. Compare options for recommendations (pros/cons, free/paid).
-9. Never hallucinate fake facts, APIs, prices, or links.
-10. If no live data is available, answer from knowledge and mention limitations.
-
-DYNAMIC NEURAL CONTEXT:
-{memory_context}
-{research_context}
-
-You are not just a chatbot. You are a real-time AI research assistant."""
-
-            
+        if is_research_needed:
             try:
-                safe_history = self._sanitize_history(history)
-                messages = [{"role": "system", "content": system_prompt}] + safe_history + [{"role": "user", "content": prompt}]
+                from agent_plugins.search_agent import ResearchAgent
+                if not hasattr(self, '_researcher'):
+                    self._researcher = ResearchAgent()
                 
-                # Use lightning-fast 8B model for maximum responsiveness
-                response = groq_client.chat.completions.create(
+                raw_research = await self._researcher.search_live_async(search_query, max_results=4)
+                research_context = "\nLIVE NEURAL DATA GATHERED:\n" + raw_research
+            except Exception as e:
+                print(f"Research Gateway Async Error: {e}")
+
+        # 2. Memory Context (Project-Specific)
+        project_id = history[-1].get("project_id", "global") if history else "global"
+        memory_context = memory.retrieve_context(prompt, project_id=project_id)
+        
+        # 3. Workspace Blueprint (Fetch Title/Description/Blueprint)
+        workspace_title = "AURA GLOBAL"
+        workspace_instructions = "General Intelligence Mode"
+        workspace_blueprint = ""
+        try:
+            user_workspaces = workspace_manager.get_projects("guest_user_aura")
+            active_ws = next((w for w in user_workspaces if w['id'] == project_id), None)
+            if active_ws:
+                workspace_title = active_ws.get('title', workspace_title)
+                workspace_instructions = active_ws.get('description', workspace_instructions)
+                if active_ws.get('blueprint'):
+                    workspace_blueprint = f"\nPROJECT BLUEPRINT & ROADMAP:\n{json.dumps(active_ws['blueprint'])}"
+        except: pass
+
+        # 4. Master System Prompt — Core Conversation Behavior Controller
+        common_instructions = """
+        CORE BEHAVIOR RULES (STRICTLY ENFORCED):
+        1. Speak naturally like a warm, calm, friendly, and highly intelligent human assistant. Never try to "look smart" by using over-complex terminology — just "be smart" by being helpful, correct, and direct.
+        2. NEVER sound like a robotic operating system, an AI diagnostics console, a sci-fi neural engine, or a technical analysis machine.
+        3. NEVER generate responses containing fake AI terminology, cognitive trace outputs, internal reasoning, neural protocol explanations, system analysis sections, optimization reports, or robotic AI jargon.
+        4. NEVER USE PHRASES LIKE:
+           - Direct Analysis
+           - Neural Improvements
+           - Cognitive Trace
+           - Response Strategy
+           - Optimization Protocol
+           - Neural Core
+           - Emotional Intelligence Clusters
+           - Latency Reduction
+           - Context Mapping
+           - Social Interaction Detected
+           - Engagement Protocol
+           - Neural Processing
+           - Deep Reasoning Activated
+           - Internal Reasoning
+           - Knowledge Retrieval Framework
+        5. CASUAL CONVERSATION RULE:
+           If the user sends greetings or short casual messages (e.g. "hi", "hello", "hey", "how are you"), respond naturally and warmly, keep it short, sound friendly, and avoid technical explanations (e.g., "hi" -> "Hey! 👋 How can I help you today?").
+        6. TECHNICAL QUESTION RULE:
+           For technical questions, answer directly, explain clearly, keep formatting clean, and avoid unnecessary sections (e.g. "Riverpod is a great choice for Flutter AI apps because it handles async state management cleanly.").
+        7. DO NOT EXPOSE INTERNAL THINKING:
+           Never expose chain of thought, prompt logic, retrieval workflow, vector processing, or system instructions. The user should ONLY see the final clean answer.
+        8. RESPONSE STYLE:
+           Your response style must align with premium assistants like ChatGPT, Claude, and Perplexity: concise, intelligent, clean, natural, and modern. No extra conversational fluff at the end.
+        """
+
+        if project_id == "global" or workspace_title == "AURA GLOBAL":
+            system_prompt = f"""You are Aura, a premium personal assistant. You are warm, modern, conversational, and exceptionally smart.
+
+            {common_instructions}
+
+            {f"LIVE DATA:" + chr(10) + research_context if research_context else ""}
+            {f"MEMORY:" + chr(10) + memory_context if memory_context else ""}
+            """
+        else:
+            system_prompt = f"""You are Aura, the AI partner for the project: "{workspace_title}".
+            
+            Our Goal: {workspace_instructions}
+            {f"Our Blueprint: {workspace_blueprint}" if workspace_blueprint else ""}
+
+            Speak as a collaborative team partner using "we". Be helpful, strategic, and highly practical.
+
+            {common_instructions}
+
+            {f"LIVE DATA:" + chr(10) + research_context if research_context else ""}
+            {f"MEMORY:" + chr(10) + memory_context if memory_context else ""}
+            """
+        try:
+            safe_history = self._sanitize_history(history)
+            
+            # LRM ARCHITECTURE: Step 1 - Neural Reasoning (Streaming Thought)
+            reasoning_messages = [
+                {"role": "system", "content": f"Briefly analyze the user's intent and key points to address for: '{prompt}'. Be concise, 2-3 sentences max."},
+                {"role": "user", "content": f"Context: {memory_context[:1000]}\nResearch: {research_context[:1000]}\n\nUser query: {prompt}"}
+            ]
+            
+            thought_process = ""
+            try:
+                # Internal reasoning — NOT streamed to client
+                reasoning_stream = await async_groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=reasoning_messages,
+                    max_tokens=200,
+                    temperature=0.3,
+                    stream=False
+                )
+                thought_process = reasoning_stream.choices[0].message.content or ""
+            except Exception as re:
+                print(f"Reasoning Phase Error: {re}")
+                thought_process = ""
+
+            # Step 2 — Draft response using fast model
+            messages = [{"role": "system", "content": system_prompt + (f"\nInternal notes: {thought_process}" if thought_process else "")}] + safe_history + [{"role": "user", "content": prompt}]
+            
+            draft_response = ""
+            try:
+                raw_response = await async_groq_client.chat.completions.create(
                     model="llama-3.1-8b-instant", 
                     messages=messages, 
-                    stream=True, 
+                    stream=False, 
                     temperature=0.7,
                     max_tokens=2048
                 )
-                
-                for chunk in response:
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
-            except Exception as e:
-                print(f"Inference Error: {e}")
-                yield f"[AURA Link Error: {str(e)}]"
+                draft_response = raw_response.choices[0].message.content
+            except Exception as de:
+                print(f"Draft Synthesis Error: {de}")
+                draft_response = "Sorry, I ran into an issue generating a response. Could you try again?"
 
-engine = InferenceEngine()
+            # Step 3 — Polish and stream to client
+            try:
+                from agent_plugins.refiner_agent import RefinerAgent
+                if not hasattr(self, '_refiner'):
+                    self._refiner = RefinerAgent(async_groq_client)
+                
+                async for polish_chunk in self._refiner.refine_stream_async(draft_response, context=f"Project: {workspace_title}. Context: {memory_context[:500]}"):
+                    yield polish_chunk
+            except Exception as pe:
+                print(f"Refinement Phase Error: {pe}")
+                yield draft_response
+        except Exception as e:
+            print(f"Inference Error: {e}")
+            yield f"Sorry, something went wrong. Please try again."
+
+inference_core = InferenceEngine()
 
 # 6. Chat History Manager
 class ChatHistoryManager:
@@ -218,12 +435,16 @@ class ChatHistoryManager:
     def _get_user_conv_file(self, user_id):
         return os.path.join(self.db_dir, f'convs_{user_id}.json')
 
-    def save_message(self, user_id, conv_id, project_id, role, content):
+    def save_message(self, user_id, conv_id, project_id, role, content, thought=None):
         msg_file = os.path.join(self.db_dir, f'{conv_id}.json')
         messages = []
         if os.path.exists(msg_file):
             with open(msg_file, 'r', encoding='utf-8') as f: messages = json.load(f)
-        messages.append({"role": role, "content": content, "timestamp": str(time.time())})
+        
+        msg_entry = {"role": role, "content": content, "timestamp": str(time.time())}
+        if thought:
+            msg_entry["thought"] = thought
+        messages.append(msg_entry)
         with open(msg_file, 'w', encoding='utf-8') as f: json.dump(messages, f)
         
         conv_file = self._get_user_conv_file(user_id)
@@ -263,7 +484,44 @@ class WorkspaceManager:
     def _get_user_file(self, user_id):
         return os.path.join(self.db_dir, f'ws_{user_id}.json')
 
-    def create_project(self, user_id, title, description, tag="AI PROJECT"):
+    def generate_onboarding_questions(self, title, category="General"):
+        """Generate 10 dynamic, category-specific questions for project architecture."""
+        if not self.groq: return []
+        prompt = f"""Generate 10 highly specific architectural and product questions for a new project titled '{title}' in category '{category}'.
+        The questions should cover: Purpose, User Persona, Monetization, Tech Complexity, Scalability, and AI Opportunities.
+        Return ONLY a JSON list of objects: [{{"id": 1, "question": "...", "options": ["...", "..."]}}]"""
+        try:
+            response = self.groq.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
+            data = json.loads(response.choices[0].message.content)
+            return data.get("questions", [])[:10]
+        except: return []
+
+    def perform_project_analysis(self, title, answers):
+        """Analyze project onboarding data to generate a roadmap and tech blueprint."""
+        if not self.groq: return {}
+        prompt = f"""Act as an AI Product Manager and Technical Architect. Analyze this project: '{title}' based on these user answers: {json.dumps(answers)}.
+        Generate a comprehensive project blueprint including:
+        1. Summary
+        2. MVP Roadmap (Phase 1, 2, 3)
+        3. Tech Stack Recommendations
+        4. Architecture Strategy
+        5. Monetization Ideas
+        6. Feature Backlog
+        Return ONLY a JSON object."""
+        try:
+            response = self.groq.chat.completions.create(
+                model="llama-3.1-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
+            return json.loads(response.choices[0].message.content)
+        except: return {"error": "Analysis engine timed out."}
+
+    def create_project(self, user_id, title, description, blueprint=None, tag="AI PROJECT"):
         file_path = self._get_user_file(user_id)
         projects = []
         if os.path.exists(file_path):
@@ -273,23 +531,18 @@ class WorkspaceManager:
             "id": f"proj_{int(time.time())}_{hash(title) % 10000}", 
             "title": title, 
             "description": description, 
+            "blueprint": blueprint or {},
             "tag": tag, 
             "progress": 0.1, 
             "last_active": "Just now",
-            "status": "Initialized"
+            "status": "Architecting" if blueprint else "Initialized",
+            "priority": "MEDIUM",
+            "ai_summary": "Neural initialization complete. Ready for architectural mapping.",
+            "suggestions": ["Define core features", "Select tech stack", "Map user journeys"]
         }
         projects.insert(0, project)
         with open(file_path, 'w') as f: json.dump(projects, f)
         return project
-
-    def delete_project(self, user_id, project_id):
-        file_path = self._get_user_file(user_id)
-        if not os.path.exists(file_path): return False
-        with open(file_path, 'r') as f: projects = json.load(f)
-        
-        updated = [p for p in projects if p['id'] != project_id]
-        with open(file_path, 'w') as f: json.dump(updated, f)
-        return True
 
     def get_projects(self, user_id):
         file_path = self._get_user_file(user_id)
@@ -297,20 +550,29 @@ class WorkspaceManager:
             with open(file_path, 'r') as f: return json.load(f)
         return []
 
+    def delete_project(self, user_id, project_id):
+        file_path = self._get_user_file(user_id)
+        if not os.path.exists(file_path): return False
+        try:
+            with open(file_path, 'r') as f: projects = json.load(f)
+            updated_projects = [p for p in projects if p['id'] != project_id]
+            if len(projects) == len(updated_projects): return False
+            with open(file_path, 'w') as f: json.dump(updated_projects, f)
+            return True
+        except: return False
+
     def get_suggestion(self, project_id, title, description):
-        if not self.groq:
-            return "No active neural link. Please check your API key."
-        
-        prompt = f"Given the project '{title}' with description '{description}', provide a one-sentence proactive suggestion for the next step in research or development. Focus on futuristic AI-driven advice."
+        if not self.groq: return "Neural connection offline. Define core feature sets next."
+        prompt = f"""Act as an AI Strategist and Chief Architect. For the project '{title}' with description '{description}', generate a single, highly impact-oriented strategic suggestion (1-2 sentences max) to accelerate MVP development or optimize architecture. Return ONLY the suggestion text, no conversational intro or filler."""
         try:
             response = self.groq.chat.completions.create(
                 model="llama-3.1-8b-instant",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=60
+                max_tokens=100
             )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"Strategic analysis paused: {str(e)}"
+            return response.choices[0].message.content.strip()
+        except:
+            return "Map out the schema layers, setup local DB caching, and configure environment boundaries first."
 
 workspace_manager = WorkspaceManager(groq_client)
 
@@ -414,17 +676,20 @@ async def aura_login(data: dict):
 # 9. Neural Core Endpoints
 @app.get("/workspaces")
 async def list_workspaces(token: str = Header(None)):
+    # BYPASS AUTH FOR TEST MODE
     user_id = "guest_user_aura"
     projects = workspace_manager.get_projects(user_id)
-    if not projects:
-        workspace_manager.create_project(
-            user_id=user_id,
-            title="AURA NEURAL HUB",
-            description="Guest mission control center.",
-            tag="GUEST ACCESS"
-        )
-        projects = workspace_manager.get_projects(user_id)
     return projects
+
+@app.get("/workspaces/onboarding")
+async def get_onboarding(title: str, category: str = "General", token: str = Header(None)):
+    questions = workspace_manager.generate_onboarding_questions(title, category)
+    return {"questions": questions}
+
+@app.post("/workspaces/analyze")
+async def analyze_project(data: dict, token: str = Header(None)):
+    analysis = workspace_manager.perform_project_analysis(data['title'], data['answers'])
+    return analysis
 
 @app.post("/workspaces")
 async def create_workspace(data: dict, token: str = Header(None)):
@@ -432,7 +697,9 @@ async def create_workspace(data: dict, token: str = Header(None)):
     project = workspace_manager.create_project(
         user_id, 
         data.get('title', 'New Project'), 
-        data.get('description', '')
+        data.get('description', ''),
+        blueprint=data.get('blueprint'),
+        tag=data.get('tag', 'AI PROJECT')
     )
     return project
 
@@ -476,10 +743,32 @@ async def secured_chat(websocket: WebSocket):
             project_id = msg.get("projectId", "global")
             
             chat_manager.save_message(user_id, conv_id, project_id, "user", prompt)
+            # Store fragment in Neural Memory for long-term recall
+            memory.store_fragment(f"User Question in {project_id}: {prompt}")
             
             full_reply = ""
+            accumulated_thought = ""
             buffer = ""
-            for chunk in engine.generate_stream(prompt, msg.get("history", [])):
+            is_thinking = False
+            async for chunk in inference_core.generate_stream(prompt, msg.get("history", [])):
+                if "<thought>" in chunk:
+                    is_thinking = True
+                    continue
+                if "</thought>" in chunk:
+                    is_thinking = False
+                    continue
+                if "<refining>" in chunk:
+                    await websocket.send_text(json.dumps({"type": "status", "content": "NEURAL REFINEMENT IN PROGRESS..."}))
+                    continue
+                if "</refining>" in chunk:
+                    await websocket.send_text(json.dumps({"type": "status", "content": "REFINEMENT COMPLETE."}))
+                    continue
+                
+                if is_thinking:
+                    accumulated_thought += chunk
+                    await websocket.send_text(json.dumps({"type": "thought", "content": chunk}))
+                    continue
+                
                 full_reply += chunk
                 buffer += chunk
                 if len(buffer) > 10 or "\n" in buffer:
@@ -489,7 +778,11 @@ async def secured_chat(websocket: WebSocket):
             if buffer:
                 await websocket.send_text(json.dumps({"type": "chunk", "content": buffer}))
             
-            chat_manager.save_message(user_id, conv_id, project_id, "assistant", full_reply)
+            chat_manager.save_message(user_id, conv_id, project_id, "assistant", full_reply, thought=accumulated_thought)
+            # Store AI response fragments for continuity
+            if len(full_reply) > 50:
+                memory.store_fragment(f"Aura Strategic Advice: {full_reply[:500]}...")
+                
             await websocket.send_text(json.dumps({"done": True}))
 
     except Exception as e:
@@ -502,6 +795,36 @@ async def secured_chat(websocket: WebSocket):
             await websocket.send_text(json.dumps({"done": True}))
         except: pass
 
+@app.post("/neural/refine")
+async def refine_response(data: dict, token: str = Header(None)):
+    """Apply a high-fidelity 'Neural Polish' to a draft response."""
+    original_text = data.get("text", "")
+    context = data.get("context", "General strategic advice.")
+    
+    refine_prompt = f"""Act as a World-Class AI Strategist and Editor. Fine-tune the following draft response to make it more professional, strategic, and high-fidelity.
+    
+    CONTEXT: {context}
+    DRAFT: {original_text}
+    
+    RULES:
+    1. Maintain the original meaning but upgrade the vocabulary.
+    2. Use a "Neural OS" tone (crisp, authoritative, futuristic).
+    3. Ensure it is scannable (use bolding and structured bullets).
+    4. Add a proactive "Strategic Insight" at the end.
+    
+    REFINED RESPONSE:"""
+    
+    try:
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": refine_prompt}],
+            temperature=0.3,
+            max_tokens=1024
+        )
+        return {"status": "success", "refined": response.choices[0].message.content}
+    except Exception as e:
+        raise HTTPException(500, f"Refinement Engine Error: {str(e)}")
+
 @app.websocket("/research")
 async def research_socket(websocket: WebSocket):
     await websocket.accept()
@@ -512,34 +835,40 @@ async def research_socket(websocket: WebSocket):
             prompt = msg.get("prompt", "")
             category = msg.get("category", "Web")
             
-            # 1. Search Phase
-            await websocket.send_text(json.dumps({"type": "status", "content": "Scanning Neural Web..."}))
-            # 1. INTENT & SEARCH PHASE
-            await websocket.send_text(json.dumps({"type": "status", "content": "Analyzing Research Intent..."}))
+            # 1. SEARCH PHASE
+            await websocket.send_text(json.dumps({"type": "status", "content": "Scanning Neural Web & Verifying Sources..."}))
             from agent_plugins.search_agent import ResearchAgent
-            if not hasattr(self, '_researcher'):
-                self._researcher = ResearchAgent()
+            researcher = ResearchAgent()
             
             search_query = prompt
             if category == "GitHub": search_query += " site:github.com"
             elif category == "Academic": search_query += " research papers journals"
             
-            await websocket.send_text(json.dumps({"type": "status", "content": "Scanning Neural Web & Verifying Sources..."}))
-            raw_results = self._researcher.ddgs.text(search_query, max_results=8)
+            research_data = researcher.search_live(search_query, max_results=6)
             
-            snippets = [f"Source: {r['title']}\nURL: {r['href']}\nContent: {r['body']}" for r in raw_results]
-            sources = [{"title": r['title'], "url": r['href']} for r in raw_results]
-            await websocket.send_text(json.dumps({"type": "sources", "content": [s['url'] for s in sources]}))
+            if "NO_DATA" in research_data:
+                await websocket.send_text(json.dumps({
+                    "type": "status", 
+                    "content": "Live Neural Data currently restricted by web gateways. Utilizing internal knowledge base..."
+                }))
+                research_data = "No live research data available. Use your internal knowledge."
+            else:
+                await websocket.send_text(json.dumps({"type": "status", "content": "Neural Sources Integrated. Initializing Synthesis..."}))
+
+            await websocket.send_text(json.dumps({"type": "sources", "content": ["Search Results Synchronized"]}))
             
             # 2. AI REASONING & STRUCTURED SYNTHESIS PHASE
-            await websocket.send_text(json.dumps({"type": "status", "content": "Synthesizing Structured Intelligence..."}))
+            await websocket.send_text(json.dumps({"type": "status", "content": "AURA is synthesizing structured intelligence..."}))
+            
+            # Truncate research data to prevent context overflow
+            safe_research_data = research_data[:10000] if research_data else "No data available."
             
             reasoning_prompt = f"""You are the AURA Research Engine. Synthesize the following data into a HIGH-FIDELITY STRUCTURED JSON response.
             
 QUERY: {prompt}
 CATEGORY: {category}
 DATA CLUSTERS:
-{"\n---\n".join(snippets)}
+{safe_research_data}
 
 RULES:
 - Return ONLY a JSON object.
@@ -563,14 +892,23 @@ JSON SCHEMA:
 }}"""
             
             if groq_client:
-                # Use the fast 8B model for synthesis
-                response = groq_client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
-                    messages=[{"role": "user", "content": reasoning_prompt}],
-                    response_format={"type": "json_object"}
-                )
-                structured_data = json.loads(response.choices[0].message.content)
-                await websocket.send_text(json.dumps({"type": "synthesis", "content": structured_data}))
+                try:
+                    response = groq_client.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=[{"role": "user", "content": reasoning_prompt}],
+                        response_format={"type": "json_object"}
+                    )
+                    structured_data = json.loads(response.choices[0].message.content)
+                    await websocket.send_text(json.dumps({"type": "synthesis", "content": structured_data}))
+                except Exception as je:
+                    print(f"Research Synthesis Error: {je}")
+                    await websocket.send_text(json.dumps({"type": "status", "content": "Synthesis Gateways overloaded. Generating raw summary..."}))
+                    # Fallback to simple completion if JSON fails
+                    raw_fallback = groq_client.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=[{"role": "user", "content": f"Summarize this research data for: {prompt}\n\nData: {safe_research_data[:2000]}"}]
+                    )
+                    await websocket.send_text(json.dumps({"type": "synthesis", "content": raw_fallback.choices[0].message.content}))
             else:
                 await websocket.send_text(json.dumps({"type": "status", "content": "Neural Link Offline."}))
 
@@ -598,52 +936,67 @@ async def reset_memory():
 
 @app.get("/cricket/ipl")
 async def get_ipl_scores():
-    """Fetch live IPL 2026 scores using neural research."""
+    """Fetch live IPL scores and synthesize into premium AI intelligence using Ingestion Cluster."""
     try:
-        from agent_plugins.search_agent import ResearchAgent
-        researcher = ResearchAgent()
-        # Robust query for better strike rate on live scores
-        query = "IPL match live score today schedule results 2026"
-        results = []
-        max_results = 4
-        from duckduckgo_search import DDGS
-        import random
+        # Check ingestion cluster first for live data
+        cached_intel = ingestion_cluster.query("IPL 2026 Live Scores")
         
-        with DDGS() as ddgs:
-            # Use a randomized search strategy to avoid 403 Rate Limits
-            # We also shorten the query to increase cache hits and reduce bot detection
-            short_query = " ".join(query.split()[:5]) 
-            
-            try:
-                ddgs_gen = ddgs.text(short_query, region='wt-wt', safesearch='moderate', max_results=max_results)
-                for r in ddgs_gen:
-                    priority = 1
-                    href = r.get('href', '')
-                    if any(domain in href for domain in ['github.com', 'wikipedia.org', 'reuters.com', 'espncricinfo.com', 'espn.in', 'official', 'docs.']):
-                        priority = 2
-                    
-                    results.append({
-                        'title': r.get('title', 'Source'),
-                        'body': r.get('body', ''),
-                        'href': href,
-                        'priority': priority
-                    })
-            except Exception as search_err:
-                print(f"Primary Search Blocked: {search_err}")
-                # Rapid fallback to a different search protocol if blocked
-                return "AURA Sync: Search gateway currently under high load. Using internal reasoning."
+        if cached_intel:
+            raw_data = cached_intel[0]["intelligence"]
+        else:
+            from agent_plugins.search_agent import ResearchAgent
+            researcher = ResearchAgent()
+            raw_data = researcher.get_cricket_scores()
+        
+        if not groq_client:
+            return {"status": "success", "data": {"error": "Neural Link Offline. Basic data only.", "raw": raw_data}}
 
-        if not results:
-            return "AURA Intelligence: Neural data sync delayed. Proceeding with knowledge-base analysis."
+        intel_prompt = f"""Act as a World-Class Cricket AI Analyst. 
+        Synthesize the following live search data into a HIGH-FIDELITY STRUCTURED JSON for a premium AI OS dashboard.
         
-        score_data = results
+        SEARCH DATA:
+        {raw_data}
         
-        if not score_data:
-            # Secondary attempt with broader terms
-            score_data = researcher.search_live("IPL cricket live score", max_results=3)
-            
-        return {"status": "success", "data": score_data}
+        REQUIRED JSON SCHEMA:
+        {{
+          "match_hero": {{
+            "teams": ["Team A", "Team B"],
+            "score": "Team A 180/5 (20) vs Team B 150/2 (15.2)",
+            "status": "Team B needs 31 runs in 28 balls",
+            "run_rate": "9.2",
+            "required_rr": "6.6",
+            "momentum_animation": "pulse_blue"
+          }},
+          "win_probability": {{ "team_a": 45, "team_b": 55 }},
+          "ai_insights": [
+            "Momentum shift detected in middle overs.",
+            "Pressure mounting on bowlers due to dew factor.",
+            "Predictive analysis: Team B has 80% chance if they keep wickets."
+          ],
+          "smart_timeline": [
+            {{ "time": "15.2", "event": "Boundary", "desc": "Beautiful cover drive by Kohli", "type": "FOUR" }},
+            {{ "time": "14.5", "event": "Wicket", "desc": "Big blow for Team B", "type": "WICKET" }}
+          ],
+          "player_impact": [
+            {{ "name": "Player X", "score": 92, "analysis": "Dominating the spin cluster." }},
+            {{ "name": "Player Y", "score": 85, "analysis": "High economy but effective pressure." }}
+          ],
+          "momentum_graph": [10, 25, 40, 35, 50, 65, 60, 80]
+        }}
+        
+        Return ONLY valid JSON. If no live match is found, provide a summary of the latest IPL news/points table in the same JSON format with status 'No Live Match'."""
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": intel_prompt}],
+            response_format={"type": "json_object"}
+        )
+        
+        structured_intel = json.loads(response.choices[0].message.content)
+        return {"status": "success", "data": structured_intel}
+
     except Exception as e:
+        print(f"Cricket Intel Error: {e}")
         return {"status": "error", "message": str(e)}
 
 @app.get("/neural/test-groq")
@@ -661,13 +1014,45 @@ async def test_groq():
     except Exception as e:
         return {"status": "error", "message": f"Groq Connection Failed: {str(e)}"}
 
-@app.get("/")
+from fastapi.responses import HTMLResponse
+
+@app.get("/", response_class=HTMLResponse)
 async def health(): 
-    return {
-        "status": "AURA OS Online", 
-        "neural_link": "Stable" if groq_client else "Offline",
-        "version": "2.2.0-PROD"
-    }
+    status_color = "#00f2ff" if groq_client else "#ff0055"
+    return f"""
+    <html>
+        <head>
+            <title>AURA NEURAL HUB</title>
+            <style>
+                body {{ background: #050505; color: white; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }}
+                .hub {{ text-align: center; border: 1px solid #1a1a1a; padding: 40px; border-radius: 30px; background: rgba(255,255,255,0.02); backdrop-filter: blur(10px); box-shadow: 0 0 50px rgba(0,242,255,0.05); }}
+                .pulse {{ width: 20px; height: 20px; background: {status_color}; border-radius: 50%; display: inline-block; box-shadow: 0 0 20px {status_color}; animation: pulse 2s infinite; }}
+                h1 {{ letter-spacing: 5px; font-weight: 900; margin: 20px 0; }}
+                .meta {{ color: #666; font-size: 12px; letter-spacing: 2px; }}
+                @keyframes pulse {{ 0% {{ transform: scale(0.9); opacity: 0.7; }} 50% {{ transform: scale(1.1); opacity: 1; }} 100% {{ transform: scale(0.9); opacity: 0.7; }} }}
+            </style>
+        </head>
+        <body>
+            <div class="hub">
+                <div class="pulse"></div>
+                <h1>AURA NEURAL CORE</h1>
+                <p class="meta">VERSION 2.7.5-PROD | STATUS: ONLINE</p>
+                <p style="color: #444; font-size: 10px; margin-top: 20px;">Hugging Face Cloud Inference Active</p>
+            </div>
+        </body>
+    </html>
+    """
+
+@app.get("/intelligence/search")
+async def intelligence_search(query: str):
+    """Real-time data ingestion search endpoint."""
+    results = ingestion_cluster.query(query)
+    if not results:
+        from agent_plugins.search_agent import ResearchAgent
+        agent = ResearchAgent()
+        data = await agent.search_live_async(query)
+        return [{"topic": query, "intelligence": data, "freshness": "live"}]
+    return results
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))

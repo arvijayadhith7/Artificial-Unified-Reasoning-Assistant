@@ -1,11 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_theme.dart';
 import 'login_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _transparencyEffects = true;
+  String _selectedTheme = "DARK";
+  double _temperature = 0.7;
+  String _activeModel = "AURA Ultra";
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _transparencyEffects = prefs.getBool('transparency') ?? true;
+      _selectedTheme = prefs.getString('theme') ?? "DARK";
+      _temperature = prefs.getDouble('temp') ?? 0.7;
+    });
+  }
+
+  Future<void> _saveSetting(String key, dynamic value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (value is bool) await prefs.setBool(key, value);
+    if (value is String) await prefs.setString(key, value);
+    if (value is double) await prefs.setDouble(key, value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,185 +47,68 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: const Icon(Icons.menu_rounded, color: Colors.white),
-        title: Text(
-          "AURA",
-          style: GoogleFonts.outfit(
-            fontSize: 20,
-            letterSpacing: 4,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.neonCyan),
-            ),
-            child: const CircleAvatar(
-              radius: 14,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
-            ),
-          )
-        ],
+        title: Text("MISSION CONTROL", style: GoogleFonts.outfit(fontSize: 14, letterSpacing: 6, fontWeight: FontWeight.w900, color: Colors.white)),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Stack(
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          image: const DecorationImage(
-                            image: NetworkImage('https://i.pravatar.cc/150?img=11'),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: -4,
-                        right: -4,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0B0FF), // light purple indicator
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.surface, width: 3),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              "Julian Thorne",
-                              style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                            ),
-                            const Spacer(),
-                            const Icon(Icons.edit_outlined, color: Colors.white54, size: 18),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text(
-                              "julian.thorne@aura.ai",
-                              style: GoogleFonts.outfit(color: Colors.white54, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildProfileCard(),
             const SizedBox(height: 30),
 
-            _buildSectionTitle("INTELLIGENCE"),
+            _buildSectionTitle("NEURAL CONFIG"),
             _buildSettingsGroup([
-              _buildSettingsTile(icon: Icons.psychology_outlined, title: "Model Selection", subtitle: "AURA Ultra (Active)", showArrow: true),
-              _buildSettingsTile(icon: Icons.memory_outlined, title: "Context Window", subtitle: "128k Tokens", showArrow: true),
-              _buildSettingsTile(icon: Icons.thermostat_outlined, title: "Temperature", subtitle: "0.7 (Balanced)", customTrailing: _buildSliderBar()),
+              _buildSettingsTile(
+                icon: Icons.psychology_outlined, 
+                title: "Inference Engine", 
+                subtitle: _activeModel, 
+                onTap: () => _showModelPicker(),
+                showArrow: true
+              ),
+              _buildSettingsTile(
+                icon: Icons.thermostat_outlined, 
+                title: "Neural Temperature", 
+                subtitle: _temperature.toStringAsFixed(1),
+                customTrailing: _buildSliderBar(),
+              ),
             ]),
             const SizedBox(height: 24),
 
-            _buildSectionTitle("APPEARANCE"),
+            _buildSectionTitle("VISUAL CORE"),
             _buildSettingsGroup([
               _buildSettingsTile(
                 icon: Icons.dark_mode_outlined, 
-                title: "Theme", 
+                title: "Theme Mode", 
                 customTrailing: _buildSegmentedControl(["DARK", "LIGHT"])
               ),
               _buildSettingsTile(
-                icon: Icons.palette_outlined, 
-                title: "Accent Color", 
-                customTrailing: _buildColorDots()
-              ),
-              _buildSettingsTile(
                 icon: Icons.grid_on_outlined, 
-                title: "Transparency Effects", 
-                customTrailing: _buildSwitch(true)
+                title: "Transparency", 
+                customTrailing: _buildSwitch(_transparencyEffects, (val) {
+                  setState(() => _transparencyEffects = val);
+                  _saveSetting('transparency', val);
+                })
               ),
             ]),
             const SizedBox(height: 24),
 
-            _buildSectionTitle("PRIVACY & SECURITY"),
+            _buildSectionTitle("SECURITY GATEWAY"),
             _buildSettingsGroup([
-              _buildSettingsTile(icon: Icons.lock_outline, title: "Data Encryption", subtitle: "AES-256 Enabled", subtitleInline: true),
-              _buildSettingsTile(icon: Icons.memory_rounded, title: "Memory Management", showArrow: true),
-              _buildSettingsTile(icon: Icons.delete_outline, title: "Clear History", titleColor: const Color(0xFFFFA07A)),
-            ]),
-            const SizedBox(height: 24),
-
-            _buildSectionTitle("SUBSCRIPTION"),
-            _buildSettingsGroup([
-              _buildSettingsTile(icon: Icons.workspace_premium_outlined, title: "Manage Plan", subtitle: "Next renewal: Oct 24, 2024", showArrow: true),
-              _buildSettingsTile(icon: Icons.receipt_long_outlined, title: "Billing & Invoices", showArrow: true),
+              _buildSettingsTile(icon: Icons.vpn_key_outlined, title: "API Terminal", subtitle: "Manage Neural Keys", showArrow: true, onTap: _showAPITerminal),
+              _buildSettingsTile(icon: Icons.delete_outline, title: "Purge Neural Memory", titleColor: const Color(0xFFFFA07A), onTap: _showPurgeDialog),
             ]),
             const SizedBox(height: 32),
 
-            // Sign Out Button
-            GestureDetector(
-              onTap: () async {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('isLoggedIn', false);
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                    (route) => false,
-                  );
-                }
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.logout_rounded, color: Color(0xFFFFA07A), size: 18),
-                    const SizedBox(width: 8),
-                    Text("SIGN OUT", style: GoogleFonts.outfit(color: const Color(0xFFFFA07A), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                  ],
-                ),
-              ),
-            ),
+            _buildSignOutButton(),
             const SizedBox(height: 20),
             Center(
-              child: Text(
-                "AURA INTELLIGENCE V2.0.4281",
-                style: GoogleFonts.outfit(color: Colors.white24, fontSize: 11, letterSpacing: 1),
-              ),
+              child: Text("AURA OS V2.3.0", style: GoogleFonts.outfit(color: Colors.white24, fontSize: 11, letterSpacing: 2)),
             ),
             const SizedBox(height: 40),
           ],
@@ -201,175 +117,145 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
-      child: Text(
-        title,
-        style: GoogleFonts.outfit(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 2),
-      ),
-    );
-  }
-
-  Widget _buildSettingsGroup(List<Widget> children) {
+  Widget _buildProfileCard() {
     return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: children.asMap().entries.map((entry) {
-          int idx = entry.key;
-          Widget child = entry.value;
-          if (idx != children.length - 1) {
-            return Column(
-              children: [
-                child,
-                Divider(height: 1, color: AppColors.border.withOpacity(0.5), indent: 56, endIndent: 16),
-              ],
-            );
-          }
-          return child;
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildSettingsTile({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    bool showArrow = false,
-    Widget? customTrailing,
-    Color? titleColor,
-    bool subtitleInline = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.border)),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white70, size: 22),
+          CircleAvatar(radius: 28, backgroundColor: AppColors.neonCyan.withOpacity(0.1), child: const Icon(Icons.person_outline_rounded, color: AppColors.neonCyan, size: 32)),
           const SizedBox(width: 16),
           Expanded(
-            child: subtitleInline && subtitle != null
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(title, style: GoogleFonts.outfit(color: titleColor ?? Colors.white, fontSize: 15)),
-                      Text(subtitle, style: GoogleFonts.outfit(color: const Color(0xFFE0B0FF), fontSize: 13)),
-                    ],
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: GoogleFonts.outfit(color: titleColor ?? Colors.white, fontSize: 15)),
-                      if (subtitle != null && !subtitleInline) ...[
-                        const SizedBox(height: 2),
-                        Text(subtitle, style: GoogleFonts.outfit(color: Colors.white54, fontSize: 13)),
-                      ]
-                    ],
-                  ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("NEURAL GUEST", style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                Text("Tier: Intelligence Pro", style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 11, fontWeight: FontWeight.bold)),
+              ],
+            ),
           ),
-          if (customTrailing != null) ...[
-            const SizedBox(width: 16),
-            customTrailing,
-          ] else if (showArrow) ...[
-            const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 20),
-          ]
+          const Icon(Icons.verified_user_rounded, color: AppColors.electricBlue, size: 20),
         ],
       ),
     );
   }
 
-  Widget _buildSliderBar() {
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      child: Text(title, style: GoogleFonts.outfit(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2)),
+    );
+  }
+
+  Widget _buildSettingsGroup(List<Widget> children) {
     return Container(
-      width: 80,
-      height: 4,
-      decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)),
-      child: FractionallySizedBox(
-        alignment: Alignment.centerLeft,
-        widthFactor: 0.7,
-        child: Container(
-          decoration: BoxDecoration(color: const Color(0xFFE0B0FF), borderRadius: BorderRadius.circular(2)),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.border)),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildSettingsTile({required IconData icon, required String title, String? subtitle, bool showArrow = false, Widget? customTrailing, Color? titleColor, VoidCallback? onTap}) {
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: AppColors.neonCyan, size: 22),
+      title: Text(title, style: GoogleFonts.outfit(color: titleColor ?? Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+      subtitle: subtitle != null ? Text(subtitle, style: GoogleFonts.outfit(color: Colors.white38, fontSize: 12)) : null,
+      trailing: customTrailing ?? (showArrow ? const Icon(Icons.chevron_right_rounded, color: Colors.white24) : null),
+    );
+  }
+
+  Widget _buildSliderBar() {
+    return SizedBox(
+      width: 100,
+      child: SliderTheme(
+        data: SliderTheme.of(context).copyWith(trackHeight: 2, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6)),
+        child: Slider(
+          value: _temperature,
+          onChanged: (val) {
+            setState(() => _temperature = val);
+            _saveSetting('temp', val);
+          },
+          activeColor: AppColors.neonCyan,
+          inactiveColor: Colors.white10,
         ),
       ),
     );
   }
 
   Widget _buildSegmentedControl(List<String> options) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: options.map((opt) {
-          bool isSelected = opt == "DARK";
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFE0B0FF) : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              opt,
-              style: GoogleFonts.outfit(
-                color: isSelected ? Colors.black : Colors.white54,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildColorDots() {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildDot(const Color(0xFFE0B0FF)),
-        const SizedBox(width: 8),
-        _buildDot(const Color(0xFF6B8AFD)),
-        const SizedBox(width: 8),
-        _buildDot(const Color(0xFFD2B48C)),
-      ],
-    );
-  }
-
-  Widget _buildDot(Color color) {
-    return Container(
-      width: 16,
-      height: 16,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-
-  Widget _buildSwitch(bool value) {
-    return Container(
-      width: 40,
-      height: 24,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE0B0FF).withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            right: 4,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: const BoxDecoration(color: Color(0xFFE0B0FF), shape: BoxShape.circle),
+      children: options.map((opt) {
+        bool isSelected = _selectedTheme == opt;
+        return GestureDetector(
+          onTap: () {
+            setState(() => _selectedTheme = opt);
+            _saveSetting('theme', opt);
+          },
+          child: Container(
+            margin: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.neonCyan : Colors.white10,
+              borderRadius: BorderRadius.circular(12),
             ),
-          )
-        ],
+            child: Text(opt, style: GoogleFonts.outfit(color: isSelected ? Colors.black : Colors.white54, fontSize: 9, fontWeight: FontWeight.w900)),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSwitch(bool value, Function(bool) onChanged) {
+    return Switch(
+      value: value,
+      onChanged: onChanged,
+      activeColor: AppColors.neonCyan,
+      activeTrackColor: AppColors.neonCyan.withOpacity(0.3),
+    );
+  }
+
+  Widget _buildSignOutButton() {
+    return InkWell(
+      onTap: () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', false);
+        if (mounted) Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.redAccent.withOpacity(0.3))),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 18),
+            const SizedBox(width: 12),
+            Text("TERMINATE SESSION", style: GoogleFonts.outfit(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 2)),
+          ],
+        ),
       ),
     );
   }
+
+  void _showModelPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: ["AURA Ultra", "AURA Flash", "AURA Reasoning"].map((m) => ListTile(
+          title: Text(m, style: GoogleFonts.outfit(color: Colors.white)),
+          onTap: () {
+            setState(() => _activeModel = m);
+            Navigator.pop(context);
+          },
+        )).toList(),
+      ),
+    );
+  }
+
+  void _showAPITerminal() {}
+  void _showPurgeDialog() {}
 }

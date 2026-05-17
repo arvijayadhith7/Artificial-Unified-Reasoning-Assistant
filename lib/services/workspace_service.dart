@@ -10,6 +10,10 @@ class Project {
   final double progress;
   final String status;
   final String lastActive;
+  final Map<String, dynamic> blueprint;
+  final String? priority;
+  final String? aiSummary;
+  final List<String>? suggestions;
 
   Project({
     required this.id,
@@ -19,6 +23,10 @@ class Project {
     required this.progress,
     required this.status,
     required this.lastActive,
+    this.blueprint = const {},
+    this.priority,
+    this.aiSummary,
+    this.suggestions,
   });
 
   factory Project.fromJson(Map<String, dynamic> json) {
@@ -30,6 +38,10 @@ class Project {
       progress: (json['progress'] ?? 0.0).toDouble(),
       status: json['status'] ?? '',
       lastActive: json['last_active'] ?? '',
+      blueprint: json['blueprint'] ?? {},
+      priority: json['priority'],
+      aiSummary: json['ai_summary'],
+      suggestions: json['suggestions'] != null ? List<String>.from(json['suggestions']) : null,
     );
   }
 }
@@ -63,7 +75,6 @@ class WorkspaceNotifier extends StateNotifier<WorkspaceState> {
     fetchProjects();
   }
 
-  // Replace with your production URL
   static const String baseUrl = 'https://vijayadhith7-aura-backend.hf.space';
 
   Future<void> fetchProjects() async {
@@ -82,13 +93,49 @@ class WorkspaceNotifier extends StateNotifier<WorkspaceState> {
     }
   }
 
-  Future<void> createProject(String title, String description) async {
+  Future<List<dynamic>> getOnboardingQuestions(String title, String category) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/workspaces/onboarding?title=$title&category=$category')
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['questions'] ?? [];
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> analyzeProject(String title, List<String> answers) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/workspaces/analyze'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'title': title, 'answers': answers}),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  Future<void> createProject(String title, String description, {Map<String, dynamic>? blueprint, String tag = "AI PROJECT"}) async {
     state = state.copyWith(isLoading: true);
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/workspaces'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'title': title, 'description': description}),
+        body: jsonEncode({
+          'title': title, 
+          'description': description,
+          'blueprint': blueprint,
+          'tag': tag
+        }),
       );
       if (response.statusCode == 200) {
         await fetchProjects();

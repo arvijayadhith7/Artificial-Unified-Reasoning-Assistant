@@ -21,9 +21,10 @@ langchain-groq
 # UI/Inference
 gradio
 # Required for RAG
-duckduckgo-search
+ddgs
 bs4
 lxml
+httpx
 rank_bm25
 
 
