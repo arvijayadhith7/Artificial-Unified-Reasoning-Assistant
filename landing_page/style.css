@@ -220,6 +220,17 @@ body {
     transform: translateY(-4px) scale(1.02);
 }
 
+.app-btn {
+    background: linear-gradient(135deg, var(--violet-glow), #4f46e5);
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.2);
+}
+
+.app-btn:hover {
+    box-shadow: 0 0 30px rgba(124, 58, 237, 0.5);
+    transform: translateY(-4px) scale(1.02);
+}
+
 .windows-btn {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--card-border);
