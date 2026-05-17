@@ -633,17 +633,180 @@ body {
     .hero-content {
         align-items: center;
     }
-    .hero-content h1 {
-        font-size: 2.8rem;
-    }
-    .download-container {
-        flex-direction: column;
-        width: 100%;
-        max-width: 320px;
-    }
-    .halo-container {
+}
+
+/* --- ARCHITECTURE SECTION --- */
+.architecture-section {
+    padding: 100px 8%;
+    background: radial-gradient(circle at center, rgba(0, 242, 255, 0.02) 0%, transparent 60%);
+    border-top: 1px solid var(--card-border);
+}
+
+.arch-flow-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    max-width: 1100px;
+    margin: 40px auto 0;
+}
+
+.arch-card {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: 24px;
+    padding: 32px 24px;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    position: relative;
+    max-width: 320px;
+}
+
+.arch-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.arch-card.active-card {
+    background: rgba(0, 242, 255, 0.02);
+    border-color: rgba(0, 242, 255, 0.25);
+    box-shadow: 0 15px 35px rgba(0, 242, 255, 0.05);
+}
+
+.arch-badge {
+    position: absolute;
+    top: -12px; left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+}
+
+.badge-active {
+    background: rgba(0, 242, 255, 0.1);
+    border-color: rgba(0, 242, 255, 0.3);
+    color: var(--neon-cyan);
+}
+
+.arch-icon-wrapper {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    margin: 0 auto 20px;
+    transition: all 0.3s;
+}
+
+.active-card .arch-icon-wrapper {
+    background: rgba(0, 242, 255, 0.05);
+    border-color: rgba(0, 242, 255, 0.2);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+}
+
+.arch-card h3 {
+    font-family: var(--font-outfit);
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.arch-card p {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.arch-tags {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.arch-tags span {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    color: var(--text-secondary);
+}
+
+.active-card .arch-tags span {
+    background: rgba(0, 242, 255, 0.03);
+    border-color: rgba(0, 242, 255, 0.1);
+    color: var(--neon-cyan);
+}
+
+/* --- PIPELINE CONNECTORS --- */
+.arch-connector {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    height: 2px;
+    min-width: 40px;
+}
+
+.connector-line {
+    width: 100%;
+    border-bottom: 1.5px dashed rgba(255, 255, 255, 0.1);
+}
+
+.connector-arrow {
+    position: absolute;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.animate-arrow {
+    animation: slideArrow 2s infinite linear;
+}
+
+.nav-app-link {
+    color: var(--violet-glow) !important;
+    font-weight: 600;
+}
+
+.nav-app-link:hover {
+    text-shadow: 0 0 10px rgba(124, 58, 237, 0.4);
+}
+
+@keyframes slideArrow {
+    0% { left: 0%; opacity: 0; }
+    30% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+}
+
+/* RESPONSIVE ARCHITECTURE */
+@media (max-width: 968px) {
+    .arch-flow-diagram {
         flex-direction: column;
         gap: 40px;
-        padding: 30px;
+    }
+    .arch-connector {
+        transform: rotate(90deg);
+        height: 40px;
+        min-width: 2px;
+        margin: 10px 0;
+    }
+    .arch-card {
+        max-width: 100%;
     }
 }
+
