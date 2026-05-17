@@ -769,17 +769,12 @@ async def secured_chat(websocket: WebSocket):
                 if "</thought>" in chunk:
                     is_thinking = False
                     continue
-                if "<refining>" in chunk:
-                    await websocket.send_text(json.dumps({"type": "status", "content": "NEURAL REFINEMENT IN PROGRESS..."}))
-                    continue
-                if "</refining>" in chunk:
-                    await websocket.send_text(json.dumps({"type": "status", "content": "REFINEMENT COMPLETE."}))
+                if "<refining>" in chunk or "</refining>" in chunk:
                     continue
                 
                 if is_thinking:
                     accumulated_thought += chunk
-                    await websocket.send_text(json.dumps({"type": "thought", "content": chunk}))
-                    continue
+                    continue # Do NOT send internal reasoning/thoughts to the client! Keep it strictly server-side.
                 
                 full_reply += chunk
                 buffer += chunk
