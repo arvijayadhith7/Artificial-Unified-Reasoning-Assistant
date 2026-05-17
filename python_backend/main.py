@@ -1066,6 +1066,82 @@ async def intelligence_search(query: str):
         return [{"topic": query, "intelligence": data, "freshness": "live"}]
     return results
 
+# ========================
+# AURA ASSIST OVERLAY CORE
+# ========================
+@app.websocket("/assist/stream")
+async def aura_assist_socket(websocket: WebSocket):
+    await websocket.accept()
+    print("AURA ASSIST: Overlay client context stream connected.")
+    try:
+        while True:
+            raw_data = await websocket.receive_text()
+            payload = json.loads(raw_data)
+            
+            if payload.get("event") == "screen_update" or payload.get("event") == "analyze":
+                ui_metadata = payload.get("metadata", {})
+                active_field = ui_metadata.get("active_field", {})
+                field_val = active_field.get("value", "")
+                field_type = active_field.get("type", "")
+                lang = ui_metadata.get("language", "English")
+                
+                # 1. Proactive Validation Predictor (Bypasses LLM for 10ms speed)
+                prediction = None
+                if field_type == "email" and field_val and "@" not in field_val:
+                    prediction = {
+                        "English": "Ensure your email contains the '@' symbol.",
+                        "Tamil": "மின்னஞ்சல் முகவரியில் '@' குறியீடு இருக்க வேண்டும்.",
+                        "Hindi": "सुनिश्चित करें कि आपके ईमेल में '@' शामिल है।",
+                        "Telugu": "మీ ఇమెయిల్ ఐడి లో '@' ఉండేలా చూసుకోండి.",
+                        "Kannada": "ನಿಮ್ಮ ಇಮೇಲ್‌ನಲ್ಲಿ '@' ಸಂಕೇತವಿರುವುದನ್ನು ಖಚಿತಪಡಿಸಿಕೊಳ್ಳಿ."
+                    }.get(lang, "Ensure your email contains the '@' symbol.")
+                
+                elif field_type == "password" and field_val and len(field_val) < 8:
+                    prediction = {
+                        "English": "Choose a password with 8 or more characters.",
+                        "Tamil": "கடவுச்சொல் குறைந்தது 8 எழுத்துக்கள் இருக்க வேண்டும்.",
+                        "Hindi": "कम से कम 8 वर्णों का पासवर्ड चुनें।",
+                        "Telugu": "కనీసం 8 అక్షరాల పాస్‌వర్డ్ ఎంచుకోండి.",
+                        "Kannada": "ಕನಿಷ್ಠ 8 ಅಕ್ಷರಗಳ ಪಾಸ್‌ವರ್ಡ್ ಆಯ್ಕೆಮಾಡಿ."
+                    }.get(lang, "Choose a password with 8 or more characters.")
+                
+                # 2. Dynamic Llama Contextual Guidance Engine
+                if not prediction:
+                    app_name = ui_metadata.get("app_name", "Workspace")
+                    field_label = active_field.get("label", "current field")
+                    
+                    assist_prompt = f"""You are Aura Assist, a premium real-time AI guidance overlay.
+                    The user is filling out a form inside "{app_name}".
+                    Active Field Label: "{field_label}"
+                    Active Field Value: "{field_val}"
+                    Target User Language: {lang}
+
+                    Provide exactly ONE brief instruction (under 12 words) in {lang} telling the user exactly what to enter or do.
+                    Be exceptionally warm, conversational, and direct. Avoid any robotic AI jargon.
+
+                    INSTRUCTION:"""
+                    
+                    try:
+                        resp = await async_groq_client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=[{"role": "user", "content": assist_prompt}],
+                            temperature=0.3,
+                            max_tokens=60
+                        )
+                        prediction = resp.choices[0].message.content.strip().strip('"')
+                    except Exception as e:
+                        print(f"Assist LLM Error: {e}")
+                        prediction = f"Fill in the active field: {field_label}"
+
+                await websocket.send_text(json.dumps({
+                    "type": "guidance",
+                    "instruction": prediction,
+                    "active_field_id": active_field.get("id", "")
+                }))
+                
+    except Exception as ws_err:
+        print(f"AURA ASSIST: Connection closed ({ws_err})")
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
     uvicorn.run(app, host="0.0.0.0", port=port)

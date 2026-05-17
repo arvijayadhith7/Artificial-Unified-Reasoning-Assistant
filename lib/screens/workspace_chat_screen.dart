@@ -10,6 +10,7 @@ import '../chat_service.dart';
 import '../services/workspace_service.dart';
 import '../widgets/glowing_orb.dart';
 import '../widgets/neural_send_button.dart';
+import '../widgets/aura_assist_bubble.dart';
 
 class WorkspaceChatScreen extends ConsumerStatefulWidget {
   final Project project;
@@ -156,6 +157,7 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
               _buildInputSection(),
             ],
           ),
+          const AuraAssistBubble(),
         ],
       ),
     );

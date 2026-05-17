@@ -13,6 +13,7 @@ import '../widgets/glowing_orb.dart';
 import '../widgets/neural_send_button.dart';
 import '../widgets/neural_thinking_indicator.dart';
 import '../widgets/semantic_reveal.dart';
+import '../widgets/aura_assist_bubble.dart';
 
 class ChatMessage {
   final String text;
@@ -172,6 +173,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
             ],
           ),
           _buildThinkingAura(),
+          const AuraAssistBubble(),
         ],
       ),
     );
