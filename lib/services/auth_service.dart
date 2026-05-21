@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config.dart';
+
 class AuthService {
-  static const String baseUrl = 'https://vijayadhith7-aura-backend.hf.space';
+  static String get baseUrl => AppConfig.baseUrl;
 
   Future<Map<String, dynamic>> loginWithGoogle({String? email, String? googleId, String? idToken}) async {
     final response = await http.post(

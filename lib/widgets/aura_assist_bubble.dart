@@ -1,12 +1,18 @@
 import 'dart:ui';
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 import '../providers/chat_provider.dart';
+import '../config.dart';
+import '../chat_service.dart';
 
 class AuraAssistBubble extends ConsumerStatefulWidget {
   final Map<String, dynamic>? initialContext;
-  const AuraAssistBubble({super.key, this.initialContext});
+  final Function(String)? onSuggestionTapped;
+  const AuraAssistBubble({super.key, this.initialContext, this.onSuggestionTapped});
 
   @override
   ConsumerState<AuraAssistBubble> createState() => _AuraAssistBubbleState();
@@ -19,12 +25,17 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
   double _xPosition = 24.0;
   double _yPosition = 120.0;
   
-  bool _isVisible = true;
   bool _isExpanded = false;
   bool _voiceEnabled = false;
   String _currentLanguage = "English";
   String _currentTip = "Tap 'Analyze' to scan your active workflow layout.";
   bool _isAnalyzing = false;
+  List<Map<String, String>> _suggestions = [];
+  List<String> _detectedItems = [];
+
+  WebSocketChannel? _channel;
+  bool _isConnected = false;
+  Timer? _analysisTimeout;
 
   final Map<String, Map<String, String>> _localizedTips = {
     "English": {
@@ -61,28 +72,259 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
+    _connectWebSocket();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _analysisTimeout?.cancel();
+    _channel?.sink.close();
     super.dispose();
   }
 
+  void _connectWebSocket() {
+    if (_isConnected) return;
+    try {
+      final wsUrl = AppConfig.wsAssistUrl;
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _isConnected = true;
+      _channel!.stream.listen(
+        (data) {
+          try {
+            final decoded = json.decode(data);
+            if (decoded['type'] == 'context_detected') {
+              final items = List<String>.from(decoded['detected_items'] ?? []);
+              final List<Map<String, String>> parsedSuggestions = [];
+              if (decoded['suggestions'] != null) {
+                for (var item in decoded['suggestions']) {
+                  if (item is Map) {
+                    parsedSuggestions.add({
+                      'label': item['label']?.toString() ?? '',
+                      'prompt': item['prompt']?.toString() ?? '',
+                    });
+                  } else if (item is String) {
+                    parsedSuggestions.add({
+                      'label': item,
+                      'prompt': item,
+                    });
+                  }
+                }
+              }
+              if (mounted) {
+                _analysisTimeout?.cancel();
+                setState(() {
+                  _isAnalyzing = false;
+                  _detectedItems = items;
+                  _suggestions = parsedSuggestions;
+                  if (items.isNotEmpty) {
+                    _currentTip = "Detected contexts: ${items.join(', ')}";
+                  } else {
+                    _currentTip = "Scan complete. Select a suggestion below.";
+                  }
+                });
+              }
+            } else if (decoded['type'] == 'status') {
+              final content = decoded['content'] as String?;
+              if (content != null && mounted) {
+                setState(() {
+                  _currentTip = content;
+                });
+              }
+            } else if (decoded['type'] == 'guidance') {
+              final instruction = decoded['instruction'] as String?;
+              if (instruction != null && mounted) {
+                _analysisTimeout?.cancel();
+                setState(() {
+                  _isAnalyzing = false;
+                  _currentTip = instruction;
+                });
+              }
+            }
+          } catch (e) {
+            print("Error parsing assist socket message: $e");
+          }
+        },
+        onError: (err) {
+          _isConnected = false;
+          _handleConnectionError();
+        },
+        onDone: () {
+          _isConnected = false;
+        },
+      );
+    } catch (e) {
+      _isConnected = false;
+      _handleConnectionError();
+    }
+  }
+
+  void _handleConnectionError() {
+    if (mounted) {
+      setState(() {
+        _isAnalyzing = false;
+        _currentTip = _localizedTips[_currentLanguage]?["idle"] ?? "Tap 'Analyze' to scan your active workflow layout.";
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("AURA Assist failed to connect to neural stream."),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  String _getCurrentAppName() {
+    try {
+      ModalRoute? route = ModalRoute.of(context);
+      if (route != null) {
+        if (route.settings.name != null && route.settings.name!.isNotEmpty) {
+          return route.settings.name!.replaceAll('/', '');
+        }
+      }
+      
+      String? screenName;
+      context.visitAncestorElements((element) {
+        final name = element.widget.runtimeType.toString();
+        if (name.contains("Screen") || name.contains("Page")) {
+          screenName = name.replaceAll("Screen", "").replaceAll("Page", "");
+          return false; // stop ascending
+        }
+        return true;
+      });
+      if (screenName != null) return screenName!;
+    } catch (_) {}
+    return "Workspace";
+  }
+
+  Map<String, dynamic> _captureActiveFieldContext() {
+    final appName = _getCurrentAppName();
+    String activeLabel = "current field";
+    String activeValue = "";
+    String activeType = "text";
+    String activeId = "unknown";
+
+    void findTextFields(Element element) {
+      if (element.widget is TextField) {
+        final textField = element.widget as TextField;
+        final focusNode = textField.focusNode;
+        final isFocused = focusNode?.hasFocus ?? false;
+        
+        String val = textField.controller?.text ?? "";
+        String label = textField.decoration?.labelText ?? textField.decoration?.hintText ?? "current field";
+        String type = "text";
+        if (textField.obscureText) {
+          type = "password";
+        } else if (textField.keyboardType == TextInputType.emailAddress) {
+          type = "email";
+        }
+        final id = (focusNode?.hashCode ?? textField.hashCode).toString();
+
+        if (isFocused || activeId == "unknown") {
+          activeValue = val;
+          activeId = id;
+          activeLabel = label;
+          activeType = type;
+          if (isFocused) return; // Stop if we found the focused one
+        }
+      } else if (element.widget is EditableText && activeId == "unknown") {
+        final editableText = element.widget as EditableText;
+        final isFocused = editableText.focusNode.hasFocus;
+        if (isFocused || activeId == "unknown") {
+          activeValue = editableText.controller.text;
+          activeId = editableText.focusNode.hashCode.toString();
+          activeLabel = "current field";
+          activeType = editableText.obscureText ? "password" : "text";
+        }
+      }
+      element.visitChildren(findTextFields);
+    }
+
+    try {
+      final rootElement = context as Element;
+      Element? targetElement;
+      rootElement.visitAncestorElements((ancestor) {
+        if (ancestor.widget is Scaffold) {
+          targetElement = ancestor;
+          return false; // stop ascending
+        }
+        return true;
+      });
+
+      final target = targetElement;
+      if (target != null) {
+        target.visitChildren(findTextFields);
+      } else {
+        rootElement.visitChildren(findTextFields);
+      }
+    } catch (e) {
+      print("Error traversing elements: $e");
+    }
+
+    return {
+      "app_name": appName,
+      "active_field": {
+        "id": activeId,
+        "label": activeLabel,
+        "value": activeValue,
+        "type": activeType,
+      }
+    };
+  }
+
   void _triggerAnalysis() {
+    if (!_isConnected || _channel == null) {
+      _connectWebSocket();
+    }
+
     setState(() {
       _isAnalyzing = true;
       _currentTip = _localizedTips[_currentLanguage]!["analyzing"]!;
+      _suggestions = [];
+      _detectedItems = [];
     });
 
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
+    final contextData = _captureActiveFieldContext();
+    final payload = json.encode({
+      "event": "analyze",
+      "active_app": contextData["app_name"],
+      "window_title": contextData["app_name"],
+      "accessibility_text": "Active field: ${contextData['active_field']['label']} (Type: ${contextData['active_field']['type']}, Value: ${contextData['active_field']['value']})",
+      "screenshot": "",
+      "metadata": {
+        "language": _currentLanguage,
+        "app_name": contextData["app_name"],
+        "active_field": contextData["active_field"],
+      }
+    });
+
+    _analysisTimeout?.cancel();
+    _analysisTimeout = Timer(const Duration(seconds: 10), () {
+      if (mounted && _isAnalyzing) {
         setState(() {
           _isAnalyzing = false;
           _currentTip = _localizedTips[_currentLanguage]!["tip"]!;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Analysis timeout. Displaying fallback guidance."),
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     });
+
+    try {
+      _channel!.sink.add(payload);
+    } catch (e) {
+      _analysisTimeout?.cancel();
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+          _currentTip = "Failed to transmit neural analysis request.";
+        });
+      }
+    }
   }
 
   void _changeLanguage(String lang) {
@@ -103,6 +345,10 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;
 
+    final double expandedHeight = 200.0 +
+        (_detectedItems.isNotEmpty ? 40.0 : 0.0) +
+        (_suggestions.isNotEmpty ? 70.0 : 0.0);
+
     return Positioned(
       left: _xPosition,
       top: _yPosition,
@@ -113,8 +359,8 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
             _yPosition += details.delta.dy;
             
             // Constrain bubble within visible screen boundaries
-            _xPosition = _xPosition.clamp(16.0, screenWidth - (_isExpanded ? 320.0 : 80.0));
-            _yPosition = _yPosition.clamp(40.0, screenHeight - (_isExpanded ? 260.0 : 100.0));
+            _xPosition = _xPosition.clamp(16.0, screenWidth - (_isExpanded ? 340.0 : 80.0));
+            _yPosition = _yPosition.clamp(40.0, screenHeight - (_isExpanded ? (expandedHeight + 40.0) : 100.0));
           });
         },
         child: AnimatedBuilder(
@@ -123,8 +369,8 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutBack,
-              width: _isExpanded ? 300 : 64,
-              height: _isExpanded ? 200 : 64,
+              width: _isExpanded ? 320 : 64,
+              height: _isExpanded ? expandedHeight : 64,
               decoration: BoxDecoration(
                 color: const Color(0xFF0D1527).withOpacity(0.85),
                 borderRadius: BorderRadius.circular(_isExpanded ? 24 : 32),
@@ -260,7 +506,7 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
           const SizedBox(height: 12),
           
           // Actionable instruction text
-          Expanded(
+          Flexible(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               child: Text(
@@ -275,7 +521,115 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
               ),
             ),
           ),
-          const SizedBox(height: 10),
+
+          if (_detectedItems.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 24,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: _detectedItems.length,
+                itemBuilder: (context, idx) {
+                  return Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF06B6D4).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xFF06B6D4).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _detectedItems[idx].toUpperCase(),
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFF06B6D4),
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+
+          if (_suggestions.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              "WORKFLOW SUGGESTIONS",
+              style: GoogleFonts.outfit(
+                color: Colors.white38,
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 36,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: _suggestions.length,
+                itemBuilder: (context, idx) {
+                  final suggestion = _suggestions[idx];
+                  final label = suggestion['label'] ?? '';
+                  final prompt = suggestion['prompt'] ?? '';
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: InkWell(
+                      onTap: () {
+                        if (widget.onSuggestionTapped != null) {
+                          widget.onSuggestionTapped!(prompt);
+                        } else {
+                          // Fallback to active chat provider directly
+                          final chatState = ref.read(chatProvider);
+                          final conversationId = chatState.activeConvId ?? "conv_${DateTime.now().millisecondsSinceEpoch}";
+                          ref.read(chatProvider.notifier).addMessage({
+                            'role': 'user',
+                            'content': prompt
+                          });
+                          ChatService().sendMessage(
+                            prompt,
+                            conversationId: conversationId,
+                            history: chatState.currentMessages.map((m) => {'role': m['role'], 'content': m['content']}).toList(),
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF06B6D4).withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFF06B6D4).withOpacity(0.25),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            label,
+                            style: GoogleFonts.outfit(
+                              color: const Color(0xFF06B6D4),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: 12),
           
           // Row of controls
           Row(

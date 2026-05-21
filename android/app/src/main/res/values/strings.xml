@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_description">Allows AURA to scan your screen elements for real-time contextual help.</string>
+</resources>

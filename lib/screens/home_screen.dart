@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../app_theme.dart';
 import '../widgets/glowing_orb.dart';
 import 'chat_screen.dart';

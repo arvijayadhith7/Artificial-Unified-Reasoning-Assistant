@@ -3,269 +3,295 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AURA Workspace | Premium AI Productivity OS</title>
-    <meta name="description" content="AURA Workspace - Your second brain for strategic planning, real-time research, markdown editing, and contextual AI guidance.">
-    <!-- Google Fonts -->
+    <title>AURA | assistant</title>
+    <meta name="description" content="Aura desktop interface inspired by ChatGPT Windows edition. Experience clean, professional strategic LRM reasoning and workspace variables.">
+    <!-- Google Fonts: Inter & Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
-    <!-- Style Sheets -->
-    <link rel="stylesheet" href="app.css?v=2.8.5">
-    <!-- FontAwesome Premium Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Style -->
+    <link rel="stylesheet" href="app.css">
 </head>
 <body>
 
-    <!-- Ambient Glow Backgrounds -->
-    <div class="ambient-grid"></div>
-    <div class="glow-orb glow-violet"></div>
-    <div class="glow-orb glow-cyan"></div>
+    <!-- Background overlays for ambient premium tone -->
+    <div class="ambient-grid" id="bg-grid"></div>
+    <div class="ambient-glow glow-cyan" id="glow-c"></div>
+    <div class="ambient-glow glow-violet" id="glow-v"></div>
 
-    <div class="app-container">
+    <!-- ChatGPT App Layout -->
+    <div class="app-layout">
         
-        <!-- LEFT SIDEBAR -->
-        <aside class="app-sidebar" id="sidebar">
+        <!-- 1. LEFT SIDEBAR -->
+        <aside class="app-sidebar">
             <div class="sidebar-header">
                 <div class="logo-area">
-                    <div class="neural-halo-mini"></div>
-                    <span class="logo-text">AURA OS</span>
+                    <div class="aura-halo-small" id="nav-halo-dot"></div>
+                    <span class="logo-title">AURA <span class="logo-ver">v3.0.0</span></span>
                 </div>
-                <button class="collapse-btn" id="sidebar-toggle" title="Toggle Sidebar (Ctrl+B)">
-                    <i class="fas fa-chevron-left"></i>
+                <button class="new-chat-btn" onclick="clearActiveChat()" title="Start New Chat">
+                    <i class="fa-regular fa-pen-to-square"></i>
                 </button>
             </div>
 
-            <!-- Project Selector Dropdown -->
-            <div class="project-selector-container">
-                <div class="project-dropdown" id="project-dropdown-btn">
-                    <i class="fas fa-cubes project-icon"></i>
-                    <div class="project-details">
-                        <span class="project-title" id="active-project-name">Co-Founder Workspace</span>
-                        <span class="project-meta">isolated context</span>
-                    </div>
-                    <i class="fas fa-chevron-down dropdown-arrow"></i>
-                </div>
-                <div class="project-list-dropdown" id="project-list">
-                    <div class="project-item active" onclick="switchProject('Co-Founder Workspace')">
-                        <i class="fas fa-rocket"></i> Co-Founder Workspace
-                    </div>
-                    <div class="project-item" onclick="switchProject('Personal Research')">
-                        <i class="fas fa-search"></i> Personal Research
-                    </div>
-                    <div class="project-item" onclick="switchProject('UI/UX System Design')">
-                        <i class="fas fa-pen-nib"></i> UI/UX System Design
-                    </div>
-                </div>
+            <!-- Search History -->
+            <div class="sidebar-search">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" placeholder="Search chats..." id="history-search-input">
             </div>
 
-            <button class="new-chat-btn" onclick="startNewChat()">
-                <i class="fas fa-plus"></i> <span>New Session</span>
-                <kbd class="shortcut-tag">Ctrl+N</kbd>
-            </button>
+            <!-- Chat History Sections -->
+            <div class="sidebar-scrollable" id="history-items-container">
+                <!-- Dynamically populated from backend user recents -->
+            </div>
 
-            <!-- Sidebar Navigation Menu -->
-            <nav class="sidebar-menu">
-                <div class="menu-group">WORKSPACE</div>
-                <a href="#" class="menu-item active" onclick="switchTab('notes')">
-                    <i class="fas fa-file-signature"></i> <span>Interactive Notes</span>
-                </a>
-                <a href="#" class="menu-item" onclick="switchTab('research')">
-                    <i class="fas fa-globe-americas"></i> <span>Research Engine</span>
-                </a>
-                <a href="#" class="menu-item" onclick="switchTab('tasks')">
-                    <i class="fas fa-tasks"></i> <span>Task Planner</span>
-                </a>
-                
-                <div class="menu-group">SYSTEM BRAIN</div>
-                <a href="#" class="menu-item" onclick="toggleMemoryModal()">
-                    <i class="fas fa-brain"></i> <span>AI Core Memory</span>
-                </a>
-                <a href="#" class="menu-item" onclick="togglePromptsModal()">
-                    <i class="fas fa-bookmark"></i> <span>Saved Prompts</span>
-                </a>
-                <a href="#" class="menu-item" onclick="toggleSettingsModal()">
-                    <i class="fas fa-cog"></i> <span>Settings</span>
-                </a>
-            </nav>
-
-            <div class="sidebar-footer">
+            <!-- Sidebar Bottom Info & Account -->
+            <div class="sidebar-bottom">
+                <button class="bottom-menu-item" onclick="toggleDetailsPanel()">
+                    <i class="fa-solid fa-columns font-icon"></i>
+                    <span>Toggle Workspace View</span>
+                </button>
                 <div class="user-profile">
-                    <div class="avatar">U</div>
-                    <div class="user-info">
-                        <span class="username">Aura Developer</span>
-                        <span class="userstatus">Pro Workspace Active</span>
+                    <div class="avatar">AP</div>
+                    <div class="user-details">
+                        <span class="username">AURA Partner</span>
+                        <span class="user-tier">Premium Account</span>
                     </div>
+                    <i class="fa-solid fa-ellipsis-h profile-more"></i>
                 </div>
             </div>
         </aside>
 
-        <!-- MAIN WORKSPACE -->
-        <main class="main-workspace">
-            
-            <!-- TOP WORKSPACE BAR -->
-            <header class="workspace-header">
-                <div class="workspace-breadcrumbs">
-                    <span class="parent-bc">Projects</span>
-                    <i class="fas fa-chevron-right separator"></i>
-                    <span class="current-bc" id="breadcrumb-active">Co-Founder Workspace</span>
+        <!-- 2. MAIN CHAT CONTAINER -->
+        <main class="chat-container">
+            <!-- Chat Header -->
+            <header class="chat-header">
+                <div class="model-selector">
+                    <span class="model-name">AURA LRM v3.0</span>
+                    <i class="fa-solid fa-angle-down selector-arrow"></i>
                 </div>
-
-                <div class="global-actions">
-                    <button class="btn-action-glow" id="cmd-palette-btn" title="Open Command Palette (Ctrl+K)">
-                        <i class="fas fa-terminal"></i> <span>Command Bar</span>
-                        <kbd class="kbd-light">Ctrl K</kbd>
+                <div class="header-actions">
+                    <div class="status-badge" id="halo-status-badge">
+                        <i class="fas fa-circle-notch fa-spin"></i> AURA CORE ONLINE
+                    </div>
+                    <button class="action-btn" title="Toggle Workspace Information" onclick="toggleDetailsPanel()">
+                        <i class="fa-solid fa-brain"></i>
                     </button>
-                    <button class="btn-action" onclick="toggleSplitScreen()" title="Toggle Split Screen">
-                        <i class="fas fa-columns"></i>
-                    </button>
+                    <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" class="action-btn github" title="View Source Repository">
+                        <i class="fab fa-github"></i>
+                    </a>
                 </div>
             </header>
 
-            <!-- WORKSPACE TABS VIEWPORTS -->
-            <div class="workspace-content">
-                
-                <!-- TAB 1: INTERACTIVE NOTES / MARKDOWN EDITOR -->
-                <div class="workspace-tab active" id="tab-notes">
-                    <div class="editor-container">
-                        <div class="editor-header">
-                            <div class="editor-meta">
-                                <i class="far fa-file-alt"></i>
-                                <input type="text" id="doc-title-input" class="doc-title-input" value="Strategic Blueprint: Phase 1 launch">
-                            </div>
-                            <div class="editor-actions">
-                                <button class="btn-sm" onclick="triggerInlineAI()" title="Ask AURA to rewrite/generate inline">
-                                    <i class="fas fa-wand-magic-sparkles"></i> <span>AI Autocomplete</span>
-                                </button>
-                                <button class="btn-sm btn-outline" onclick="saveActiveDocument()">
-                                    <i class="fas fa-save"></i> <span>Save Note</span>
-                                </button>
+            <!-- Chat Message Feed -->
+            <div class="chat-messages-viewport" id="chat-viewport">
+                <div class="chat-max-width">
+                    
+                    <!-- ChatGPT Centerview Welcome Area -->
+                    <div class="welcome-container" id="welcome-view">
+                        <div class="welcome-halo">
+                            <div class="welcome-ring" id="dashboard-ring"></div>
+                            <div class="welcome-core" id="dashboard-core">
+                                <div class="core-inner"></div>
                             </div>
                         </div>
-                        <div class="editor-body">
-                            <!-- Inline AI Assist Overlay Popup -->
-                            <div class="inline-ai-bubble" id="inline-ai-bubble">
-                                <div class="inline-bubble-header">
-                                    <i class="fas fa-sparkles"></i> AURA INLINE
-                                </div>
-                                <input type="text" id="inline-ai-prompt" placeholder="Ask Aura to expand, rewrite or outline..." onkeydown="handleInlineSubmit(event)">
-                            </div>
-                            <textarea id="markdown-editor" placeholder="Start typing your strategic ideas... Press Tab or use the 'AI Autocomplete' button for smart extensions!"></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- TAB 2: RESEARCH BOARD -->
-                <div class="workspace-tab" id="tab-research">
-                    <div class="research-container">
-                        <div class="research-header-search">
-                            <h2>Deep Web Research & Citations</h2>
-                            <p>Aura searches Tavily and compares source pipelines to ground answers cleanly.</p>
-                            <div class="search-bar-wrapper">
-                                <i class="fas fa-search search-icon-main"></i>
-                                <input type="text" id="research-query-input" placeholder="Search the web (e.g. 'Latest trends in LLM overlay assistants')" onkeydown="handleResearchQuery(event)">
-                                <button class="btn-research-submit" onclick="executeResearchSearch()">
-                                    <i class="fas fa-arrow-right"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Research Results View -->
-                        <div class="research-dashboard" id="research-results">
-                            <div class="results-placeholder">
-                                <i class="fas fa-globe-asia"></i>
-                                <h3>Enter a research topic to search</h3>
-                                <p>Aura will crawl, gather source links, compile comparison summaries, and build citation notes.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- TAB 3: TASK PLANNER -->
-                <div class="workspace-tab" id="tab-tasks">
-                    <div class="tasks-container">
-                        <div class="tasks-header">
-                            <div>
-                                <h2>Workflow Action Items</h2>
-                                <p>Task items generated contextually by AURA based on your notes.</p>
-                            </div>
-                            <button class="btn-sm" onclick="addNewTask()">
-                                <i class="fas fa-plus"></i> Add Item
+                        <h2 class="welcome-title">What can I help with today?</h2>
+                        <div class="welcome-status-label" id="dashboard-status-label">COGNITIVE STATE: READY</div>
+                        
+                        <!-- Mini cognitive state quick actions -->
+                        <div class="welcome-halo-controls">
+                            <button class="state-action-btn ctrl-btn active" id="btn-state-idle" onclick="setHaloState('idle', 'COGNITIVE STATE: IDLE')">
+                                <span class="state-dot dot-cyan"></span> Idle
+                            </button>
+                            <button class="state-action-btn ctrl-btn" id="btn-state-listening" onclick="setHaloState('listening', 'COGNITIVE STATE: LISTENING...')">
+                                <span class="state-dot dot-blue"></span> Listening
+                            </button>
+                            <button class="state-action-btn ctrl-btn" id="btn-state-thinking" onclick="setHaloState('thinking', 'COGNITIVE STATE: RESOLVING LRM THOUGHTS')">
+                                <span class="state-dot dot-violet"></span> Thinking
+                            </button>
+                            <button class="state-action-btn ctrl-btn" id="btn-state-scanning" onclick="setHaloState('scanning', 'COGNITIVE STATE: SYSTEM SCANNING')">
+                                <span class="state-dot dot-red"></span> Scanning
                             </button>
                         </div>
 
-                        <!-- Tasks Columns / Grid -->
-                        <div class="tasks-board">
-                            <div class="tasks-column">
-                                <div class="column-header">
-                                    <span class="col-title">Active Backlog</span>
-                                    <span class="col-count" id="todo-count">3</span>
-                                </div>
-                                <div class="tasks-list" id="todo-tasks-list">
-                                    <!-- Dynamic Items -->
+                        <!-- Prompt Suggestion Bento Cards -->
+                        <div class="prompt-suggestions">
+                            <div class="suggestion-card" onclick="setQuickInput('Explain the difference between Tavily and DuckDuckGo')">
+                                <div class="card-icon"><i class="fa-solid fa-route"></i></div>
+                                <div class="card-text">
+                                    <div class="card-title">Explain Search Route</div>
+                                    <div class="card-desc">Audit the new DuckDuckGo primary cascade</div>
                                 </div>
                             </div>
-                            
-                            <div class="tasks-column">
-                                <div class="column-header">
-                                    <span class="col-title">Completed</span>
-                                    <span class="col-count" id="done-count">2</span>
+                            <div class="suggestion-card" onclick="setQuickInput('Help me debug my Workspace AST compiler warnings')">
+                                <div class="card-icon"><i class="fa-solid fa-code"></i></div>
+                                <div class="card-text">
+                                    <div class="card-title">Debug AST warnings</div>
+                                    <div class="card-desc">Auto-scan local environment directories</div>
                                 </div>
-                                <div class="tasks-list" id="done-tasks-list">
-                                    <!-- Dynamic Completed Items -->
+                            </div>
+                            <div class="suggestion-card" onclick="setQuickInput('What is currently inside the ChromaDB Memory Vault?')">
+                                <div class="card-icon"><i class="fa-solid fa-database"></i></div>
+                                <div class="card-text">
+                                    <div class="card-title">Inspect Memory Blocks</div>
+                                    <div class="card-desc">List context token maps & active variables</div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
+                    <!-- Message Feed -->
+                    <div class="messages-list" id="chat-messages">
+                    </div>
+
+                </div>
             </div>
+
+            <!-- Chat Bottom Input Area -->
+            <footer class="chat-input-container">
+                <div class="input-max-width">
+                    <div class="input-pill">
+                        <!-- Left Side Quick Actions -->
+                        <div class="input-actions-left">
+                            <button class="pill-action-btn" title="Attach Document" onclick="triggerAttachFile()">
+                                <i class="fa-solid fa-paperclip"></i>
+                            </button>
+                            <button class="pill-action-btn active" title="Real-Time Search Ingestion Enabled" id="btn-web-search-toggle" onclick="toggleWebSearchInPill()">
+                                <i class="fa-solid fa-globe"></i>
+                            </button>
+                        </div>
+
+                        <!-- Center Text Box -->
+                        <div class="input-center">
+                            <textarea id="terminal-user-input" placeholder="Message AURA..." onkeydown="handleInputKey(event)" rows="1"></textarea>
+                        </div>
+
+                        <!-- Right Send Arrow -->
+                        <div class="input-actions-right">
+                            <button class="pill-send-btn" id="btn-send-msg" onclick="submitSimulationQuery()">
+                                <i class="fa-solid fa-arrow-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="disclaimer-text">
+                        AURA LRM v3.0 can make mistakes. Please verify critical information before execution.
+                    </div>
+                </div>
+            </footer>
         </main>
 
-        <!-- RIGHT AI ASSISTANT PANEL -->
-        <aside class="assistant-panel" id="assistant-panel">
-            <div class="panel-header">
-                <div class="assistant-title">
-                    <div class="neural-halo-header">
-                        <div class="halo-pulsar-core"></div>
-                    </div>
-                    <div>
-                        <span class="title-main">AURA ASSIST</span>
-                        <span class="title-sub">contextual Operating mode</span>
-                    </div>
-                </div>
-                <div class="assistant-modes">
-                    <button class="mode-btn active" id="mode-btn-chat" onclick="setAssistantMode('chat')" title="Conversational Chat Mode">
-                        <i class="far fa-comments"></i>
-                    </button>
-                    <button class="mode-btn" id="mode-btn-code" onclick="setAssistantMode('code')" title="Code Engineering Mode">
-                        <i class="fas fa-code"></i>
-                    </button>
-                </div>
+        <!-- 3. SPLIT PANEL: LRM THINKING & VECTOR SANDBOX -->
+        <aside class="details-panel" id="app-details-panel">
+            <div class="details-header">
+                <h3><i class="fa-solid fa-brain"></i> Workspace Diagnostics</h3>
+                <button class="close-details-btn" onclick="toggleDetailsPanel()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
 
-            <!-- CHAT SCREEN BOX -->
-            <div class="chat-viewport" id="chat-viewport">
-                <div class="message system-msg">
-                    <div class="msg-content">
-                        Hello! I am Aura, your productivity system. I analyze your current tab (<strong id="current-tab-indicator">Interactive Notes</strong>), context, and memory variables to advise you in real time. 🌌
-                    </div>
-                </div>
-                <!-- Dynamic Chats will stream here -->
-            </div>
-
-            <!-- CHAT INPUT BOX -->
-            <div class="chat-input-wrapper">
-                <div class="chat-inputs-inner">
-                    <textarea id="chat-textarea" placeholder="Ask AURA anything... (Shift+Enter for newline)" onkeydown="handleChatSubmit(event)"></textarea>
-                    <div class="chat-input-controls">
-                        <div class="input-indicators">
-                            <span class="context-indicator" id="input-context-label">
-                                <i class="fas fa-link"></i> Notes Context Active
-                            </span>
+            <div class="details-scrollable">
+                <!-- Section 1: Real-Time Thought Stream -->
+                <div class="diag-section">
+                    <div class="diag-section-title"><i class="fa-solid fa-microchip"></i> Thought Stream</div>
+                    
+                    <div class="thinking-progress-container">
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-fill" id="thinking-progress-bar" style="width: 0%;"></div>
                         </div>
-                        <button class="send-btn" id="chat-send-btn" onclick="sendChatMessage()">
-                            <i class="fas fa-arrow-up"></i>
-                        </button>
+                        <div class="progress-text" id="thinking-progress-label">Cognitive Engine Idle</div>
+                    </div>
+
+                    <div class="thought-steps-log" id="thought-steps-log">
+                        <div class="empty-log-state">
+                            <i class="fa-solid fa-terminal"></i>
+                            <p>Submit a query to inspect live reasoning steps.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Active Memory variables -->
+                <div class="diag-section">
+                    <div class="diag-section-title"><i class="fa-solid fa-sliders"></i> Memory Sandbox</div>
+                    
+                    <div class="sandbox-field-group">
+                        <label for="sb-persona">Active Persona</label>
+                        <select id="sb-persona" onchange="updateSandboxUI()">
+                            <option value="warm-narrative" selected>Warm & Narrative (Co-Founder)</option>
+                            <option value="ultra-technical">Ultra-Technical (Architect)</option>
+                            <option value="minimalist-hacker">Minimalist Cyber-Hacker</option>
+                        </select>
+                    </div>
+
+                    <div class="sandbox-field-group">
+                        <label for="sb-search-depth">Search Gateway Strategy</label>
+                        <select id="sb-search-depth" onchange="updateSandboxUI()">
+                            <option value="multi-tier" selected>Multi-Tier (DuckDuckGo + direct fallback)</option>
+                            <option value="pure-api">DuckDuckGo API Only</option>
+                            <option value="local-only">Local Sandbox Cache Only</option>
+                        </select>
+                    </div>
+
+                    <div class="sandbox-field-group">
+                        <label>Enabled Modules</label>
+                        <div class="sandbox-checkboxes">
+                            <label class="check-box" style="margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 6px;">
+                                <input type="checkbox" id="mod-desktop-assist" onchange="toggleDesktopAssist(this.checked)">
+                                <span style="color: var(--neon-cyan); font-weight: 600; font-family: var(--font-display);">Enable AURA Assistant</span>
+                            </label>
+                            <label class="check-box">
+                                <input type="checkbox" id="mod-ocr" checked onchange="updateSandboxUI()">
+                                <span>Gesture Overlay OCR</span>
+                            </label>
+                            <label class="check-box">
+                                <input type="checkbox" id="mod-lint" checked onchange="updateSandboxUI()">
+                                <span>Terminal Auto-Linter</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="sandbox-field-group">
+                        <label for="sb-workspace-path">Target Workspace Path</label>
+                        <input type="text" id="sb-workspace-path" value="d:\ANTIGRAVITY\llm APP" oninput="updateSandboxUI()">
+                    </div>
+
+                    <button class="hot-reload-btn" id="btn-apply-sandbox" onclick="hotReloadSandbox()">
+                        <i class="fa-solid fa-arrows-rotate"></i> Hot-Reload Sandbox Memory
+                    </button>
+                </div>
+
+                <!-- Section 3: Ingestion Block Visualization -->
+                <div class="diag-section">
+                    <div class="diag-section-header">
+                        <div class="diag-section-title"><i class="fa-solid fa-database"></i> Memory Map</div>
+                        <span class="sync-pill" id="sandbox-sync-status">SYNCED</span>
+                    </div>
+
+                    <div class="memory-blocks-list">
+                        <div class="mem-block-item">
+                            <span class="block-key">SYSTEM_INSTRUCTIONS</span>
+                            <pre class="block-value" id="viz-sys-inst">"You are Aura, a warm co-founder..."</pre>
+                        </div>
+                        <div class="mem-block-item">
+                            <span class="block-key">INGESTION_CLUSTER</span>
+                            <pre class="block-value" id="viz-ingest">Status: Active (OCR: ON, Lint: ON)</pre>
+                        </div>
+                        <div class="mem-block-item">
+                            <span class="block-key">ACTIVE_WORKSPACE</span>
+                            <pre class="block-value" id="viz-workspace">"d:\ANTIGRAVITY\llm APP"</pre>
+                        </div>
+                        <div class="mem-block-item">
+                            <span class="block-key">INTELLIGENCE_RETRIEVAL</span>
+                            <pre class="block-value" id="viz-retrieval">"Fallback gateway: DDG -> Scraper"</pre>
+                        </div>
+                        <div class="mem-block-item">
+                            <span class="block-key">CONTEXT_TOKENS_USED</span>
+                            <div class="token-meter-wrapper">
+                                <div class="token-meter-fill" id="viz-token-bar" style="width: 28%;"></div>
+                                <span class="token-meter-text" id="viz-token-text">4,620 / 16,384 tokens</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -273,129 +299,144 @@
 
     </div>
 
-    <!-- UNIVERSAL COMMAND PALETTE (CTRL + K) -->
-    <div class="command-palette-overlay" id="cmd-overlay" onclick="closeCommandPalette(event)">
-        <div class="command-palette-card">
-            <div class="cmd-input-wrapper">
-                <i class="fas fa-terminal cmd-icon"></i>
-                <input type="text" id="cmd-input" placeholder="Type a task command or search topic..." onkeydown="handleCommandKey(event)">
-                <span class="esc-tag">ESC</span>
+    <!-- AURA System-Wide Overlay Assistant (Web Edition) -->
+    <div id="aura-overlay-bubble" class="aura-overlay-bubble" title="Drag me! Click to toggle AURA Overlay Assistant" onmousedown="initOverlayDrag(event)">
+        <div class="overlay-bubble-halo">
+            <div class="overlay-bubble-ring"></div>
+            <div class="overlay-bubble-core"></div>
+        </div>
+    </div>
+
+    <div id="aura-overlay-panel" class="aura-overlay-panel">
+        <div class="overlay-panel-header">
+            <div class="overlay-header-title">
+                <span class="overlay-status-dot"></span>
+                <span>AURA Overlay Assist</span>
+                <select id="overlay-assistant-mode" class="overlay-mode-select" onchange="AuraOverlayRuntime&&AuraOverlayRuntime.setAssistantMode(this.value)" title="Reply style">
+                    <option value="copilot" selected>Copilot</option>
+                    <option value="quick">Quick</option>
+                    <option value="tutor">Tutor</option>
+                    <option value="focus">Focus</option>
+                    <option value="research">Research</option>
+                </select>
             </div>
-            <div class="cmd-results-list" id="cmd-results">
-                <div class="cmd-group">QUICK ACTIONS</div>
-                <div class="cmd-item" onclick="triggerCommandAction('notes')">
-                    <i class="fas fa-file-signature"></i>
-                    <div class="cmd-item-info">
-                        <span class="cmd-item-name">Create Project Note Outline</span>
-                        <span class="cmd-item-desc">Drafts a layout blueprint dynamically</span>
-                    </div>
-                    <span class="cmd-shortcut">Alt+D</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button id="overlay-pip-btn" class="overlay-pip-btn" onclick="toggleOverlayPiP()" title="Float overlay outside browser (Always on Top)">
+                    <i class="fa-solid fa-up-right-from-square"></i>
+                </button>
+                <button id="overlay-close-btn" class="overlay-close-btn" type="button" onclick="event.stopPropagation(); closeOverlayPanel();">&times;</button>
+            </div>
+        </div>
+        <div class="overlay-panel-body" id="overlay-chat-messages">
+            <div class="overlay-system-msg">
+                Hi — I'm here while you work. Ask about your screen, app, or next step.
+            </div>
+        </div>
+        <div class="overlay-quick-actions" id="overlay-quick-actions" style="display: none;">
+            <button class="quick-action-pill" onclick="triggerOverlayAction('summarize')">
+                <i class="fa-solid fa-desktop"></i> Summarize Screen
+            </button>
+            <button class="quick-action-pill" onclick="triggerOverlayAction('explain')">
+                <i class="fa-solid fa-code"></i> Explain Code
+            </button>
+            <button class="quick-action-pill" onclick="triggerOverlayAction('debug')">
+                <i class="fa-solid fa-bug"></i> Debug Error
+            </button>
+            <button class="quick-action-pill" onclick="triggerOverlayAction('reply')">
+                <i class="fa-solid fa-envelope"></i> Reply Email
+            </button>
+        </div>
+        <div class="overlay-panel-input">
+            <div class="input-media-actions" id="overlay-media-actions" style="display: none; margin-right: 4px;">
+                <button class="overlay-action-btn" onclick="triggerOverlayAction('screenshot')" title="Capture screen context">
+                    <i class="fa-solid fa-camera"></i>
+                </button>
+                <button class="overlay-action-btn" onclick="triggerOverlayAction('voice')" title="Voice input">
+                    <i class="fa-solid fa-microphone"></i>
+                </button>
+            </div>
+            <textarea id="overlay-user-input" placeholder="Ask AURA Overlay..." onkeydown="handleOverlayInputKey(event)" rows="1"></textarea>
+            <button class="overlay-send-btn" type="button">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- AURA Desktop Permission Modal -->
+    <div id="desktop-permission-modal" class="desktop-modal-backdrop">
+        <div class="desktop-modal-content">
+            <div class="desktop-modal-header">
+                <div class="modal-logo-halo">
+                    <div class="modal-logo-core"></div>
                 </div>
-                <div class="cmd-item" onclick="triggerCommandAction('research')">
-                    <i class="fas fa-globe-americas"></i>
-                    <div class="cmd-item-info">
-                        <span class="cmd-item-name">Search Live Technical Trends</span>
-                        <span class="cmd-item-desc">Queries Tavily to find live market specs</span>
+                <h3>Allow AURA to assist you across your desktop.</h3>
+                <p class="modal-subtitle">Enable system-wide features to let AURA help you directly in your workflow.</p>
+            </div>
+            
+            <!-- Flow Steps Container -->
+            <div class="modal-steps-container">
+                <!-- Step 0: Welcome -->
+                <div id="modal-step-welcome" class="modal-step active">
+                    <p class="step-desc">
+                        AURA can run as a floating, always-on-top layer on top of Windows. It can analyze your screen, detect your active app, read clipboard context, and assist you in real-time.
+                    </p>
+                    <div class="permission-preview-grid">
+                        <div class="preview-item"><i class="fa-solid fa-desktop"></i> Screen Overlay</div>
+                        <div class="preview-item"><i class="fa-solid fa-camera"></i> Screen Capture</div>
+                        <div class="preview-item"><i class="fa-solid fa-window-restore"></i> Window Detection</div>
+                        <div class="preview-item"><i class="fa-solid fa-universal-access"></i> Accessibility</div>
+                        <div class="preview-item"><i class="fa-solid fa-microphone"></i> Microphone</div>
+                        <div class="preview-item"><i class="fa-solid fa-clipboard"></i> Clipboard Sync</div>
+                        <div class="preview-item"><i class="fa-solid fa-bell"></i> Notifications</div>
                     </div>
-                    <span class="cmd-shortcut">Alt+R</span>
                 </div>
-                <div class="cmd-item" onclick="triggerCommandAction('tasks')">
-                    <i class="fas fa-tasks"></i>
-                    <div class="cmd-item-info">
-                        <span class="cmd-item-name">Create Custom Task List</span>
-                        <span class="cmd-item-desc">Generates action items inline</span>
-                    </div>
-                    <span class="cmd-shortcut">Alt+T</span>
+
+                <!-- Step 1: Screen Capture -->
+                <div id="modal-step-screencap" class="modal-step">
+                    <div class="step-icon-wrap"><i class="fa-solid fa-camera-retro"></i></div>
+                    <h4>Step 1: Screen Capture Permission</h4>
+                    <p class="step-desc">
+                        AURA needs screen access to understand your current task and help without switching tabs.
+                    </p>
+                    <div class="step-status" id="screencap-status">Status: Waiting for permission...</div>
                 </div>
-                <div class="cmd-item" onclick="triggerCommandAction('memory')">
-                    <i class="fas fa-brain"></i>
-                    <div class="cmd-item-info">
-                        <span class="cmd-item-name">Recall Core Memory Entries</span>
-                        <span class="cmd-item-desc">View global variables stored by AI</span>
-                    </div>
-                    <span class="cmd-shortcut">Alt+M</span>
+
+                <!-- Step 2: Accessibility -->
+                <div id="modal-step-accessibility" class="modal-step">
+                    <div class="step-icon-wrap"><i class="fa-solid fa-universal-access"></i></div>
+                    <h4>Step 2: Accessibility Access</h4>
+                    <p class="step-desc">
+                        AURA uses accessibility features to interact with apps and provide contextual assistance.
+                    </p>
+                    <div class="step-status" id="accessibility-status">Status: Pending authorization...</div>
                 </div>
+
+                <!-- Step 3: Screen Overlay -->
+                <div id="modal-step-overlay" class="modal-step">
+                    <div class="step-icon-wrap"><i class="fa-solid fa-window-maximize"></i></div>
+                    <h4>Step 3: Screen Overlay</h4>
+                    <p class="step-desc">
+                        Enable floating assistant so AURA can appear on top of apps.
+                    </p>
+                    <div class="step-status" id="overlay-status">Status: Pending overlay deployment...</div>
+                </div>
+            </div>
+
+            <div class="desktop-modal-footer">
+                <button id="modal-cancel-btn" class="modal-btn-secondary" onclick="regressDesktopModal()">Not Now</button>
+                <button id="modal-next-btn" class="modal-btn-primary" onclick="advanceDesktopModal()">Continue</button>
             </div>
         </div>
     </div>
 
-    <!-- BRAIN CORE MEMORY MODAL -->
-    <div class="modal-overlay" id="memory-modal" onclick="closeModals()">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3><i class="fas fa-brain text-gradient"></i> AI Core Memory Variables</h3>
-                <button class="modal-close" onclick="closeModals()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p class="modal-desc">AURA dynamically remembers the variables, preferences, and writing styles you set. These are injected contextually to align strategic replies.</p>
-                <div class="memory-list">
-                    <div class="memory-entry">
-                        <span class="memory-label">User Target Tone</span>
-                        <span class="memory-val">Professional, strategic, and narrative co-founder</span>
-                    </div>
-                    <div class="memory-entry">
-                        <span class="memory-label">Primary Languages</span>
-                        <span class="memory-val">English & Tamil workflow summaries</span>
-                    </div>
-                    <div class="memory-entry">
-                        <span class="memory-label">Active Stack</span>
-                        <span class="memory-val">Flutter, FastAPI backend, LLMs on Hugging Face Spaces</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Overlay mode selector -->
+    <div id="overlay-mode-bar" class="overlay-mode-bar" style="display:none;">
+        <button type="button" data-mode="quick" onclick="AuraOverlayRuntime&&AuraOverlayRuntime.setAssistantMode('quick')">Quick</button>
+        <button type="button" data-mode="tutor" onclick="AuraOverlayRuntime&&AuraOverlayRuntime.setAssistantMode('tutor')">Tutor</button>
+        <button type="button" data-mode="copilot" onclick="AuraOverlayRuntime&&AuraOverlayRuntime.setAssistantMode('copilot')">Copilot</button>
     </div>
-
-    <!-- SAVED PROMPTS MODAL -->
-    <div class="modal-overlay" id="prompts-modal" onclick="closeModals()">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3><i class="fas fa-bookmark text-gradient"></i> Reusable Prompt Library</h3>
-                <button class="modal-close" onclick="closeModals()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="prompts-list">
-                    <div class="prompt-card-item" onclick="usePromptTemplate('Expand the selected outline into a full technical brief with isolated module layers.')">
-                        <strong>📝 Technical Brief Outline</strong>
-                        <p>Expand the selected outline into a full technical brief with isolated module layers.</p>
-                    </div>
-                    <div class="prompt-card-item" onclick="usePromptTemplate('Debug the following source module, identify layout leaks, and optimize rendering loops.')">
-                        <strong>💻 Debug Layout & Render Loops</strong>
-                        <p>Debug the following source module, identify layout leaks, and optimize rendering loops.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SETTINGS MODAL -->
-    <div class="modal-overlay" id="settings-modal" onclick="closeModals()">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3><i class="fas fa-cog"></i> Settings</h3>
-                <button class="modal-close" onclick="closeModals()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="setting-item">
-                    <span>Glassmorphic Visual Intensity</span>
-                    <select>
-                        <option>Medium (Balanced performance)</option>
-                        <option>High Glow (Epic aesthetics)</option>
-                        <option>Low (Minimalist flat)</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <span>AI Model Context Routing</span>
-                    <select>
-                        <option>Llama 3.3 70B Strategic Layer</option>
-                        <option>Gemini Fast Core</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Interactive Logic scripts -->
+    <script src="overlay/overlay-client.js"></script>
     <script src="app.js"></script>
+    <script src="overlay/overlay-runtime.js"></script>
 </body>
 </html>

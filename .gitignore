@@ -55,3 +55,20 @@ app.*.map.json
 /python_backend/memory/
 /python_backend/scratch_scrape_test.py
 /searxng-master/
+
+# Root memory, databases, and logs
+/memory/aura_intelligence.db
+/memory/chats/
+/memory/vector_db/
+analyze_utf8.txt
+
+# General web/desktop ignores
+node_modules/
+dist/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

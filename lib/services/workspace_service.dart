@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 
 class Project {
   final String id;
@@ -75,7 +76,7 @@ class WorkspaceNotifier extends StateNotifier<WorkspaceState> {
     fetchProjects();
   }
 
-  static const String baseUrl = 'https://vijayadhith7-aura-backend.hf.space';
+  static String get baseUrl => AppConfig.baseUrl;
 
   Future<void> fetchProjects() async {
     state = state.copyWith(isLoading: true);
@@ -93,10 +94,20 @@ class WorkspaceNotifier extends StateNotifier<WorkspaceState> {
     }
   }
 
-  Future<List<dynamic>> getOnboardingQuestions(String title, String category) async {
+  Future<List<dynamic>> getOnboardingQuestions(
+    String title,
+    String experienceLevel,
+    Map<String, String> projectDetails,
+  ) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/workspaces/onboarding?title=$title&category=$category')
+      final response = await http.post(
+        Uri.parse('$baseUrl/workspaces/onboarding'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'title': title,
+          'experience_level': experienceLevel,
+          'project_details': projectDetails,
+        }),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -108,12 +119,22 @@ class WorkspaceNotifier extends StateNotifier<WorkspaceState> {
     }
   }
 
-  Future<Map<String, dynamic>> analyzeProject(String title, List<String> answers) async {
+  Future<Map<String, dynamic>> analyzeProject({
+    required String title,
+    required List<String> answers,
+    required String experienceLevel,
+    required Map<String, String> projectDetails,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/workspaces/analyze'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'title': title, 'answers': answers}),
+        body: jsonEncode({
+          'title': title,
+          'answers': answers,
+          'experience_level': experienceLevel,
+          'project_details': projectDetails,
+        }),
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);

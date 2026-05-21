@@ -7,19 +7,18 @@ import asyncio
 import httpx
 import urllib.parse
 from bs4 import BeautifulSoup
+
+# Use modern ddgs package (v9+) — the old duckduckgo_search is deprecated and returns 0 results
 try:
     from ddgs import DDGS
 except ImportError:
-    try:
-        from duckduckgo_search import DDGS
-    except ImportError:
-        DDGS = None
+    DDGS = None
 
 class ResearchAgent:
     """Production-Grade Real-Time AI Search Orchestrator for AURA AI.
     
-    Supports: Tavily, Exa AI, Serper, Brave Search, and DuckDuckGo fallback.
-    Implements: Async retrieval, retries, rate-limiting, chunking, and TF-IDF semantic reranking.
+    Primary: DuckDuckGo (via ddgs v9+), DDG HTML scraper, SearXNG, Google scraper.
+    Implements: Async retrieval, retries, chunking, and TF-IDF semantic reranking.
     """
     
     def __init__(self):
@@ -28,6 +27,8 @@ class ResearchAgent:
         self.exa_key = os.getenv("EXA_API_KEY")
         self.serper_key = os.getenv("SERPER_API_KEY")
         self.brave_key = os.getenv("BRAVE_API_KEY")
+        self.serpapi_key = os.getenv("SERPAPI_API_KEY")
+        self.firecrawl_key = os.getenv("FIRECRAWL_API_KEY")
         
         self.user_agents = [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -39,21 +40,42 @@ class ResearchAgent:
     # 1. SYNCHRONOUS RETRIEVAL (Legacy Support)
     # ==========================================
     def search_live(self, query: str, max_results: int = 5) -> str:
-        """Ultra-resilient synchronous search using DuckDuckGo, static HTML fallback, and scraper fallback to ensure 24/7 service availability.
+        """Ultra-resilient synchronous search using API providers, DuckDuckGo, static HTML fallback, and scraper fallback to ensure 24/7 service availability.
         """
-        print(f"NEURAL RESEARCH GATEWAY (ONLY DDG): Orchestrating search query: '{query}'")
+        print(f"NEURAL RESEARCH GATEWAY (SYNC): Orchestrating search query: '{query}'")
         
         results = []
         clean_query = query.replace('"', '').strip()
         
-        # 1. DuckDuckGo Primary API
-        results = self._search_ddg_sync(clean_query, max_results)
+        # 1. DuckDuckGo Primary API (Tavily completely removed and replaced by DDG)
+        if not results:
+            results = self._search_ddg_sync(clean_query, max_results)
             
-        # 2. DuckDuckGo Static HTML Scraper Fallback (Traffic & rate-limit immune)
+        # 2. DuckDuckGo Static HTML Scraper Fallback (resilient fallback)
         if not results:
             results = self._search_ddg_html_sync(clean_query, max_results)
+
+        # 3. Exa API
+        if not results and self.exa_key:
+            results = self._search_exa_sync(clean_query, max_results)
+
+        # 4. SerpAPI
+        if not results and self.serpapi_key:
+            results = self._search_serpapi_sync(clean_query, max_results)
+
+        # 5. Firecrawl
+        if not results and self.firecrawl_key:
+            results = self._search_firecrawl_sync(clean_query, max_results)
+
+        # 6. Serper API
+        if not results and self.serper_key:
+            results = self._search_serper_sync(clean_query, max_results)
+
+        # 7. Brave API
+        if not results and self.brave_key:
+            results = self._search_brave_sync(clean_query, max_results)
             
-        # 3. Google Scraper Fallback
+        # 8. Google Scraper Fallback
         if not results:
             results = self._search_google_scrape_sync(clean_query, max_results)
             
@@ -67,29 +89,62 @@ class ResearchAgent:
     # ==========================================
     # 2. ASYNCHRONOUS RETRIEVAL (Modern Pipeline)
     # ==========================================
-    async def search_live_async(self, query: str, max_results: int = 5) -> str:
+    async def search_live_async(self, query: str, max_results: int = 5, search_strategy: str = "multi-tier") -> str:
         """Fully non-blocking asynchronous search with multi-provider cascade."""
-        print(f"NEURAL RESEARCH GATEWAY (ASYNC): Scanning network for: '{query}'")
+        print(f"NEURAL RESEARCH GATEWAY (ASYNC): Scanning network for: '{query}' with strategy: '{search_strategy}'")
         clean_query = query.replace('"', '').strip()
         results = []
+
+        if search_strategy == "local-only":
+            return "NO_DATA: Local cache only mode active. Web search disabled."
         
-        # 1. Tavily (highest quality, if key available)
-        if not results and self.tavily_key:
-            results = await self._search_tavily_async(clean_query, max_results)
-        
-        # 2. DuckDuckGo API
+        # If pure-api strategy is specified, only use DuckDuckGo API
+        if search_strategy == "pure-api":
+            results = await self._search_ddg_async(clean_query, max_results)
+            if not results and self.exa_key:
+                results = await self._search_exa_async(clean_query, max_results)
+            if not results and self.serpapi_key:
+                results = await self._search_serpapi_async(clean_query, max_results)
+            if not results and self.firecrawl_key:
+                results = await self._search_firecrawl_async(clean_query, max_results)
+            if not results:
+                return "NO_DATA: DuckDuckGo API search returned empty results."
+            return self.chunk_and_rerank(query, results, max_results=max_results)
+
+        # Standard Multi-tier strategy (Full resilient cascade)
+        # 1. DuckDuckGo API (Primary)
         if not results:
             results = await self._search_ddg_async(clean_query, max_results)
-            
-        # 3. DuckDuckGo HTML Scraper Fallback
+
+        # 2. DuckDuckGo HTML Scraper Fallback
         if not results:
             results = await self._search_ddg_html_async(clean_query, max_results)
 
-        # 4. SearXNG Public Instance Fallback (works from cloud servers)
+        # 3. Exa (if key available)
+        if not results and self.exa_key:
+            results = await self._search_exa_async(clean_query, max_results)
+
+        # 4. SerpAPI (if key available)
+        if not results and self.serpapi_key:
+            results = await self._search_serpapi_async(clean_query, max_results)
+
+        # 5. Firecrawl (if key available)
+        if not results and self.firecrawl_key:
+            results = await self._search_firecrawl_async(clean_query, max_results)
+
+        # 6. Serper (if key available)
+        if not results and self.serper_key:
+            results = await self._search_serper_async(clean_query, max_results)
+
+        # 7. Brave (if key available)
+        if not results and self.brave_key:
+            results = await self._search_brave_async(clean_query, max_results)
+        
+        # 8. SearXNG Public Instance Fallback (works from cloud servers)
         if not results:
             results = await self._search_searxng_async(clean_query, max_results)
             
-        # 5. Google Scrape Fallback
+        # 9. Google Scrape Fallback
         if not results:
             results = await self._search_google_scrape_async(clean_query, max_results)
             
@@ -256,21 +311,28 @@ class ResearchAgent:
 
     def _search_ddg_sync(self, query: str, max_results: int) -> list:
         if DDGS is None:
-            print("NEURAL RESEARCH [DDG-SYNC]: DDGS library not available.")
+            print("NEURAL RESEARCH [DDG-SYNC]: DDGS library not available. Install with: pip install ddgs")
             return []
-        try:
-            print("NEURAL RESEARCH [DDG-SYNC]: Initiating...")
-            ddgs = DDGS()
-            ddgs_gen = ddgs.text(query, region='wt-wt', safesearch='moderate', max_results=max_results)
-            results = []
-            if ddgs_gen:
-                for r in ddgs_gen:
-                    results.append({'title': r.get('title', 'DDG Source'), 'body': r.get('body', ''), 'href': r.get('href', '#')})
-            if results:
-                print(f"DDG-SYNC Success: {len(results)} results")
-                return results
-        except Exception as e:
-            print(f"DDG Sync Fail: {e}")
+        # Retry up to 2 times with fresh DDGS instance
+        for attempt in range(2):
+            try:
+                print(f"NEURAL RESEARCH [DDG-SYNC]: Attempt {attempt + 1}...")
+                ddgs = DDGS()
+                raw_results = ddgs.text(query, max_results=max_results)
+                if raw_results and isinstance(raw_results, list):
+                    results = []
+                    for r in raw_results:
+                        results.append({
+                            'title': r.get('title', 'DDG Source'),
+                            'body': r.get('body', ''),
+                            'href': r.get('href', '#')
+                        })
+                    if results:
+                        print(f"DDG-SYNC Success: {len(results)} results")
+                        return results
+            except Exception as e:
+                print(f"DDG Sync Attempt {attempt + 1} Fail: {e}")
+                time.sleep(0.5)
         return []
 
     def _search_ddg_html_sync(self, query: str, max_results: int) -> list:
@@ -331,6 +393,53 @@ class ResearchAgent:
                 return results
         except Exception as e:
             print(f"Google Scrape Sync Fail: {e}")
+        return []
+
+    def _search_serpapi_sync(self, query: str, max_results: int) -> list:
+        try:
+            print("NEURAL RESEARCH [SERPAPI-SYNC]: Initiating...")
+            r = httpx.get(
+                "https://serpapi.com/search.json",
+                params={"q": query, "api_key": self.serpapi_key, "num": max_results},
+                timeout=8.0
+            )
+            if r.status_code == 200:
+                results = []
+                for x in r.json().get('organic_results', [])[:max_results]:
+                    results.append({
+                        'title': x.get('title', 'SerpAPI Source'),
+                        'body': x.get('snippet', ''),
+                        'href': x.get('link', '#')
+                    })
+                return results
+        except Exception as e:
+            print(f"SerpAPI Sync Fail: {e}")
+        return []
+
+    def _search_firecrawl_sync(self, query: str, max_results: int) -> list:
+        try:
+            print("NEURAL RESEARCH [FIRECRAWL-SYNC]: Initiating...")
+            headers = {
+                "Authorization": f"Bearer {self.firecrawl_key}",
+                "Content-Type": "application/json"
+            }
+            r = httpx.post(
+                "https://api.firecrawl.dev/v0/search",
+                json={"query": query, "pageOptions": {"onlyMainContent": true}},
+                headers=headers,
+                timeout=12.0
+            )
+            if r.status_code == 200:
+                results = []
+                for x in r.json().get('data', [])[:max_results]:
+                    results.append({
+                        'title': x.get('metadata', {}).get('title', 'Firecrawl Source'),
+                        'body': x.get('content', x.get('markdown', '')),
+                        'href': x.get('metadata', {}).get('sourceURL', '#')
+                    })
+                return results
+        except Exception as e:
+            print(f"Firecrawl Sync Fail: {e}")
         return []
 
     # ==========================================
@@ -420,6 +529,53 @@ class ResearchAgent:
             print(f"Google Scrape Async Offload Fail: {e}")
         return []
 
+    async def _search_serpapi_async(self, query: str, max_results: int) -> list:
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(
+                    "https://serpapi.com/search.json",
+                    params={"q": query, "api_key": self.serpapi_key, "num": max_results},
+                    timeout=8.0
+                )
+                if r.status_code == 200:
+                    results = []
+                    for x in r.json().get('organic_results', [])[:max_results]:
+                        results.append({
+                            'title': x.get('title', 'SerpAPI Source'),
+                            'body': x.get('snippet', ''),
+                            'href': x.get('link', '#')
+                        })
+                    return results
+        except Exception as e:
+            print(f"SerpAPI Async Fail: {e}")
+        return []
+
+    async def _search_firecrawl_async(self, query: str, max_results: int) -> list:
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.firecrawl_key}",
+                "Content-Type": "application/json"
+            }
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    "https://api.firecrawl.dev/v0/search",
+                    json={"query": query, "pageOptions": {"onlyMainContent": true}},
+                    headers=headers,
+                    timeout=12.0
+                )
+                if r.status_code == 200:
+                    results = []
+                    for x in r.json().get('data', [])[:max_results]:
+                        results.append({
+                            'title': x.get('metadata', {}).get('title', 'Firecrawl Source'),
+                            'body': x.get('content', x.get('markdown', '')),
+                            'href': x.get('metadata', {}).get('sourceURL', '#')
+                        })
+                    return results
+        except Exception as e:
+            print(f"Firecrawl Async Fail: {e}")
+        return []
+
     async def _search_searxng_async(self, query: str, max_results: int) -> list:
         """Search via public SearXNG instances - works well from cloud servers."""
         instances = [
@@ -456,6 +612,3 @@ class ResearchAgent:
                 continue
         return []
 
-    def get_cricket_scores(self) -> str:
-        """Fast helper for live cricket/IPL updates."""
-        return self.search_live("IPL match live score points table", max_results=3)

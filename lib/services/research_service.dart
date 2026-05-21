@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../config.dart';
 
 class ResearchState {
   final String status;
@@ -42,8 +43,7 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
   void startResearch(String prompt, String category) {
     state = ResearchState(isResearching: true, status: 'Connecting to AURA Research Core...');
     
-    // Production URL (Hugging Face Space)
-    const baseUrl = 'wss://vijayadhith7-aura-backend.hf.space/research';
+    final baseUrl = AppConfig.wsResearchUrl;
     
     try {
       _channel = WebSocketChannel.connect(Uri.parse(baseUrl));

@@ -1,0 +1,77 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Segoe UI, sans-serif; background: transparent; overflow: hidden; user-select: none; }
+
+.aura-overlay-bubble {
+  position: fixed; bottom: 20px; right: 20px; width: 52px; height: 52px;
+  border-radius: 50%; background: rgba(20,20,20,0.9); border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer; z-index: 9999; display: flex; align-items: center; justify-content: center;
+  -webkit-app-region: no-drag;
+}
+.overlay-bubble-core {
+  width: 14px; height: 14px; border-radius: 50%; background: #00f2ff;
+  box-shadow: 0 0 12px #00f2ff;
+}
+
+.aura-overlay-panel {
+  position: fixed; bottom: 84px; right: 20px; width: 380px; height: 500px;
+  background: rgba(22,22,26,0.96); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px; display: none; flex-direction: column; z-index: 9998;
+  color: #ececec; pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+.aura-overlay-panel.open { display: flex; }
+
+.overlay-panel-header {
+  padding: 10px 12px; display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  -webkit-app-region: drag;
+}
+.overlay-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+.overlay-mode-select {
+  font-size: 10px; background: rgba(0,0,0,0.35); color: #ccc; border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px; padding: 2px 4px; -webkit-app-region: no-drag;
+}
+.overlay-context-label {
+  font-size: 10px; color: #94a3b8; padding: 4px 12px 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.overlay-panel-body {
+  flex: 1; overflow-y: auto; padding: 10px 12px; font-size: 13px;
+  -webkit-app-region: no-drag;
+}
+.overlay-user-msg {
+  background: rgba(0,242,255,0.12); padding: 8px 10px; border-radius: 10px;
+  margin-bottom: 8px; margin-left: 24px; word-break: break-word;
+}
+.overlay-aura-msg { padding: 8px 10px; margin-bottom: 8px; line-height: 1.45; word-break: break-word; }
+.overlay-aura-msg strong { color: #06b6d4; font-size: 11px; display: block; margin-bottom: 4px; }
+.overlay-system-msg { opacity: 0.7; font-size: 12px; margin-bottom: 8px; }
+
+.overlay-panel-input {
+  display: flex; gap: 8px; padding: 10px; border-top: 1px solid rgba(255,255,255,0.08);
+  -webkit-app-region: no-drag;
+}
+.overlay-panel-input textarea {
+  flex: 1; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; color: #fff; padding: 8px; resize: none; font-size: 13px;
+  min-height: 44px; max-height: 88px; user-select: text;
+  -webkit-app-region: no-drag;
+}
+.overlay-panel-input textarea:focus { outline: 1px solid #06b6d4; }
+
+#overlay-send-btn, .overlay-scan-btn {
+  width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer;
+  flex-shrink: 0; -webkit-app-region: no-drag;
+}
+#overlay-send-btn {
+  background: #06b6d4; color: #000;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+#overlay-send-btn:hover:not(:disabled) { transform: scale(1.05); }
+#overlay-send-btn:disabled, #overlay-send-btn.sending { opacity: 0.5; cursor: wait; }
+.overlay-scan-btn { background: rgba(0,242,255,0.15); color: #00f2ff; }
+
+#overlay-close-btn {
+  margin-left: auto; background: none; border: none; color: #aaa;
+  font-size: 18px; cursor: pointer; -webkit-app-region: no-drag;
+}

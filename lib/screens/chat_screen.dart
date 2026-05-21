@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -38,19 +37,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
   OrbState _orbState = OrbState.idle;
   String _currentResponse = "";
   String _currentThought = "";
-  String _currentTool = "";
+  bool _isSending = false;
   String _canvasContent = "";
   String _canvasLanguage = "plaintext";
-  bool _isCanvasMarkdown = false;
   String _canvasTitle = "Neural Output";
-  bool _isSending = false;
-  final String _selectedModel = 'aura';
+  bool _isCanvasMarkdown = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(chatProvider.notifier).loadRecentChats(projectId: widget.projectId);
+      
+      ref.listenManual(chatProvider.select((s) => s.activeConvId), (prev, next) {
+        if (prev != next) {
+          setState(() {
+            _currentResponse = "";
+            _currentThought = "";
+            _canvasContent = "";
+            _orbState = OrbState.idle;
+          });
+        }
+      });
+
+      ref.listenManual(chatProvider.select((s) => s.isLoading), (prev, next) {
+        if (prev == true && next == false) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToBottom();
+          });
+        }
+      });
     });
     _textController.addListener(() {
       if (mounted) setState(() {});
@@ -65,8 +81,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
         setState(() {
           _orbState = OrbState.speaking;
           _currentResponse += content;
-          // Keep _currentThought intact so cognitive trace block isn't erased
-          _currentTool = "";
         });
         ref.read(chatProvider.notifier).updateLastMessage(content);
         _detectCodeInResponse(_currentResponse);
@@ -83,18 +97,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
         });
       }
       _scrollToBottom();
-    });
-
-    ref.listenManual(chatProvider.select((s) => s.activeConvId), (prev, next) {
-      if (prev != next) {
-        setState(() {
-          _currentResponse = "";
-          _currentThought = "";
-          _currentTool = "";
-          _canvasContent = "";
-          _orbState = OrbState.idle;
-        });
-      }
     });
   }
 
@@ -174,7 +176,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
             ],
           ),
           _buildThinkingAura(),
-          const AuraAssistBubble(),
+          AuraAssistBubble(
+            onSuggestionTapped: (suggestion) {
+              _textController.text = suggestion;
+              _handleSend();
+            },
+          ),
         ],
       ),
     );
@@ -255,7 +262,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
         itemCount: messages.length + (_isSending && _currentResponse.isEmpty ? 1 : 0),
         itemBuilder: (context, index) {
           if (index < messages.length) {
-            final msg = messages[index];
+            final msg = messages[index] as Map;
             final isUser = msg['role'] == 'user';
             return _buildAnimatedBubble(isUser, msg, index);
           } else {
@@ -269,7 +276,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildAnimatedBubble(bool isUser, Map<String, dynamic> msg, int index) {
+  Widget _buildAnimatedBubble(bool isUser, Map msg, int index) {
     return TweenAnimationBuilder<double>(
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeOutCubic,
@@ -310,11 +317,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildMessageBubble(bool isUser, Map<String, dynamic> msg) {
+  String _parseAndFormatTimestamp(dynamic timestampVal) {
+    if (timestampVal == null) return "";
+    try {
+      final tsStr = timestampVal.toString();
+      final doubleValue = double.tryParse(tsStr);
+      if (doubleValue != null) {
+        final dt = DateTime.fromMillisecondsSinceEpoch((doubleValue * 1000).toInt());
+        return TimeOfDay.fromDateTime(dt).format(context);
+      }
+      final dt = DateTime.parse(tsStr);
+      return TimeOfDay.fromDateTime(dt).format(context);
+    } catch (e) {
+      return "";
+    }
+  }
+
+  Widget _buildMessageBubble(bool isUser, Map msg) {
     final text = msg['content'] ?? '';
-    final timestamp = msg['timestamp'] != null 
-        ? TimeOfDay.fromDateTime(DateTime.parse(msg['timestamp'])).format(context) 
-        : "";
+    final timestamp = _parseAndFormatTimestamp(msg['timestamp']);
 
     if (isUser) {
       return _buildUserBubble(text, timestamp);
@@ -368,6 +389,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
           ),
           const SizedBox(height: 16),
 
+          if (displayThought != null && displayThought.isNotEmpty) ...[
+            _buildReasoningBlock(displayThought),
+            const SizedBox(height: 12),
+          ],
           
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4),

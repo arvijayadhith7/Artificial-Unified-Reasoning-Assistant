@@ -357,95 +357,101 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> with SingleTi
           scale: anim1.value,
           child: Opacity(
             opacity: anim1.value,
-            child: AlertDialog(
-              backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-                side: BorderSide(color: Colors.white.withOpacity(0.05)),
-              ),
-              title: Text(
-                "Initiate Neural Project",
-                style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: titleController,
-                    style: GoogleFonts.outfit(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: "Mission Title...",
-                      hintStyle: GoogleFonts.outfit(color: Colors.white24),
-                      enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
-                      focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.neonCyan)),
-                    ),
+            child: StatefulBuilder(
+              builder: (dialogContext, setDialogState) {
+                return AlertDialog(
+                  backgroundColor: AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    side: BorderSide(color: Colors.white.withOpacity(0.05)),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    "DOMAIN CLUSTER",
-                    style: GoogleFonts.outfit(
-                      color: Colors.white38,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
-                    ),
+                  title: Text(
+                    "Initiate Neural Project",
+                    style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: categories.map((cat) {
-                      final isSelected = selectedCategory == cat;
-                      return GestureDetector(
-                        onTap: () => setState(() => selectedCategory = cat),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppColors.neonCyan.withOpacity(0.1) : Colors.transparent,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: isSelected ? AppColors.neonCyan : Colors.white10),
-                          ),
-                          child: Text(
-                            cat,
-                            style: GoogleFonts.outfit(
-                              color: isSelected ? Colors.white : Colors.white54,
-                              fontSize: 11,
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: titleController,
+                        style: GoogleFonts.outfit(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: "Mission Title...",
+                          hintStyle: GoogleFonts.outfit(color: Colors.white24),
+                          enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+                          focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.neonCyan)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        "DOMAIN CLUSTER",
+                        style: GoogleFonts.outfit(
+                          color: Colors.white38,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: categories.map((cat) {
+                          final isSelected = selectedCategory == cat;
+                          return GestureDetector(
+                            onTap: () => setDialogState(() => selectedCategory = cat),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.neonCyan.withOpacity(0.1) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: isSelected ? AppColors.neonCyan : Colors.white10),
+                              ),
+                              child: Text(
+                                cat,
+                                style: GoogleFonts.outfit(
+                                  color: isSelected ? Colors.white : Colors.white54,
+                                  fontSize: 11,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("ABORT", style: GoogleFonts.outfit(color: Colors.white24, fontSize: 11, fontWeight: FontWeight.bold)),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (titleController.text.isNotEmpty) {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProjectOnboardingScreen(
-                            projectTitle: titleController.text,
-                            category: selectedCategory,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.electricBlue,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text("INITIALIZE", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 11)),
-                ),
-              ],
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text("ABORT", style: GoogleFonts.outfit(color: Colors.white24, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (titleController.text.isNotEmpty) {
+                          Navigator.pop(dialogContext);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProjectOnboardingScreen(
+                                projectTitle: titleController.text,
+                                category: selectedCategory,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.electricBlue,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text("INITIALIZE", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 11)),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );

@@ -13,7 +13,7 @@ class RealtimeIngestionCluster:
         self.search_agent = ResearchAgent()
         self.intelligence_cache: Dict[str, Any] = {}
         self.is_running = False
-        self.topics = ["IPL 2026 Live Scores", "AI Technology News", "Global Market Trends"]
+        self.topics = ["AI Technology News", "Global Market Trends"]
         
     async def start(self):
         """Starts the realtime ingestion loop."""

@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/chat_provider.dart';
+import '../providers/cofounder_chat_provider.dart';
 import '../app_theme.dart';
 import '../chat_service.dart';
 import '../services/workspace_service.dart';
@@ -25,9 +25,9 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
-  OrbState _orbState = OrbState.idle;
   String _currentResponse = "";
-  String _statusMessage = "REASONING ON BLUEPRINT...";
+
+  String _statusMessage = "Searching latest information...";
   bool _isSending = false;
 
   final List<String> _quickActions = [
@@ -43,7 +43,8 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatProvider.notifier).loadRecentChats(projectId: widget.project.id);
+      final notifier = ref.read(cofounderChatProvider.notifier);
+      notifier.loadProjectChats(widget.project.id);
     });
     
     _chatService.connect();
@@ -53,23 +54,21 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
 
       if (type == 'chunk' && content != null) {
         setState(() {
-          _orbState = OrbState.speaking;
           _currentResponse += content;
         });
-        ref.read(chatProvider.notifier).updateLastMessage(content);
+        ref.read(cofounderChatProvider.notifier).updateLastMessage(content);
       } else if (type == 'status' && content != null) {
         setState(() {
           _statusMessage = content;
         });
       } else if (type == 'thought' && content != null) {
         setState(() {
-          _statusMessage = "NEURAL REASONING...";
+          _statusMessage = "Searching latest information...";
         });
       } else if (data['done'] == true) {
         setState(() {
-          _orbState = OrbState.idle;
           _isSending = false;
-          _statusMessage = "REASONING ON BLUEPRINT...";
+          _statusMessage = "Looking that up...";
         });
       }
       _scrollToBottom();
@@ -92,17 +91,16 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
     final text = customText ?? _textController.text.trim();
     if (text.isEmpty) return;
 
-    final chatState = ref.read(chatProvider);
-    final conversationId = chatState.activeConvId ?? "conv_${widget.project.id}_${DateTime.now().millisecondsSinceEpoch}";
+    final chatState = ref.read(cofounderChatProvider);
+    final conversationId = chatState.activeConvId ?? "cofounder_${widget.project.id}_${DateTime.now().millisecondsSinceEpoch}";
 
     setState(() {
       _currentResponse = "";
       if (customText == null) _textController.clear();
-      _orbState = OrbState.thinking;
       _isSending = true;
     });
 
-    ref.read(chatProvider.notifier).addMessage({'role': 'user', 'content': text});
+    ref.read(cofounderChatProvider.notifier).addMessage({'role': 'user', 'content': text});
     
     _chatService.sendMessage(
       text, 
@@ -116,22 +114,19 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
 
   void _handleRefine(String originalText) async {
     setState(() {
-      _orbState = OrbState.thinking;
-      _statusMessage = "NEURAL POLISHING...";
+      _statusMessage = "Getting live updates...";
       _isSending = true;
     });
 
     final refined = await _chatService.refineMessage(originalText);
     
     if (refined != null) {
-      // Add as a new message from Aura
-      ref.read(chatProvider.notifier).addMessage({'role': 'assistant', 'content': refined});
+      ref.read(cofounderChatProvider.notifier).addMessage({'role': 'assistant', 'content': refined});
     }
 
     setState(() {
-      _orbState = OrbState.idle;
       _isSending = false;
-      _statusMessage = "REASONING ON BLUEPRINT...";
+      _statusMessage = "Looking that up...";
     });
     _scrollToBottom();
   }
@@ -144,6 +139,7 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
     super.dispose();
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -158,7 +154,13 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
               _buildInputSection(),
             ],
           ),
-          const AuraAssistBubble(),
+          if (_isSending) _buildNeuralStatus(),
+          AuraAssistBubble(
+            onSuggestionTapped: (suggestion) {
+              _textController.text = suggestion;
+              _handleSend();
+            },
+          ),
         ],
       ),
     );
@@ -187,8 +189,11 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
         ),
         const SizedBox(width: 4),
         IconButton(
-          icon: const Icon(Icons.history_rounded, color: Colors.white24),
-          onPressed: () {}, // History filtered by project
+          icon: const Icon(Icons.restart_alt_rounded, color: Colors.white24),
+          onPressed: () {
+            ref.read(cofounderChatProvider.notifier).startNewSession(widget.project.id);
+          },
+          tooltip: "New Session",
         ),
       ],
     );
@@ -208,7 +213,7 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
   }
 
   Widget _buildChatList() {
-    final messages = ref.watch(chatProvider).currentMessages;
+    final messages = ref.watch(cofounderChatProvider).currentMessages;
     return Expanded(
       child: ListView.builder(
         controller: _scrollController,

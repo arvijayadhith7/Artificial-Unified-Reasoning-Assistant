@@ -4,6 +4,7 @@ const config = require('../config/config');
 
 class MemoryService {
   constructor() {
+    // Exposed as public so external routes can query Supabase directly
     this.supabase = createClient(config.supabaseUrl, config.supabaseKey, {
       auth: { persistSession: false },
       realtime: { transport: WebSocket }
@@ -16,21 +17,18 @@ class MemoryService {
       const { data, error } = await this.supabase
         .from('messages')
         .select('role, content')
-        .eq('session_id', sessionId)
+        .eq('sessionid', sessionId)          // Supabase column: sessionid (no underscore)
         .order('timestamp', { ascending: true })
         .limit(20);
 
       if (error) throw error;
 
-      return data.map(row => ({
+      return (data || []).map(row => ({
         role: row.role,
         parts: [{ text: row.content }]
       }));
     } catch (err) {
       console.error('❌ Supabase History Error:', err.message);
-      if (err.message.includes('column') && err.message.includes('does not exist')) {
-        console.warn('💡 SCHEMA TIP: Ensure your Supabase "messages" table has a "session_id" column (snake_case).');
-      }
       return [];
     }
   }
@@ -39,7 +37,7 @@ class MemoryService {
     try {
       const { error } = await this.supabase
         .from('messages')
-        .insert([{ session_id: sessionId, role, content }]);
+        .insert([{ sessionid: sessionId, role, content }]); // Supabase column: sessionid
 
       if (error) throw error;
     } catch (err) {
@@ -52,7 +50,7 @@ class MemoryService {
       const { error } = await this.supabase
         .from('messages')
         .delete()
-        .eq('session_id', sessionId);
+        .eq('sessionid', sessionId); // Supabase column: sessionid
 
       if (error) throw error;
     } catch (err) {

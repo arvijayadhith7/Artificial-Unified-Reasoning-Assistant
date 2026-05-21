@@ -4,7 +4,6 @@ import '../app_theme.dart';
 import 'chat_screen.dart';
 import 'research_screen.dart';
 import 'workspace_screen.dart';
-import 'cricket_screen.dart';
 import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -22,7 +21,6 @@ class _MainScreenState extends State<MainScreen> {
     const ChatScreen(),
     const ResearchScreen(),
     const WorkspaceScreen(),
-    const CricketScreen(),
     const SettingsScreen(),
   ];
 
@@ -57,8 +55,7 @@ class _MainScreenState extends State<MainScreen> {
           _buildNavItem(Icons.chat_bubble_outline_rounded, "Chat", 0),
           _buildNavItem(Icons.search_rounded, "Research", 1),
           _buildNavItem(Icons.workspaces_outline, "Workspace", 2),
-          _buildNavItem(Icons.sports_cricket_outlined, "Cricket", 3),
-          _buildNavItem(Icons.settings_outlined, "Settings", 4),
+          _buildNavItem(Icons.settings_outlined, "Settings", 3),
         ],
       ),
     );

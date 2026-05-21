@@ -1,0 +1,13 @@
+{
+  "name": "aura-desktop-overlay",
+  "version": "1.0.0",
+  "description": "AURA Universal Desktop Overlay Assistant",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "active-win": "^8.2.1",
+    "electron": "^31.0.0"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AURA Overlay Protocol v1",
+  "definitions": {
+    "OverlaySandbox": {
+      "type": "object",
+      "properties": {
+        "platform": { "enum": ["web", "windows", "android"] },
+        "overlay_mode": { "type": "boolean", "default": true },
+        "assistant_mode": { "enum": ["quick", "tutor", "copilot", "research", "focus"] },
+        "active_app": { "type": "string" },
+        "window_title": { "type": "string" },
+        "accessibility_text": { "type": "string" },
+        "selected_text": { "type": "string" },
+        "screenshot": { "type": "string" },
+        "incognito": { "type": "boolean" },
+        "persona": { "type": "string" },
+        "search_strategy": { "type": "string" },
+        "ocr": { "type": "boolean" },
+        "locale": { "type": "string" }
+      }
+    },
+    "ChatPayload": {
+      "type": "object",
+      "required": ["prompt"],
+      "properties": {
+        "prompt": { "type": "string" },
+        "conversationId": { "type": "string", "default": "aura_overlay" },
+        "projectId": { "type": "string", "default": "global" },
+        "history": { "type": "array" },
+        "sandbox": { "$ref": "#/definitions/OverlaySandbox" }
+      }
+    },
+    "AssistPayload": {
+      "type": "object",
+      "properties": {
+        "event": { "enum": ["screen_update", "analyze", "field_focus"] },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "app_name": { "type": "string" },
+            "language": { "type": "string" },
+            "active_field": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "label": { "type": "string" },
+                "value": { "type": "string" },
+                "type": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

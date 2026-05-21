@@ -5,25 +5,26 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:ai_chatbot/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const AIChatbotApp());
+  testWidgets('AURA App Splash Screen Smoke Test', (WidgetTester tester) async {
+    // Pump the app wrapped in a ProviderScope (required by Riverpod)
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: AIChatbotApp(),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that the splash screen shows "AURA"
+    expect(find.text('AURA'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    // Advance time by 2 seconds to let the splash screen Timer execute
+    await tester.pump(const Duration(seconds: 2));
+    // Settle the navigation frame without running infinite animations indefinitely
     await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
   });
 }

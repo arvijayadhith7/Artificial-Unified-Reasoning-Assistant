@@ -2,12 +2,13 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'config.dart';
 
 class ChatService {
   WebSocketChannel? _channel;
   final _controller = StreamController<Map<String, dynamic>>.broadcast();
-  static const String baseUrl = 'https://vijayadhith7-aura-backend.hf.space';
-  static const String wsUrl = 'wss://vijayadhith7-aura-backend.hf.space/chat';
+  static String get baseUrl => AppConfig.baseUrl;
+  static String get wsUrl => AppConfig.wsChatUrl;
   
   Stream<Map<String, dynamic>> get responseStream => _controller.stream;
 
@@ -31,15 +32,23 @@ class ChatService {
   }
 
   Future<List<dynamic>> fetchRecentChats({String? projectId}) async {
-    final url = projectId != null ? '$baseUrl/chats?project_id=$projectId' : '$baseUrl/chats';
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) return json.decode(response.body);
+    try {
+      final url = projectId != null ? '$baseUrl/chats?project_id=$projectId' : '$baseUrl/chats';
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) return json.decode(response.body);
+    } catch (e) {
+      print("Error fetching recent chats: $e");
+    }
     return [];
   }
 
   Future<List<dynamic>> fetchChatHistory(String convId) async {
-    final response = await http.get(Uri.parse('$baseUrl/chats/$convId'));
-    if (response.statusCode == 200) return json.decode(response.body);
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/chats/$convId')).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) return json.decode(response.body);
+    } catch (e) {
+      print("Error fetching chat history: $e");
+    }
     return [];
   }
 
@@ -68,6 +77,10 @@ class ChatService {
       'history': history,
       'conversationId': conversationId ?? 'conv_${DateTime.now().millisecondsSinceEpoch}',
       'projectId': projectId ?? 'global',
+      'sandbox': {
+        'overlay_mode': false,
+        'platform': 'android_app',
+      },
     });
 
     try {

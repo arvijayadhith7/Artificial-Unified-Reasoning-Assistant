@@ -1,0 +1,10 @@
+.env
+memory/
+__pycache__/
+*.pyc
+.git
+.github
+models/
+scratch_scrape_test.py
+train_llm.py
+ingest_dataset.py

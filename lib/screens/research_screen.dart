@@ -89,7 +89,6 @@ class _ResearchScreenState extends ConsumerState<ResearchScreen> {
                   _buildDiscoveryCard("Research about NVIDIA AI chips", Icons.memory_rounded),
                   _buildDiscoveryCard("Compare GPT-5 vs Claude", Icons.compare_arrows_rounded),
                   _buildDiscoveryCard("Future of Quantum Computing", Icons.science_rounded),
-                  _buildDiscoveryCard("Latest IPL statistics", Icons.sports_cricket_rounded),
                   _buildDiscoveryCard("Best open-source AI models", Icons.folder_shared_rounded),
                 ],
               ),
@@ -102,10 +101,13 @@ class _ResearchScreenState extends ConsumerState<ResearchScreen> {
                 padding: const EdgeInsets.only(bottom: 16.0),
                 child: Row(
                   children: [
-                    const SizedBox(
-                      width: 12, height: 12,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE0B0FF)),
-                    ),
+                    if (researchState.isResearching)
+                      const SizedBox(
+                        width: 12, height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFE0B0FF)),
+                      )
+                    else
+                      const Icon(Icons.check_circle_outline_rounded, color: Color(0xFFE0B0FF), size: 14),
                     const SizedBox(width: 12),
                     Text(researchState.status.toUpperCase(), style: GoogleFonts.outfit(color: const Color(0xFFE0B0FF), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   ],
