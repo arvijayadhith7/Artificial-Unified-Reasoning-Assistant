@@ -280,20 +280,25 @@
     </section>
 
     <!-- Vinyl Materials details -> Architecture Layers -->
-    <section class="materials-section" id="architecture">
-        <div class="container container-narrow text-center">
-            <!-- Details -->
-            <div class="materials-text-content">
+    <section class="materials-section" id="architecture" style="padding: 100px 0;">
+        <div class="container grid-2" style="align-items: center;">
+            <div class="architecture-visual" style="position: relative;">
+                <img src="assets/aura_engine_core.png" alt="AURA Secure Engine" style="width: 100%; max-width: 500px; border-radius: var(--border-radius-lg); box-shadow: 0 20px 40px rgba(0, 242, 255, 0.2); border: 1px solid rgba(0, 242, 255, 0.4);">
+                <div style="position: absolute; top: -20px; left: -20px; width: 100px; height: 100px; background: var(--clr-primary); filter: blur(60px); opacity: 0.3; z-index: -1;"></div>
+                <div style="position: absolute; bottom: -20px; right: -20px; width: 100px; height: 100px; background: var(--neon-cyan); filter: blur(60px); opacity: 0.3; z-index: -1;"></div>
+            </div>
+            
+            <div class="materials-text-content" style="text-align: left;">
                 <h2 class="section-title" id="materials-title">THE SECURE ENGINE WITH LOCAL-FIRST ISOLATION.</h2>
-                <p class="section-desc">
+                <p class="section-desc" style="text-align: left; margin-left: 0; max-width: 100%;">
                     Engineered on Bun and FastAPI to coordinate screen OCR capture and secure, sandboxed tool-calling executors.
                 </p>
-                <ul class="material-list">
-                    <li><span class="list-bullet"></span> 100% Local-First Sandbox Memory</li>
-                    <li><span class="list-bullet"></span> Hardware-Accelerated Inference</li>
-                    <li><span class="list-bullet"></span> Isolated Python Tool Execution</li>
+                <ul class="material-list" style="text-align: left; display: flex; flex-direction: column; gap: 15px;">
+                    <li style="display: flex; align-items: center; gap: 10px;"><span style="width: 8px; height: 8px; background: var(--clr-primary); border-radius: 50%;"></span> 100% Local-First Sandbox Memory</li>
+                    <li style="display: flex; align-items: center; gap: 10px;"><span style="width: 8px; height: 8px; background: var(--clr-primary); border-radius: 50%;"></span> Hardware-Accelerated Inference</li>
+                    <li style="display: flex; align-items: center; gap: 10px;"><span style="width: 8px; height: 8px; background: var(--clr-primary); border-radius: 50%;"></span> Isolated Python Tool Execution</li>
                 </ul>
-                <div>
+                <div style="margin-top: 30px;">
                     <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" class="btn btn-primary btn-large" id="btn-order-custom">
                         Developer Guide
                     </a>
@@ -302,81 +307,7 @@
         </div>
     </section>
 
-    <!-- Supported Software Section -->
-    <section class="software-support-section" id="supported-software">
-        <div class="container">
-            <h2 class="section-title text-center" id="software-title" style="color: white;">UNIVERSAL OVERLAY COMPATIBILITY</h2>
-            <p class="section-desc text-center" style="color: #94a3b8; font-size: 1.1rem;">AURA provides contextual step-by-step guidance, tool recommendations, and automated workflows natively across <strong style="color: var(--neon-cyan);">ALL SOFTWARE AND WEBSITES</strong>.</p>
-            
-            <div class="software-grid">
-                <!-- Card 1 -->
-                <div class="software-card">
-                    <div class="software-header">
-                        <i class="fa-solid fa-image software-icon"></i>
-                        <h3>Photoshop & GIMP</h3>
-                    </div>
-                    <ul class="software-features">
-                        <li>Step-by-step editing guide</li>
-                        <li>Tool recommendations</li>
-                        <li>Technique tutorials</li>
-                        <li>Layer and effect tips</li>
-                    </ul>
-                </div>
-                <!-- Card 2 -->
-                <div class="software-card">
-                    <div class="software-header">
-                        <i class="fa-solid fa-cube software-icon"></i>
-                        <h3>Blender</h3>
-                    </div>
-                    <ul class="software-features">
-                        <li>Automated rendering setup</li>
-                        <li>Material node guidance</li>
-                        <li>Hotkey & modifier hints</li>
-                        <li>Scene optimization tips</li>
-                    </ul>
-                </div>
-                <!-- Card 3 -->
-                <div class="software-card">
-                    <div class="software-header">
-                        <i class="fa-solid fa-video software-icon"></i>
-                        <h3>OBS Studio</h3>
-                    </div>
-                    <ul class="software-features">
-                        <li>Scene transition automation</li>
-                        <li>Audio filter configurations</li>
-                        <li>Stream health monitoring</li>
-                        <li>Macro & overlay triggers</li>
-                    </ul>
-                </div>
-                <!-- Card 4 -->
-                <div class="software-card">
-                    <div class="software-header">
-                        <i class="fa-solid fa-code software-icon"></i>
-                        <h3>Code Editors</h3>
-                    </div>
-                    <ul class="software-features">
-                        <li>Contextual code review</li>
-                        <li>Terminal error resolution</li>
-                        <li>Git commit assistance</li>
-                        <li>Architecture pattern tips</li>
-                    </ul>
-                </div>
-                <!-- Card 5 (Universal) -->
-                <div class="software-card" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(0, 242, 255, 0.05)); border: 1px solid rgba(0, 242, 255, 0.3);">
-                    <div class="software-header">
-                        <i class="fa-solid fa-globe software-icon" style="color: var(--neon-cyan);"></i>
-                        <h3>All Other Software & Websites</h3>
-                    </div>
-                    <ul class="software-features" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                        <li>Adaptive UI intelligence</li>
-                        <li>Zero-click screen OCR context</li>
-                        <li>Works over any web browser</li>
-                        <li>Analyzes any desktop application</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
+
 
     <!-- Testimonials Section -->
     <section class="testimonials-section" id="testimonials">
