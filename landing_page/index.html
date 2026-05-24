@@ -8,212 +8,376 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2.8.5">
-    <!-- FontAwesome for Premium Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Ambient Grid & Glow backdrops -->
-    <div class="ambient-grid"></div>
-    <div class="glow-orb glow-1"></div>
-    <div class="glow-orb glow-2"></div>
-
-    <!-- Navigation Header -->
-    <header class="main-header">
-        <div class="logo">
-            <div class="halo-icon-small"></div>
-            <span>AURA</span>
-        </div>
-        <nav class="nav-links">
-            <a href="#features">Features</a>
-            <a href="#halo-showcase">Neural Halo</a>
-            <a href="#architecture">Architecture</a>
-        </nav>
-        <div class="cta-header">
-            <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" class="github-btn">
-                <i class="fab fa-github"></i> GitHub
-            </a>
+    <!-- Header Navigation -->
+    <header class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo" id="nav-logo">AURA.</a>
+            <nav class="nav-menu" id="nav-menu">
+                <a href="#home" class="nav-link active" id="link-home">HOME</a>
+                <a href="#features" class="nav-link" id="link-features">FEATURES</a>
+                <a href="#halo" class="nav-link" id="link-halo">HALO</a>
+                <a href="#architecture" class="nav-link" id="link-architecture">ARCHITECTURE</a>
+            </nav>
+            <div class="nav-actions">
+                <a href="feedback.html" class="btn btn-outline" id="btn-open-portal">Feedback</a>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Toggle Navigation Menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
         </div>
     </header>
 
     <!-- Hero Section -->
-    <section class="hero-section">
-        <div class="hero-content">
-            <div class="badge">AURA V2.8.5 — NEURAL OS LAYER ACTIVE</div>
-            <h1>The Ambient AI Operating Layer For Your Device</h1>
-            <p class="hero-desc">
-                Aura is your modern <strong>Ambient AI Operating Layer</strong>. By uniting the strategic intelligence of ChatGPT, deep web research of Perplexity, markdown productivity of Notion, and inline coding automation of Cursor, Aura functions as your seamless <strong>Second Brain</strong>. 
-                <br><br>
-                When you tap the glowing signature <strong>Neural Halo</strong>, a beautiful glassmorphic floating <strong>Aura Assistant</strong> slides overlaying your active workspace—answering questions, analyzing screens, and automating workflows in real time.
-            </p>
-            <div class="download-container">
-                <a href="../Aura-Launcher.zip" class="download-btn app-btn" download>
-                    <i class="fab fa-windows"></i>
-                    <div class="btn-text">
-                        <span class="btn-sub">Download for</span>
-                        <span class="btn-main">Windows Desktop</span>
-                    </div>
-                </a>
-                <a href="../aura-release.apk" class="download-btn android-btn" download>
-                    <i class="fab fa-android"></i>
-                    <div class="btn-text">
-                        <span class="btn-sub">Download for</span>
-                        <span class="btn-main">Android (APK)</span>
-                    </div>
-                </a>
-            </div>
-            <div class="meta-info">
-                <span><i class="fas fa-shield-alt"></i> 100% Local-First Sandbox</span>
-                <span><i class="fas fa-bolt"></i> Real-Time Floating Overlay</span>
-            </div>
-        </div>
-
-        <div class="hero-viewport">
-            <div class="mockup-frame">
-                <div class="glow-border"></div>
-                <img src="assets/mockup.png" alt="AURA Futuristic Holographic OS Mockup" class="mockup-img">
-            </div>
-        </div>
-    </section>
-
-    <!-- Core Interactive Showcase (Neural Halo) -->
-    <section id="halo-showcase" class="showcase-section">
-        <div class="section-title">
-            <h2>The Signature Neural Halo</h2>
-            <p>Interactive cognitive states showing Aura's visual operating signature</p>
-        </div>
-        <div class="halo-container">
-            <div class="halo-interactive">
-                <div class="interactive-halo-outer">
-                    <div class="interactive-halo-core" id="halo-core"></div>
-                    <div class="interactive-halo-ring" id="halo-ring"></div>
-                </div>
-                <div class="halo-status-text" id="status-label">AURA CORE: IDLE</div>
-            </div>
-            <div class="state-selectors">
-                <button class="state-btn active" onclick="setHaloState('idle', 'AURA CORE: IDLE')">
-                    <i class="fas fa-circle"></i> Idle State
-                </button>
-                <button class="state-btn" onclick="setHaloState('listening', 'AURA CORE: LISTENING...')">
-                    <i class="fas fa-microphone"></i> Listening State
-                </button>
-                <button class="state-btn" onclick="setHaloState('thinking', 'AURA CORE: COGNITIVE ANALYSIS')">
-                    <i class="fas fa-sync-alt fa-spin-slow"></i> Thinking State
-                </button>
-                <button class="state-btn" onclick="setHaloState('analyzing', 'AURA CORE: SYSTEM SCAN')">
-                    <i class="fas fa-shield-virus"></i> Analyzing State
-                </button>
-            </div>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section id="features" class="features-section">
-        <div class="section-title">
-            <h2>Next-Gen Cognitive Engine</h2>
-            <p>Designed to be lightweight, secure, and visually seamless</p>
-        </div>
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="icon-box"><i class="fas fa-window-restore"></i></div>
-                <h3>Aura Overlay Assist</h3>
-                <p>A floating context-aware glassmorphic bubble that works on top of any third-party app to guide your workflows step-by-step.</p>
-            </div>
-            <div class="feature-card">
-                <div class="icon-box"><i class="fas fa-brain"></i></div>
-                <h3>Hybrid SLM/LLM Engine</h3>
-                <p>Powered by a dynamic router selecting between Llama 3.1 8B for fast replies and Llama 3.3 70B for complex engineering tasks.</p>
-            </div>
-            <div class="feature-card">
-                <div class="icon-box"><i class="fas fa-globe"></i></div>
-                <h3>Real-Time Live Web Ingestion</h3>
-                <p>Built-in search engine cluster dynamically fetches and resolves queries (including live search and research data) instantly.</p>
-            </div>
-        </div>
-    </section>
- 
-    <!-- Architecture Section -->
-    <section id="architecture" class="architecture-section">
-        <div class="section-title">
-            <h2>Isolated Core Architecture</h2>
-            <p>Engineered for secure, ultra-low latency contextual intelligence</p>
-        </div>
+    <section class="hero" id="home">
+        <!-- Video Background -->
+        <video autoplay loop muted playsinline class="hero-video-bg">
+            <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4" type="video/mp4">
+        </video>
+        <div class="hero-video-overlay"></div>
         
-        <div class="arch-flow-diagram">
-            <!-- Layer 1 -->
-            <div class="arch-card">
-                <div class="arch-badge">LAYER 1</div>
-                <div class="arch-icon-wrapper"><i class="fas fa-mobile-alt"></i></div>
-                <h3>On-Device UI Context</h3>
-                <p>Lightweight visual overlay parsing screens natively using secure sandbox bounds at 60fps.</p>
-                <div class="arch-tags">
-                    <span>Flutter Native</span>
-                    <span>Local OCR Scanning</span>
+        <div class="hero-container container-narrow text-center">
+            <div class="hero-text-content">
+                <!-- Sparkle Decors -->
+                <div class="sparkle sparkle-1"><i class="fa-solid fa-star-of-life"></i></div>
+                <div class="sparkle sparkle-2"><i class="fa-solid fa-star-of-life"></i></div>
+                
+                <!-- AURA Full Form Badge -->
+                <div class="hero-badge-pill" id="hero-badge">ARTIFICIAL UNIFIED REASONING ASSISTANT</div>
+                
+                <h1 id="hero-title">THE AMBIENT AI<br>OPERATING LAYER</h1>
+                <p class="hero-subtitle" id="hero-desc">
+                    A futuristic visual operating layer that guides, automates, and reasons natively over third-party applications.
+                </p>
+
+                <!-- CTA Actions -->
+                <div class="hero-actions">
+                    <button class="btn btn-primary" id="btn-hero-join-waitlist" onclick="openWaitlistModal()">
+                        <i class="fa-solid fa-hourglass-half"></i> Request Priority Access / Join Waitlist
+                    </button>
+                </div>
+
+                <!-- Social Proof / Trusted Badge -->
+                <div class="trusted-badge" id="trusted-badge">
+                    <div class="avatar-group">
+                        <div class="avatar-img avatar-1"></div>
+                        <div class="avatar-img avatar-2"></div>
+                        <div class="avatar-img avatar-3"></div>
+                    </div>
+                    <div class="trusted-text" style="text-align: left;">
+                        <strong>10k+ local nodes active</strong>
+                        <span>hardware-accelerated local memory</span>
+                    </div>
                 </div>
             </div>
- 
-            <!-- Connector 1 -->
-            <div class="arch-connector">
-                <div class="connector-line"></div>
-                <i class="fas fa-chevron-right connector-arrow animate-arrow"></i>
+        </div>
+    </section>
+
+    <!-- Sub-features Info Section -->
+    <section class="packs-info" id="features">
+        <div class="container grid-2">
+            <h2 class="section-title" id="packs-title">
+                EVOLVE YOUR DEVICE WITH THE TWO COGNITIVE LAYERS.
+            </h2>
+            <div class="pack-cards">
+                <div class="pack-card" id="pack-custom">
+                    <div class="pack-icon-wrapper">
+                        <i class="fa-solid fa-window-restore"></i>
+                    </div>
+                    <div class="pack-content">
+                        <h3>Neural Overlay</h3>
+                        <p>A transparent glassmorphic floating assistant tracking active workflow context and serving recommendations.</p>
+                    </div>
+                </div>
+                <div class="pack-card" id="pack-stock">
+                    <div class="pack-icon-wrapper">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <div class="pack-content">
+                        <h3>Cognitive Core</h3>
+                        <p>Hybrid strategic LRM reasoning running locally and securely in a sandbox using optimized SLMs.</p>
+                    </div>
+                </div>
             </div>
- 
-            <!-- Layer 2 -->
-            <div class="arch-card active-card">
-                <div class="arch-badge badge-active">LAYER 2</div>
-                <div class="arch-icon-wrapper"><i class="fas fa-shield-alt"></i></div>
-                <h3>AI Strategic Reasoning</h3>
-                <p>FastAPI middleware parses user memory variables and routes requests through optimal SLM/LLM pathways.</p>
-                <div class="arch-tags">
-                    <span>Llama Hybrid Engine</span>
-                    <span>FastAPI Routing</span>
+        </div>
+    </section>
+
+    <!-- Bento Box Product Showcase Section -> Interactive Neural Halo Simulator -->
+    <section class="pro-stocks-section" id="halo">
+        <div class="bento-container">
+            <div class="bento-header">
+                <h2 id="bento-title">INTERACTIVE COGNITIVE CORE</h2>
+                <p id="bento-desc">Select a neural state or message AURA to simulate reasoning and agentic workflows.</p>
+
+                <!-- Interactive Neural Halo Core -->
+                <div class="halo-showcase-container">
+                    <div class="interactive-halo-outer">
+                        <div class="interactive-halo-core core-idle" id="halo-core"></div>
+                        <div class="interactive-halo-ring ring-idle" id="halo-ring"></div>
+                    </div>
+                    <div class="halo-status-text" id="status-label">AURA CORE: IDLE</div>
+                </div>
+
+                <!-- Tabs (Neural States) -->
+                <div class="tab-filters" id="neural-states-tabs" style="margin-top: 24px;">
+                    <button class="tab-btn active" id="tab-idle" onclick="setHaloState('idle', 'AURA CORE: IDLE')">
+                        <i class="fas fa-circle"></i> Idle State
+                    </button>
+                    <button class="tab-btn" id="tab-listening" onclick="setHaloState('listening', 'AURA CORE: LISTENING...')">
+                        <i class="fas fa-microphone"></i> Listening State
+                    </button>
+                    <button class="tab-btn" id="tab-thinking" onclick="setHaloState('thinking', 'AURA CORE: COGNITIVE ANALYSIS')">
+                        <i class="fas fa-sync-alt fa-spin-slow"></i> Thinking State
+                    </button>
+                    <button class="tab-btn" id="tab-analyzing" onclick="setHaloState('analyzing', 'AURA CORE: SYSTEM SCAN')">
+                        <i class="fas fa-shield-virus"></i> Analyzing State
+                    </button>
+                </div>
+
+                <!-- Search & Filters Combo -->
+                <div class="search-filter-bar" id="search-filter-bar">
+                    <div class="search-dropdown-wrap">
+                        <select class="search-select" id="category-select" onchange="filterProducts()">
+                            <option value="all">All Pages</option>
+                            <option value="chat">Chat Hub</option>
+                            <option value="research">Web Research</option>
+                            <option value="workspace">Workspace Monitor</option>
+                        </select>
+                    </div>
+                    <input type="text" class="search-input" id="search-input" placeholder="Search pages..." onkeyup="filterProducts()">
+                    <button class="search-btn" id="btn-search" aria-label="Search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tab-filters" id="page-tags-tabs">
+                    <button class="tab-btn active" id="tab-all" onclick="setTab('all')">All Pages</button>
+                    <button class="tab-btn" id="tab-popular" onclick="setTab('core')">Core Features</button>
+                    <button class="tab-btn" id="tab-premium" onclick="setTab('advanced')">Advanced Tools</button>
                 </div>
             </div>
 
-            <!-- Connector 2 -->
-            <div class="arch-connector">
-                <div class="connector-line"></div>
-                <i class="fas fa-chevron-right connector-arrow animate-arrow"></i>
+            <!-- Product Cards Grid (AURA System Screens) -->
+            <div class="product-grid" id="product-grid">
+                <!-- Card 1 -->
+                <div class="product-card" data-category="chat" data-tag="core" id="prod-1">
+                    <div class="prod-img-wrap window-mockup">
+                        <div class="window-header">
+                            <span class="win-dot close"></span>
+                            <span class="win-dot minimize"></span>
+                            <span class="win-dot maximize"></span>
+                            <span class="win-title">Chat Hub</span>
+                        </div>
+                        <div class="window-body">
+                            <img src="assets/aura_hologram.png" alt="AURA Chat Interface Hub">
+                        </div>
+                    </div>
+                    <div class="prod-info">
+                        <h3>Chat Hub</h3>
+                        <p class="price">Strategic Chat UI</p>
+                        <p style="font-size: 0.85rem; color: var(--clr-text-muted); margin-bottom: 5px;">
+                            Interact with optimized hybrid local/cloud LRM models for strategic reasoning.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="product-card" data-category="research" data-tag="core advanced" id="prod-2">
+                    <div class="prod-img-wrap window-mockup">
+                        <div class="window-header">
+                            <span class="win-dot close"></span>
+                            <span class="win-dot minimize"></span>
+                            <span class="win-dot maximize"></span>
+                            <span class="win-title">Web Research</span>
+                        </div>
+                        <div class="window-body">
+                            <img src="assets/layer3_card.png" alt="AURA Web Ingestion Search Screen">
+                        </div>
+                    </div>
+                    <div class="prod-info">
+                        <h3>Web Research</h3>
+                        <p class="price">Agentic Search Engine</p>
+                        <p style="font-size: 0.85rem; color: var(--clr-text-muted); margin-bottom: 5px;">
+                            Deep recursive web ingestion cluster serving contextual answers with citations.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="product-card" data-category="workspace" data-tag="core advanced" id="prod-3">
+                    <div class="prod-img-wrap window-mockup">
+                        <div class="window-header">
+                            <span class="win-dot close"></span>
+                            <span class="win-dot minimize"></span>
+                            <span class="win-dot maximize"></span>
+                            <span class="win-title">Workspace</span>
+                        </div>
+                        <div class="window-body">
+                            <img src="assets/layer1_card.png" alt="AURA Workspace context tracking">
+                        </div>
+                    </div>
+                    <div class="prod-info">
+                        <h3>Workspace Monitor</h3>
+                        <p class="price">Real-Time Context Sync</p>
+                        <p style="font-size: 0.85rem; color: var(--clr-text-muted); margin-bottom: 5px;">
+                            Track terminal output, folder edits, and AST compilers in a unified workspace.
+                        </p>
+                    </div>
+                </div>
+
+
             </div>
 
-            <!-- Layer 3 -->
-            <div class="arch-card">
-                <div class="arch-badge">LAYER 3</div>
-                <div class="arch-icon-wrapper"><i class="fas fa-globe-asia"></i></div>
-                <h3>Live Web Ingestion</h3>
-                <p>Dynamic Tavily search clusters ground outputs with compared citations and crawl stats instantly.</p>
-                <div class="arch-tags">
-                    <span>Tavily Crawler</span>
-                    <span>Real-Time Citations</span>
+            <div class="bento-footer">
+                <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" class="btn btn-secondary btn-icon-right" id="btn-more-page">
+                    <span>View Repository Specs</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Vinyl Materials details -> Architecture Layers -->
+    <section class="materials-section" id="architecture">
+        <div class="container container-narrow text-center">
+            <!-- Details -->
+            <div class="materials-text-content">
+                <h2 class="section-title" id="materials-title">THE SECURE ENGINE WITH LOCAL-FIRST ISOLATION.</h2>
+                <p class="section-desc">
+                    Engineered on Bun and FastAPI to coordinate screen OCR capture and secure, sandboxed tool-calling executors.
+                </p>
+                <ul class="material-list">
+                    <li><span class="list-bullet"></span> 100% Local-First Sandbox Memory</li>
+                    <li><span class="list-bullet"></span> Hardware-Accelerated Inference</li>
+                    <li><span class="list-bullet"></span> Isolated Python Tool Execution</li>
+                </ul>
+                <div>
+                    <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" class="btn btn-primary btn-large" id="btn-order-custom">
+                        Developer Guide
+                    </a>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials-section" id="testimonials">
+        <div class="container">
+            <h2 class="section-title text-center" id="testimonials-title">SEE WHAT DEVELOPERS ARE SAYING</h2>
+            
+            <div class="testimonials-grid">
+                <!-- Testimonial 1 -->
+                <div class="testimonial-card" id="testi-1">
+                    <div class="rating-stars">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                    <p class="testi-text">
+                        "Outstanding performance. The local-first memory structure ensures complete privacy while remaining faster than cloud alternatives."
+                    </p>
+                    <div class="testi-user">
+                        <strong>Alex P.</strong>
+                        <span>Software Architect</span>
+                    </div>
+                </div>
+
+                <!-- Testimonial 2 -->
+                <div class="testimonial-card" id="testi-2">
+                    <div class="rating-stars">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                    <p class="testi-text">
+                        "Really loved the screen-context parsing. It feels like the AI is actually co-piloting my terminal alongside me."
+                    </p>
+                    <div class="testi-user">
+                        <strong>Clara S.</strong>
+                        <span>Developer Advocate</span>
+                    </div>
+                </div>
+
+                <!-- Testimonial 3 -->
+                <div class="testimonial-card" id="testi-3">
+                    <div class="rating-stars">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                    <p class="testi-text">
+                        "Aura's hybrid SLM/LLM routing is ingenious. Keeps CPU utilization low and switches models instantly."
+                    </p>
+                    <div class="testi-user">
+                        <strong>Marcus J.</strong>
+                        <span>Open-Source Contributor</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Business CTA Box -->
+            <div class="business-cta-box" id="business-cta-box">
+                <p>WANT TO TALK ABOUT INTEGRATING CUSTOM TOOLS WITH AURA?</p>
+                <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" class="btn btn-light" id="btn-see-offered">See Specs</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reseller Banner Section -> Contributor Section -->
+    <section class="reseller-section" id="reseller">
+        <div class="container container-narrow bg-gray-rounded text-center">
+            <div class="reseller-text">
+                <h2 class="section-title" id="reseller-title">DEPLOY AURA NODE AND GET MANY BENEFITS</h2>
+                <p class="section-desc">
+                    Learn how to connect custom tools, host local models, and build plugins for AURA.
+                </p>
+                <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" class="btn btn-primary" id="btn-join-reseller">
+                    Developer Guide
+                </a>
             </div>
         </div>
     </section>
 
     <!-- Footer -->
-    <footer class="main-footer">
-        <div class="footer-logo">
-            <span>AURA</span>
-        </div>
-        <p>Aura is open-source, local-first, and built for futuristic human-machine interaction.</p>
-        <div class="footer-links">
-            <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank"><i class="fab fa-github"></i> Repository</a>
-            <a href="#privacy"><i class="fas fa-lock"></i> Security & Isolation Policy</a>
-        </div>
-        <div class="copyright">
-            &copy; 2026 AURA Neural OS. Deployed under MIT License.
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-branding">
+                <h2 class="logo">AURA.</h2>
+                <p>Open-source, local-first neural operating assistant</p>
+            </div>
+            <div class="footer-socials">
+                <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+                <a href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
+                <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+            </div>
         </div>
     </footer>
 
-    <!-- Interactive JS to drive the Neural Halo visual states -->
+    <!-- Interactive Logic -->
     <script>
+        function activateModule(name) {
+            alert(`Module Activated: ${name}! Starting core hook process...`);
+        }
+
+        // Interactive JS to drive the Neural Halo visual states
         function setHaloState(state, text) {
             const core = document.getElementById('halo-core');
             const ring = document.getElementById('halo-ring');
             const label = document.getElementById('status-label');
-            const buttons = document.querySelectorAll('.state-btn');
+            const buttons = document.querySelectorAll('#neural-states-tabs .tab-btn');
 
             // Reset states
             core.className = 'interactive-halo-core';
@@ -228,6 +392,176 @@
             buttons.forEach(btn => btn.classList.remove('active'));
             event.currentTarget.classList.add('active');
         }
+
+        function filterProducts() {
+            const categorySelect = document.getElementById('category-select').value;
+            const searchInput = document.getElementById('search-input').value.toLowerCase();
+            const cards = document.querySelectorAll('.product-grid .product-card');
+
+            cards.forEach(card => {
+                const cardCategory = card.getAttribute('data-category');
+                const cardTitle = card.querySelector('h3').innerText.toLowerCase();
+                const cardDesc = card.querySelector('p').innerText.toLowerCase();
+                
+                const categoryMatch = (categorySelect === 'all' || cardCategory === categorySelect);
+                const searchMatch = cardTitle.includes(searchInput) || cardDesc.includes(searchInput);
+                
+                if (categoryMatch && searchMatch) {
+                    card.classList.remove('filtered-out');
+                } else {
+                    card.classList.add('filtered-out');
+                }
+            });
+        }
+
+        function setTab(tag) {
+            // Find tab buttons for categories and toggle active class
+            const tabButtons = document.querySelectorAll('#page-tags-tabs .tab-btn');
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            const cards = document.querySelectorAll('.product-grid .product-card');
+            cards.forEach(card => {
+                const tags = card.getAttribute('data-tag').split(' ');
+                if (tag === 'all' || tags.includes(tag)) {
+                    card.classList.remove('filtered-out');
+                } else {
+                    card.classList.add('filtered-out');
+                }
+            });
+        }
+
+        // Sticky Navbar Scroll effect
+        window.addEventListener('scroll', function() {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // Mobile Nav Toggle
+        const menuToggle = document.getElementById('menu-toggle');
+        const navMenu = document.getElementById('nav-menu');
+        
+        menuToggle.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            const icon = menuToggle.querySelector('i');
+            if(navMenu.classList.contains('active')) {
+                icon.classList.replace('fa-bars', 'fa-xmark');
+            } else {
+                icon.classList.replace('fa-xmark', 'fa-bars');
+            }
+        });
+
+        // Waitlist Modal Actions
+        function openWaitlistModal() {
+            const modal = document.getElementById('waitlist-modal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeWaitlistModal() {
+            const modal = document.getElementById('waitlist-modal');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            
+            // Reset form / success state for next open
+            setTimeout(() => {
+                document.getElementById('waitlist-form').style.display = 'block';
+                document.getElementById('waitlist-success').style.display = 'none';
+                document.getElementById('waitlist-form').reset();
+            }, 300);
+        }
+
+        function submitWaitlist(event) {
+            event.preventDefault();
+            const name = document.getElementById('waitlist-name').value;
+            const email = document.getElementById('waitlist-email').value;
+            const platform = document.getElementById('waitlist-platform').value;
+            const role = document.getElementById('waitlist-role').value;
+            const usecase = document.getElementById('waitlist-usecase').value;
+
+            console.log("Waitlist Requested:", { name, email, platform, role, usecase });
+
+            fetch('/api/waitlist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, email, platform, role, usecase })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Waitlist Registered Successfully:", data);
+            })
+            .catch(err => {
+                console.error("Error registering waitlist:", err);
+            });
+
+            // Swap display to success view
+            document.getElementById('waitlist-form').style.display = 'none';
+            document.getElementById('waitlist-success').style.display = 'block';
+        }
     </script>
+
+    <!-- Waitlist Modal -->
+    <div id="waitlist-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeWaitlistModal()">&times;</button>
+            <div class="modal-header">
+                <h2>Join AURA Waitlist</h2>
+                <p>Priority access is rolling out in stages. Provide your preferences to reserve a node slots key.</p>
+            </div>
+            <form class="waitlist-form" id="waitlist-form" onsubmit="submitWaitlist(event)">
+                <div class="form-group">
+                    <label for="waitlist-name">Your Name</label>
+                    <input type="text" id="waitlist-name" required placeholder="e.g. Alex Carter">
+                </div>
+                <div class="form-group">
+                    <label for="waitlist-email">Email Address</label>
+                    <input type="email" id="waitlist-email" required placeholder="e.g. alex@example.com">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="waitlist-platform">Preferred Platform</label>
+                        <select id="waitlist-platform" required>
+                            <option value="windows" selected>Windows Node</option>
+                            <option value="android">Android APK</option>
+                            <option value="macos">macOS client</option>
+                            <option value="linux">Linux daemon</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="waitlist-role">Primary Role</label>
+                        <select id="waitlist-role" required>
+                            <option value="developer" selected>Developer</option>
+                            <option value="researcher">AI Researcher</option>
+                            <option value="creator">Content Creator</option>
+                            <option value="enthusiast">Tech Enthusiast</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="waitlist-usecase">What is your main use case for AURA?</label>
+                    <textarea id="waitlist-usecase" placeholder="e.g., executing local Python tools, context-aware browser automation, offline LRM execution..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-submit btn-primary" style="width: 100%;">
+                    Request Priority Key
+                </button>
+            </form>
+            <div class="waitlist-success-state" id="waitlist-success">
+                <div class="success-icon-halo">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3>Waitlist Position Locked</h3>
+                <p>Your node configuration has been queued. We will notify you at your registered email address when your stage opens.</p>
+                <button class="btn btn-outline" onclick="closeWaitlistModal()">Close Window</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
