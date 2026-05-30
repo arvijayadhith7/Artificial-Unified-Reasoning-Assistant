@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/images/aura_github_banner.png" width="100%" alt="AURA Banner">
+  <img src="docs/images/aura_github_banner_new.jpg" width="100%" alt="AURA Banner">
 </div>
 
 # AURA: Artificial Unified Reasoning Assistant 🌌
