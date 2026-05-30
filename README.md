@@ -4,14 +4,14 @@
 
 # AURA: Artificial Unified Reasoning Assistant 🌌
 
-<div align="center">
-  [![License: MIT](https://img.shields.io/badge/License-MIT-00f2ff.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-  [![Platform: Flutter](https://img.shields.io/badge/Platform-Flutter-02569B.svg?style=flat-square&logo=flutter)](https://flutter.dev)
-  [![Backend: Bun/FastAPI](https://img.shields.io/badge/Backend-Bun%20%2F%20FastAPI-orange.svg?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
-  [![Hardware: Intel OpenVINO](https://img.shields.io/badge/Inference-Intel%20OpenVINO-0068B5.svg?style=flat-square&logo=intel&logoColor=white)](https://software.intel.com/content/www/us/en/develop/tools/openvino-toolkit.html)
-  [![Version: 1.0.0](https://img.shields.io/badge/Version-v1.0.0-brightgreen.svg?style=flat-square)](https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-/releases)
-  [![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289da.svg?style=flat-square&logo=discord)](#)
-</div>
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-00f2ff.svg?style=flat-square" alt="License: MIT"></a>
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Platform-Flutter-02569B.svg?style=flat-square&logo=flutter" alt="Platform: Flutter"></a>
+  <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/Backend-Bun%20%2F%20FastAPI-orange.svg?style=flat-square&logo=fastapi" alt="Backend: Bun/FastAPI"></a>
+  <a href="https://software.intel.com/content/www/us/en/develop/tools/openvino-toolkit.html"><img src="https://img.shields.io/badge/Inference-Intel%20OpenVINO-0068B5.svg?style=flat-square&logo=intel&logoColor=white" alt="Hardware: Intel OpenVINO"></a>
+  <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-/releases"><img src="https://img.shields.io/badge/Version-v1.0.0-brightgreen.svg?style=flat-square" alt="Version: 1.0.0"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Discord-Join%20Us-7289da.svg?style=flat-square&logo=discord" alt="Discord"></a>
+</p>
 
 AURA is an enterprise-grade, high-performance hybrid AI assistant ecosystem designed to bridge the gap between lightning-fast cloud intelligence and private, localized tool-calling capabilities. Featuring a gorgeous glassmorphic Flutter client and a high-speed Python/Bun backend gateway, AURA delivers real-time workspace tracking, contextual screen scanning, and self-improving memory recall.
 
