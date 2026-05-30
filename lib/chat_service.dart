@@ -1,6 +1,7 @@
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'config.dart';
 
@@ -52,6 +53,16 @@ class ChatService {
     return [];
   }
 
+  Future<bool> deleteChat(String convId) async {
+    try {
+      final response = await http.delete(Uri.parse('$baseUrl/chats/$convId')).timeout(const Duration(seconds: 5));
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error deleting chat: $e");
+      return false;
+    }
+  }
+
   Future<String?> refineMessage(String text) async {
     try {
       final response = await http.post(
@@ -69,7 +80,48 @@ class ChatService {
     return null;
   }
 
-  void sendMessage(String text, {String? conversationId, String? projectId, List<Map<String, dynamic>> history = const []}) {
+  /// Upload a file to the backend and return its URL.
+  /// Endpoint: POST /upload (multipart form data)
+  Future<String?> uploadFile(File file) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/upload'),
+      );
+      request.files.add(
+        await http.MultipartFile.fromPath('file', file.path),
+      );
+      
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['url'] as String?;
+      }
+    } catch (e) {
+      print("Upload error: $e");
+    }
+    return null;
+  }
+
+  /// Upload multiple files and return their URLs
+  Future<List<String>> uploadFiles(List<File> files) async {
+    final urls = <String>[];
+    for (final file in files) {
+      final url = await uploadFile(file);
+      if (url != null) urls.add(url);
+    }
+    return urls;
+  }
+
+  void sendMessage(
+    String text, {
+    String? conversationId,
+    String? projectId,
+    List<Map<String, dynamic>> history = const [],
+    List<String> attachmentUrls = const [],
+  }) {
     if (!_isConnected || _channel == null) connect();
     
     final payload = json.encode({
@@ -77,6 +129,7 @@ class ChatService {
       'history': history,
       'conversationId': conversationId ?? 'conv_${DateTime.now().millisecondsSinceEpoch}',
       'projectId': projectId ?? 'global',
+      'attachments': attachmentUrls,
       'sandbox': {
         'overlay_mode': false,
         'platform': 'android_app',

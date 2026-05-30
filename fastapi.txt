@@ -1,0 +1,30 @@
+fastapi
+uvicorn
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+requests
+groq
+chromadb
+pydantic
+sqlalchemy
+python-dotenv
+sentence-transformers
+langchain
+langchain-community
+langchain-groq
+# UI/Inference
+gradio
+# Required for RAG
+ddgs
+bs4
+lxml
+httpx
+rank_bm25
+
+

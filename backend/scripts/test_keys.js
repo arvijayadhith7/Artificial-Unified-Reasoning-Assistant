@@ -41,7 +41,7 @@ async function testOpenRouter() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-exp:free",
+        "model": "nousresearch/hermes-3-llama-3.1-70b",
         "messages": [{ role: "user", content: "hi" }]
       })
     });

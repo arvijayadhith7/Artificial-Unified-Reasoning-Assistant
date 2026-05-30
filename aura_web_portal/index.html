@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AURA | assistant</title>
     <meta name="description" content="Aura desktop interface inspired by ChatGPT Windows edition. Experience clean, professional strategic LRM reasoning and workspace variables.">
-    <!-- Google Fonts: Inter & Outfit -->
+    <!-- Google Fonts: Inter, Outfit, Orbitron & Share Tech Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Main Style -->
@@ -18,6 +18,7 @@
 
     <!-- Background overlays for ambient premium tone -->
     <div class="ambient-grid" id="bg-grid"></div>
+    <div class="cyber-scanlines"></div>
     <div class="ambient-glow glow-cyan" id="glow-c"></div>
     <div class="ambient-glow glow-violet" id="glow-v"></div>
 
@@ -29,7 +30,7 @@
             <div class="sidebar-header">
                 <div class="logo-area">
                     <div class="aura-halo-small" id="nav-halo-dot"></div>
-                    <span class="logo-title">AURA <span class="logo-ver">v3.0.0</span></span>
+                    <span class="logo-title">AURA <span class="logo-ver">v1.0.0</span></span>
                 </div>
                 <button class="new-chat-btn" onclick="clearActiveChat()" title="Start New Chat">
                     <i class="fa-regular fa-pen-to-square"></i>
@@ -49,10 +50,6 @@
 
             <!-- Sidebar Bottom Info & Account -->
             <div class="sidebar-bottom">
-                <button class="bottom-menu-item" onclick="toggleDetailsPanel()">
-                    <i class="fa-solid fa-columns font-icon"></i>
-                    <span>Toggle Workspace View</span>
-                </button>
                 <div class="user-profile">
                     <div class="avatar">AP</div>
                     <div class="user-details">
@@ -69,16 +66,14 @@
             <!-- Chat Header -->
             <header class="chat-header">
                 <div class="model-selector">
-                    <span class="model-name">AURA LRM v3.0</span>
+                    <span class="model-name">AURA LRM v1.0.0</span>
                     <i class="fa-solid fa-angle-down selector-arrow"></i>
                 </div>
                 <div class="header-actions">
                     <div class="status-badge" id="halo-status-badge">
                         <i class="fas fa-circle-notch fa-spin"></i> AURA CORE ONLINE
                     </div>
-                    <button class="action-btn" title="Toggle Workspace Information" onclick="toggleDetailsPanel()">
-                        <i class="fa-solid fa-brain"></i>
-                    </button>
+
                     <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" class="action-btn github" title="View Source Repository">
                         <i class="fab fa-github"></i>
                     </a>
@@ -92,7 +87,9 @@
                     <!-- ChatGPT Centerview Welcome Area -->
                     <div class="welcome-container" id="welcome-view">
                         <div class="welcome-halo">
-                            <div class="welcome-ring" id="dashboard-ring"></div>
+                            <div class="hud-ring ring-outer" id="hud-ring-o"></div>
+                            <div class="hud-ring ring-middle" id="hud-ring-m"></div>
+                            <div class="hud-ring ring-inner" id="hud-ring-i"></div>
                             <div class="welcome-core" id="dashboard-core">
                                 <div class="core-inner"></div>
                             </div>
@@ -100,21 +97,19 @@
                         <h2 class="welcome-title">What can I help with today?</h2>
                         <div class="welcome-status-label" id="dashboard-status-label">COGNITIVE STATE: READY</div>
                         
-                        <!-- Mini cognitive state quick actions -->
-                        <div class="welcome-halo-controls">
-                            <button class="state-action-btn ctrl-btn active" id="btn-state-idle" onclick="setHaloState('idle', 'COGNITIVE STATE: IDLE')">
-                                <span class="state-dot dot-cyan"></span> Idle
+                        <!-- Futuristic Cyberpunk Mode Tabs -->
+                        <div class="mode-tabs-container" id="mode-tabs-container" style="margin-top: 16px; margin-bottom: 16px;">
+                            <button class="mode-tab-btn active" data-mode="chat" onclick="changeMode('chat')" type="button">
+                                <span class="mode-tab-dot dot-cyan"></span> Chat
                             </button>
-                            <button class="state-action-btn ctrl-btn" id="btn-state-listening" onclick="setHaloState('listening', 'COGNITIVE STATE: LISTENING...')">
-                                <span class="state-dot dot-blue"></span> Listening
+                            <button class="mode-tab-btn" data-mode="research" onclick="changeMode('research')" type="button">
+                                <span class="mode-tab-dot dot-amber"></span> Research
                             </button>
-                            <button class="state-action-btn ctrl-btn" id="btn-state-thinking" onclick="setHaloState('thinking', 'COGNITIVE STATE: RESOLVING LRM THOUGHTS')">
-                                <span class="state-dot dot-violet"></span> Thinking
-                            </button>
-                            <button class="state-action-btn ctrl-btn" id="btn-state-scanning" onclick="setHaloState('scanning', 'COGNITIVE STATE: SYSTEM SCANNING')">
-                                <span class="state-dot dot-red"></span> Scanning
+                            <button class="mode-tab-btn" data-mode="workspace" onclick="changeMode('workspace')" type="button">
+                                <span class="mode-tab-dot dot-green"></span> Workspace
                             </button>
                         </div>
+                        
 
                         <!-- Prompt Suggestion Bento Cards -->
                         <div class="prompt-suggestions">
@@ -140,6 +135,223 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Workspace Hub Container (Shown in Workspace Mode) -->
+                        <div id="workspace-hub" class="workspace-hub" style="display: none;">
+                            <div class="workspace-hub-header">
+                                <h3 class="hub-title"><i class="fa-solid fa-laptop-code"></i> Workspace Cores</h3>
+                                <div class="workspace-header-actions" style="display: flex; gap: 8px;">
+                                    <button class="workspace-home-btn" onclick="changeMode('chat')" title="Back to Home / Chat">
+                                        <i class="fa-solid fa-house"></i> Home
+                                    </button>
+                                    <button class="init-workspace-btn" onclick="startWorkspaceOnboarding()" title="Initialize New Project">
+                                        <i class="fa-solid fa-plus"></i> New Workspace
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Projects List -->
+                            <div id="workspace-projects-list" class="workspace-projects-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                            
+                            <!-- Onboarding Modal Wizard (Interactive Onboarding) -->
+                            <div id="workspace-onboarding-wizard" class="workspace-onboarding-wizard" style="display: none;">
+                                <!-- Step 1: Info input -->
+                                <div id="onboarding-step-1" class="onboarding-step active">
+                                    <h4>Step 1: Mission Parameters</h4>
+                                    <div class="form-group">
+                                        <label>Workspace Title</label>
+                                        <input type="text" id="ob-project-title" placeholder="e.g. AI COMMAND CENTER">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Topic / Domain</label>
+                                        <input type="text" id="ob-project-topic" placeholder="e.g. Large Reasoning Model, Mobile App">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Primary Goal / Description</label>
+                                        <textarea id="ob-project-desc" rows="2" placeholder="e.g. Multi-agent framework for local code execution."></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Experience Level</label>
+                                        <select id="ob-project-level">
+                                            <option value="Beginner">Beginner / Creator</option>
+                                            <option value="Intermediate" selected>Intermediate / Builder</option>
+                                            <option value="Advanced">Advanced / Architect</option>
+                                        </select>
+                                    </div>
+                                    <div class="step-actions">
+                                        <button class="step-btn secondary" onclick="cancelWorkspaceOnboarding()">Cancel</button>
+                                        <button class="step-btn primary" onclick="submitOnboardingDetails()">Continue</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Step 2: Adaptive Questions -->
+                                <div id="onboarding-step-2" class="onboarding-step" style="display: none;">
+                                    <h4 id="ob-questions-header">Step 2: Architectural Alignment</h4>
+                                    <div id="ob-questions-container" class="ob-questions-container">
+                                        <!-- Dynamic questions -->
+                                    </div>
+                                    <div class="step-actions">
+                                        <button class="step-btn secondary" onclick="backToOnboardingStep1()">Back</button>
+                                        <button class="step-btn primary" onclick="submitOnboardingAnswers()">Analyze & Build Blueprint</button>
+                                    </div>
+                                </div>
+
+                                <!-- Step 3: Analysis Blueprint Preview -->
+                                <div id="onboarding-step-3" class="onboarding-step" style="display: none;">
+                                    <h4>Step 3: Strategic Architectural Blueprint</h4>
+                                    <div id="ob-blueprint-preview" class="ob-blueprint-preview">
+                                        <!-- Dynamic roadmap/stack content -->
+                                    </div>
+                                    <div class="step-actions">
+                                        <button class="step-btn secondary" onclick="cancelWorkspaceOnboarding()">Discard</button>
+                                        <button class="step-btn primary" onclick="finalizeWorkspaceCreation()">Launch Workspace Sandbox</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Project Dashboard Preview (Detailed view of selected project) -->
+                            <div id="workspace-project-dashboard" class="workspace-project-dashboard" style="display: none;">
+                                <div class="dashboard-nav">
+                                    <button class="back-to-hub-btn" onclick="showHubProjectsList()"><i class="fa-solid fa-arrow-left"></i> Back to Cores</button>
+                                    <button class="workspace-home-btn" onclick="changeMode('chat')" title="Back to Home / Chat">
+                                        <i class="fa-solid fa-house"></i> Home
+                                    </button>
+                                </div>
+                                <div class="dashboard-header-block">
+                                    <span id="dash-project-tag" class="dash-tag">AI PROJECT</span>
+                                    <h4 id="dash-project-title">PROJECT TITLE</h4>
+                                    <p id="dash-project-desc" class="dash-desc">Description</p>
+                                </div>
+                                
+                                <div class="dashboard-progress-section">
+                                    <div class="progress-title-wrap">
+                                        <span>Sandbox Development Progress</span>
+                                        <span id="dash-project-progress-lbl">10%</span>
+                                    </div>
+                                    <div class="token-meter-wrapper">
+                                        <div id="dash-project-progress-bar" class="token-meter-fill" style="width: 10%;"></div>
+                                    </div>
+                                </div>
+
+                                <div class="dashboard-tabs">
+                                    <div class="tab-item active" onclick="switchDashboardTab('blueprint')">Blueprint</div>
+                                    <div class="tab-item" onclick="switchDashboardTab('suggestions')">AI Suggestions</div>
+                                </div>
+
+                                <div id="dash-tab-blueprint" class="tab-content active">
+                                    <div id="dash-blueprint-content" class="dash-scroll-box">
+                                        <!-- Blueprint roadmap details -->
+                                    </div>
+                                </div>
+
+                                <div id="dash-tab-suggestions" class="tab-content" style="display: none;">
+                                    <div class="suggestion-actions">
+                                        <button class="suggest-btn" onclick="fetchProjectSuggestion()"><i class="fa-solid fa-wand-magic-sparkles"></i> Retrieve AI Suggestion</button>
+                                    </div>
+                                    <div id="dash-suggestion-box" class="dash-suggestion-box">
+                                        Click button above to scan workspace and request cognitive improvements.
+                                    </div>
+                                </div>
+
+                                <div class="dashboard-actions">
+                                    <button class="dash-action-btn primary" onclick="startProjectChat()"><i class="fa-solid fa-comments"></i> Start Project Chat</button>
+                                    <button class="dash-action-btn danger" onclick="deleteCurrentProject()"><i class="fa-solid fa-trash-can"></i> Delete</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Research Hub Container (Shown in Research Mode) -->
+                        <div id="research-hub" class="research-hub" style="display: none;">
+                            <div class="research-hub-header" style="display: flex; align-items: center; justify-content: space-between;">
+                                <h3 class="hub-title"><i class="fa-solid fa-magnifying-glass"></i> Research Hub</h3>
+                                <button class="workspace-home-btn" onclick="changeMode('chat')" title="Back to Home / Chat">
+                                    <i class="fa-solid fa-house"></i> Home
+                                </button>
+                            </div>
+                            
+                            <!-- Search & Input Box inside the Research Hub -->
+                            <div class="research-input-container">
+                                <div class="research-search-bar">
+                                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                                    <input type="text" id="research-query-input" placeholder="Explore complex research domains..." onkeydown="handleResearchInputKey(event)">
+                                    <button class="research-submit-btn" onclick="initiateResearchQuery()" type="button"><i class="fa-solid fa-arrow-right"></i></button>
+                                </div>
+                            </div>
+                            
+                            <!-- Category Filter Chips -->
+                            <div class="research-categories">
+                                <button class="category-chip active" data-category="Web" onclick="selectResearchCategory('Web')" type="button">
+                                    <i class="fa-solid fa-globe"></i> Web
+                                </button>
+                                <button class="category-chip" data-category="Academic" onclick="selectResearchCategory('Academic')" type="button">
+                                    <i class="fa-solid fa-graduation-cap"></i> Academic
+                                </button>
+                                <button class="category-chip" data-category="GitHub" onclick="selectResearchCategory('GitHub')" type="button">
+                                    <i class="fa-solid fa-code"></i> GitHub
+                                </button>
+                                <button class="category-chip" data-category="News" onclick="selectResearchCategory('News')" type="button">
+                                    <i class="fa-solid fa-newspaper"></i> News
+                                </button>
+                            </div>
+                            
+                            <!-- Intelligence Discovery Grid (Predefined suggestion topics) -->
+                            <div id="research-discovery-section" class="research-discovery-section">
+                                <h4 class="section-title">Intelligence Discovery</h4>
+                                <div class="research-grid">
+                                    <div class="research-card" onclick="triggerPresetResearch('Latest AI trends in 2026')">
+                                        <i class="fa-solid fa-wand-magic-sparkles card-icon"></i>
+                                        <span class="card-title">Latest AI trends in 2026</span>
+                                    </div>
+                                    <div class="research-card" onclick="triggerPresetResearch('Research about NVIDIA AI chips')">
+                                        <i class="fa-solid fa-microchip card-icon"></i>
+                                        <span class="card-title">Research about NVIDIA AI chips</span>
+                                    </div>
+                                    <div class="research-card" onclick="triggerPresetResearch('Compare GPT-5 vs Claude')">
+                                        <i class="fa-solid fa-code-compare card-icon"></i>
+                                        <span class="card-title">Compare GPT-5 vs Claude</span>
+                                    </div>
+                                    <div class="research-card" onclick="triggerPresetResearch('Future of Quantum Computing')">
+                                        <i class="fa-solid fa-atom card-icon"></i>
+                                        <span class="card-title">Future of Quantum Computing</span>
+                                    </div>
+                                    <div class="research-card" onclick="triggerPresetResearch('Best open-source AI models')">
+                                        <i class="fa-solid fa-folder-open card-icon"></i>
+                                        <span class="card-title">Best open-source AI models</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Research Progress & Stream Area -->
+                            <div id="research-console-panel" class="research-console-panel" style="display: none;">
+                                <div class="console-status-line">
+                                    <span class="console-spinner" id="research-spinner"></span>
+                                    <span class="console-status-text" id="research-status-lbl">Researching...</span>
+                                    <button class="console-reset-btn" onclick="resetResearchConsole()" type="button"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+                                </div>
+                                
+                                <div class="synthesis-container">
+                                    <div class="synthesis-header">
+                                        <span>Synthesis Stream</span>
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                    </div>
+                                    <div id="research-synthesis-stream" class="research-synthesis-stream">
+                                        <!-- Synthesized data streams here -->
+                                    </div>
+                                </div>
+                                
+                                <div class="sources-container">
+                                    <div class="sources-header">
+                                        <span>Sources & Citations</span>
+                                        <i class="fa-solid fa-link"></i>
+                                    </div>
+                                    <div id="research-sources-list" class="research-sources-list">
+                                        <!-- Source URLs appended here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Message Feed -->
@@ -158,9 +370,13 @@
                             <button class="pill-action-btn" title="Attach Document" onclick="triggerAttachFile()">
                                 <i class="fa-solid fa-paperclip"></i>
                             </button>
-                            <button class="pill-action-btn active" title="Real-Time Search Ingestion Enabled" id="btn-web-search-toggle" onclick="toggleWebSearchInPill()">
-                                <i class="fa-solid fa-globe"></i>
-                            </button>
+                            
+                            <!-- Native select hidden but kept for backward compatibility and script hooks -->
+                            <select id="chat-mode-select" class="chat-mode-select" style="display: none;">
+                                <option value="chat" selected>chat</option>
+                                <option value="research">research</option>
+                                <option value="workspace">workspace</option>
+                            </select>
                         </div>
 
                         <!-- Center Text Box -->
@@ -176,126 +392,13 @@
                         </div>
                     </div>
                     <div class="disclaimer-text">
-                        AURA LRM v3.0 can make mistakes. Please verify critical information before execution.
+                        AURA LRM v1.0.0 can make mistakes. Please verify critical information before execution.
                     </div>
                 </div>
             </footer>
         </main>
 
-        <!-- 3. SPLIT PANEL: LRM THINKING & VECTOR SANDBOX -->
-        <aside class="details-panel" id="app-details-panel">
-            <div class="details-header">
-                <h3><i class="fa-solid fa-brain"></i> Workspace Diagnostics</h3>
-                <button class="close-details-btn" onclick="toggleDetailsPanel()">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
 
-            <div class="details-scrollable">
-                <!-- Section 1: Real-Time Thought Stream -->
-                <div class="diag-section">
-                    <div class="diag-section-title"><i class="fa-solid fa-microchip"></i> Thought Stream</div>
-                    
-                    <div class="thinking-progress-container">
-                        <div class="progress-bar-wrapper">
-                            <div class="progress-fill" id="thinking-progress-bar" style="width: 0%;"></div>
-                        </div>
-                        <div class="progress-text" id="thinking-progress-label">Cognitive Engine Idle</div>
-                    </div>
-
-                    <div class="thought-steps-log" id="thought-steps-log">
-                        <div class="empty-log-state">
-                            <i class="fa-solid fa-terminal"></i>
-                            <p>Submit a query to inspect live reasoning steps.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 2: Active Memory variables -->
-                <div class="diag-section">
-                    <div class="diag-section-title"><i class="fa-solid fa-sliders"></i> Memory Sandbox</div>
-                    
-                    <div class="sandbox-field-group">
-                        <label for="sb-persona">Active Persona</label>
-                        <select id="sb-persona" onchange="updateSandboxUI()">
-                            <option value="warm-narrative" selected>Warm & Narrative (Co-Founder)</option>
-                            <option value="ultra-technical">Ultra-Technical (Architect)</option>
-                            <option value="minimalist-hacker">Minimalist Cyber-Hacker</option>
-                        </select>
-                    </div>
-
-                    <div class="sandbox-field-group">
-                        <label for="sb-search-depth">Search Gateway Strategy</label>
-                        <select id="sb-search-depth" onchange="updateSandboxUI()">
-                            <option value="multi-tier" selected>Multi-Tier (DuckDuckGo + direct fallback)</option>
-                            <option value="pure-api">DuckDuckGo API Only</option>
-                            <option value="local-only">Local Sandbox Cache Only</option>
-                        </select>
-                    </div>
-
-                    <div class="sandbox-field-group">
-                        <label>Enabled Modules</label>
-                        <div class="sandbox-checkboxes">
-                            <label class="check-box" style="margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 6px;">
-                                <input type="checkbox" id="mod-desktop-assist" onchange="toggleDesktopAssist(this.checked)">
-                                <span style="color: var(--neon-cyan); font-weight: 600; font-family: var(--font-display);">Enable AURA Assistant</span>
-                            </label>
-                            <label class="check-box">
-                                <input type="checkbox" id="mod-ocr" checked onchange="updateSandboxUI()">
-                                <span>Gesture Overlay OCR</span>
-                            </label>
-                            <label class="check-box">
-                                <input type="checkbox" id="mod-lint" checked onchange="updateSandboxUI()">
-                                <span>Terminal Auto-Linter</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="sandbox-field-group">
-                        <label for="sb-workspace-path">Target Workspace Path</label>
-                        <input type="text" id="sb-workspace-path" value="d:\ANTIGRAVITY\llm APP" oninput="updateSandboxUI()">
-                    </div>
-
-                    <button class="hot-reload-btn" id="btn-apply-sandbox" onclick="hotReloadSandbox()">
-                        <i class="fa-solid fa-arrows-rotate"></i> Hot-Reload Sandbox Memory
-                    </button>
-                </div>
-
-                <!-- Section 3: Ingestion Block Visualization -->
-                <div class="diag-section">
-                    <div class="diag-section-header">
-                        <div class="diag-section-title"><i class="fa-solid fa-database"></i> Memory Map</div>
-                        <span class="sync-pill" id="sandbox-sync-status">SYNCED</span>
-                    </div>
-
-                    <div class="memory-blocks-list">
-                        <div class="mem-block-item">
-                            <span class="block-key">SYSTEM_INSTRUCTIONS</span>
-                            <pre class="block-value" id="viz-sys-inst">"You are Aura, a warm co-founder..."</pre>
-                        </div>
-                        <div class="mem-block-item">
-                            <span class="block-key">INGESTION_CLUSTER</span>
-                            <pre class="block-value" id="viz-ingest">Status: Active (OCR: ON, Lint: ON)</pre>
-                        </div>
-                        <div class="mem-block-item">
-                            <span class="block-key">ACTIVE_WORKSPACE</span>
-                            <pre class="block-value" id="viz-workspace">"d:\ANTIGRAVITY\llm APP"</pre>
-                        </div>
-                        <div class="mem-block-item">
-                            <span class="block-key">INTELLIGENCE_RETRIEVAL</span>
-                            <pre class="block-value" id="viz-retrieval">"Fallback gateway: DDG -> Scraper"</pre>
-                        </div>
-                        <div class="mem-block-item">
-                            <span class="block-key">CONTEXT_TOKENS_USED</span>
-                            <div class="token-meter-wrapper">
-                                <div class="token-meter-fill" id="viz-token-bar" style="width: 28%;"></div>
-                                <span class="token-meter-text" id="viz-token-text">4,620 / 16,384 tokens</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </aside>
 
     </div>
 
@@ -426,6 +529,35 @@
                 <button id="modal-cancel-btn" class="modal-btn-secondary" onclick="regressDesktopModal()">Not Now</button>
                 <button id="modal-next-btn" class="modal-btn-primary" onclick="advanceDesktopModal()">Continue</button>
             </div>
+        </div>
+    </div>
+
+    <!-- AURA Custom Premium Delete Confirmation Modal -->
+    <div id="aura-delete-modal" class="aura-modal-backdrop">
+        <div class="aura-modal-content">
+            <div class="aura-modal-header">
+                <div class="delete-icon-wrap">
+                    <i class="fa-solid fa-trash-can"></i>
+                </div>
+                <h3 id="delete-modal-title">Delete conversation?</h3>
+                <p id="delete-modal-subtitle" class="modal-subtitle">
+                    This will permanently remove this chat from your AURA workspace.
+                </p>
+            </div>
+            <div class="aura-modal-footer">
+                <button id="delete-modal-cancel" class="modal-btn-secondary glass-btn">Cancel</button>
+                <button id="delete-modal-confirm" class="modal-btn-danger destructive-glow-btn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AURA Premium Undo Toast -->
+    <div id="aura-undo-toast-container" class="aura-toast-container">
+        <div class="aura-toast">
+            <span class="aura-toast-icon"><i class="fa-solid fa-trash-can"></i></span>
+            <span class="aura-toast-text" id="aura-toast-message">Conversation deleted</span>
+            <button id="aura-toast-undo-btn" class="aura-toast-undo-btn">Undo</button>
+            <div id="aura-toast-progress-bar" class="aura-toast-progress"></div>
         </div>
     </div>
 

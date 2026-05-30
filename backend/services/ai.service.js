@@ -1,13 +1,125 @@
 const config = require('../config/config');
 const pythonService = require('./python.service');
 const Groq = require('groq-sdk');
+const { JSDOM } = require('jsdom');
+
+class OpenRouterSDK {
+  constructor(apiKey) {
+    this.apiKey = apiKey;
+    this.chat = {
+      completions: {
+        create: async ({ messages, model, temperature, max_tokens, stream }) => {
+          let mappedModel = model;
+          if (model === "llama-3.3-70b-versatile") {
+            mappedModel = "nousresearch/hermes-3-llama-3.1-70b";
+          } else if (model === "llama-3.1-8b-instant") {
+            mappedModel = "nousresearch/hermes-3-llama-3.1-70b";
+          }
+
+          const headers = {
+            "Authorization": `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://aura-ai.vercel.app",
+            "X-Title": "AURA Assistant",
+          };
+
+          const payload = {
+            model: mappedModel,
+            messages,
+            temperature: temperature !== undefined ? temperature : 0.7,
+            max_tokens: max_tokens !== undefined ? max_tokens : 1000,
+            stream: !!stream
+          };
+
+          if (!stream) {
+            const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+              method: "POST",
+              headers,
+              body: JSON.stringify(payload)
+            });
+            if (!resp.ok) throw new Error(`OpenRouter error: ${resp.statusText}`);
+            const data = await resp.json();
+            return {
+              choices: [{
+                message: {
+                  content: data.choices[0].message.content
+                }
+              }]
+            };
+          } else {
+            const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+              method: "POST",
+              headers,
+              body: JSON.stringify(payload)
+            });
+            if (!resp.ok) throw new Error(`OpenRouter error: ${resp.statusText}`);
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            return {
+              [Symbol.asyncIterator]() {
+                return {
+                  async next() {
+                    while (true) {
+                      const { done, value } = await reader.read();
+                      if (done) {
+                        return { done: true };
+                      }
+                      buffer += decoder.decode(value, { stream: true });
+                      const lines = buffer.split("\n");
+                      buffer = lines.pop();
+
+                      for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed) continue;
+                        if (trimmed === "data: [DONE]") {
+                          return { done: true };
+                        }
+                        if (trimmed.startsWith("data: ")) {
+                          try {
+                            const chunkData = JSON.parse(trimmed.slice(6));
+                            const content = chunkData.choices[0]?.delta?.content || "";
+                            if (content) {
+                              return {
+                                done: false,
+                                value: {
+                                  choices: [{
+                                    delta: { content }
+                                  }]
+                                }
+                              };
+                            }
+                          } catch (e) {
+                            // Ignored
+                          }
+                        }
+                      }
+                    }
+                  }
+                };
+              }
+            };
+          }
+        }
+      }
+    };
+  }
+}
 
 class AIService {
   constructor() {
-    this.groq = config.groqApiKey ? new Groq({ apiKey: config.groqApiKey }) : null;
+    if (config.openRouterApiKey) {
+      console.log('📡 [SYSTEM] AURA cognitive brain: Running on OpenRouter (Nous Research Hermes-3)');
+      this.groq = new OpenRouterSDK(config.openRouterApiKey);
+    } else {
+      console.log('📡 [SYSTEM] AURA cognitive brain: Running on GroqCloud');
+      this.groq = config.groqApiKey ? new Groq({ apiKey: config.groqApiKey }) : null;
+    }
     
-    if (!config.groqApiKey) {
-      console.warn('⚠️ WARNING: No GROQ_API_KEY found in .env file. AURA will be unresponsive.');
+    if (!this.groq) {
+      console.warn('⚠️ WARNING: No GROQ_API_KEY or OPENROUTER_API_KEY found in .env file. AURA will be unresponsive.');
     }
   }
 
@@ -29,14 +141,14 @@ class AIService {
       });
       
       const html = await response.text();
+      const dom = new JSDOM(html);
+      const document = dom.window.document;
+      
       const results = [];
-      const regex = /<td class='result-snippet'[^>]*>([\s\S]*?)<\/td>/gi;
-      let match;
-      let count = 0;
-      while ((match = regex.exec(html)) !== null && count < 5) {
-        let snippet = match[1].replace(/<[^>]*>/g, '').trim();
-        results.push(`Snippet: ${snippet}`);
-        count++;
+      const snippets = document.querySelectorAll('.result-snippet');
+      for (let i = 0; i < Math.min(snippets.length, 5); i++) {
+        let snippet = snippets[i].textContent.trim();
+        if (snippet) results.push(`Snippet: ${snippet}`);
       }
       
       if (results.length === 0) return null;

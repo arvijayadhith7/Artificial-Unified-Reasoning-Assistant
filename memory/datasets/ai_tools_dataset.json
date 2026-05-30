@@ -1,0 +1,1679 @@
+[
+    {
+        "tool_name": "Leonardo AI",
+        "category": "Image Generation",
+        "description": "Generate stunning brand visuals, ad creatives, illustrations, and logos using AI prompts.",
+        "use_cases": [
+            "branding",
+            "social media ads",
+            "logos",
+            "illustrations",
+            "marketing creatives"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "high quality presets",
+            "custom models",
+            "canvas editor"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios"
+        ],
+        "official_website": "https://leonardo.ai/",
+        "recommended_for": [
+            "designers",
+            "marketers",
+            "creators"
+        ],
+        "marketing_use_cases": [
+            "campaign visuals",
+            "ad banners"
+        ],
+        "workflow_tags": [
+            "image generation",
+            "branding",
+            "design",
+            "creative AI"
+        ]
+    },
+    {
+        "tool_name": "Google Gemini Flash Image / Nano Banana",
+        "category": "Image Generation",
+        "description": "Ultra-fast photorealistic AI image generation powered by Gemini.",
+        "use_cases": [
+            "product visuals",
+            "photorealistic marketing images",
+            "ad campaigns"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "speed",
+            "google integration",
+            "photorealism"
+        ],
+        "platforms_supported": [
+            "web",
+            "android",
+            "ios"
+        ],
+        "official_website": "https://deepmind.google/technologies/gemini/",
+        "recommended_for": [
+            "marketers",
+            "agencies",
+            "enterprises"
+        ],
+        "marketing_use_cases": [
+            "dynamic ads",
+            "product mockup"
+        ],
+        "workflow_tags": [
+            "gemini",
+            "image AI",
+            "marketing visuals"
+        ]
+    },
+    {
+        "tool_name": "Canva Magic Studio",
+        "category": "Image Generation",
+        "description": "AI-powered design suite for social media posts, videos, presentations, and ad creatives.",
+        "use_cases": [
+            "Instagram posts",
+            "social media",
+            "presentations",
+            "business creatives"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "ease of use",
+            "templates",
+            "all-in-one suite"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios",
+            "android",
+            "mac",
+            "windows"
+        ],
+        "official_website": "https://www.canva.com/magic-studio/",
+        "recommended_for": [
+            "social media managers",
+            "small businesses",
+            "creators"
+        ],
+        "marketing_use_cases": [
+            "social media marketing",
+            "presentations"
+        ],
+        "workflow_tags": [
+            "design",
+            "social media",
+            "productivity"
+        ]
+    },
+    {
+        "tool_name": "Adobe Firefly",
+        "category": "Image Generation",
+        "description": "Generate realistic visuals, text effects, and marketing assets using Adobe AI.",
+        "use_cases": [
+            "visual branding",
+            "typography",
+            "creative assets"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "commercial safety",
+            "photoshop integration",
+            "vector generation"
+        ],
+        "platforms_supported": [
+            "web",
+            "windows",
+            "mac"
+        ],
+        "official_website": "https://firefly.adobe.com/",
+        "recommended_for": [
+            "professional designers",
+            "agencies"
+        ],
+        "marketing_use_cases": [
+            "enterprise marketing",
+            "asset creation"
+        ],
+        "workflow_tags": [
+            "adobe",
+            "image generation",
+            "creative AI"
+        ]
+    },
+    {
+        "tool_name": "Remove.bg",
+        "category": "Image Generation",
+        "description": "Automatically removes image backgrounds for product photos and social content.",
+        "use_cases": [
+            "ecommerce",
+            "product editing",
+            "thumbnails"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "instant background removal",
+            "API availability"
+        ],
+        "platforms_supported": [
+            "web",
+            "windows",
+            "mac",
+            "linux"
+        ],
+        "official_website": "https://www.remove.bg/",
+        "recommended_for": [
+            "ecommerce sellers",
+            "photographers"
+        ],
+        "marketing_use_cases": [
+            "product listings",
+            "catalogs"
+        ],
+        "workflow_tags": [
+            "background remover",
+            "ecommerce"
+        ]
+    },
+    {
+        "tool_name": "Lexica Art",
+        "category": "Image Generation",
+        "description": "Generate and search aesthetic AI-generated artwork and campaign visuals.",
+        "use_cases": [
+            "campaign inspiration",
+            "mood boards",
+            "social aesthetics"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "stable diffusion search engine",
+            "high aesthetic quality"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://lexica.art/",
+        "recommended_for": [
+            "artists",
+            "art directors"
+        ],
+        "marketing_use_cases": [
+            "concept art",
+            "moodboarding"
+        ],
+        "workflow_tags": [
+            "art generation",
+            "aesthetics"
+        ]
+    },
+    {
+        "tool_name": "PosterMyWall",
+        "category": "Image Generation",
+        "description": "Ready-made templates for posters, social media graphics, and marketing promotions.",
+        "use_cases": [
+            "event posters",
+            "social creatives",
+            "promo banners"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "quick templating",
+            "video and image templates"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.postermywall.com/",
+        "recommended_for": [
+            "event organizers",
+            "small business"
+        ],
+        "marketing_use_cases": [
+            "local marketing",
+            "event promos"
+        ],
+        "workflow_tags": [
+            "templates",
+            "marketing design"
+        ]
+    },
+    {
+        "tool_name": "Pixlr E",
+        "category": "Image Generation",
+        "description": "Free AI-powered image editing and enhancement tool.",
+        "use_cases": [
+            "quick edits",
+            "image enhancement",
+            "social content"
+        ],
+        "pricing_model": "free",
+        "strengths": [
+            "browser-based",
+            "photoshop-like UI",
+            "AI tools built-in"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://pixlr.com/e/",
+        "recommended_for": [
+            "freelancers",
+            "students"
+        ],
+        "marketing_use_cases": [
+            "quick social edits"
+        ],
+        "workflow_tags": [
+            "photo editing",
+            "AI editor"
+        ]
+    },
+    {
+        "tool_name": "Vidu AI",
+        "category": "Video Generation",
+        "description": "Generate AI videos from prompts and images.",
+        "use_cases": [
+            "explainers",
+            "short-form content",
+            "social media videos"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "prompt to video",
+            "image animation"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.vidu.com/create",
+        "recommended_for": [
+            "content creators",
+            "social media managers"
+        ],
+        "marketing_use_cases": [
+            "tiktok/reels",
+            "video ads"
+        ],
+        "workflow_tags": [
+            "video generation",
+            "social media"
+        ]
+    },
+    {
+        "tool_name": "Runway ML",
+        "category": "Video Generation",
+        "description": "Advanced text-to-video generation and AI video editing platform.",
+        "use_cases": [
+            "video ads",
+            "cinematic edits",
+            "AI video production"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "fast video generation",
+            "AI editing",
+            "motion tracking"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios"
+        ],
+        "official_website": "https://runwayml.com/",
+        "recommended_for": [
+            "filmmakers",
+            "video editors",
+            "agencies"
+        ],
+        "marketing_use_cases": [
+            "high-end video ads",
+            "b-roll generation"
+        ],
+        "workflow_tags": [
+            "video AI",
+            "editing",
+            "filmmaking"
+        ]
+    },
+    {
+        "tool_name": "HeyGen",
+        "category": "Video Generation",
+        "description": "AI avatar video platform with multilingual support.",
+        "use_cases": [
+            "marketing videos",
+            "training",
+            "customer support"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "realistic avatars",
+            "voice cloning",
+            "translations"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.heygen.com/",
+        "recommended_for": [
+            "educators",
+            "marketers",
+            "sales teams"
+        ],
+        "marketing_use_cases": [
+            "personalized outreach",
+            "localization"
+        ],
+        "workflow_tags": [
+            "avatar AI",
+            "video marketing"
+        ]
+    },
+    {
+        "tool_name": "Synthesia",
+        "category": "Video Generation",
+        "description": "Generate professional avatar videos from scripts.",
+        "use_cases": [
+            "training",
+            "presentations",
+            "educational videos"
+        ],
+        "pricing_model": "paid",
+        "strengths": [
+            "enterprise-grade avatars",
+            "templates",
+            "API"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.synthesia.io/",
+        "recommended_for": [
+            "corporate training",
+            "HR",
+            "L&D teams"
+        ],
+        "marketing_use_cases": [
+            "product explainers",
+            "corporate comms"
+        ],
+        "workflow_tags": [
+            "AI avatars",
+            "presentations"
+        ]
+    },
+    {
+        "tool_name": "Descript",
+        "category": "Video Generation",
+        "description": "Edit audio and video by editing text transcripts.",
+        "use_cases": [
+            "podcasts",
+            "video editing",
+            "voice editing"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "text-based editing",
+            "overdub voice cloning",
+            "studio sound filter"
+        ],
+        "platforms_supported": [
+            "windows",
+            "mac",
+            "web"
+        ],
+        "official_website": "https://www.descript.com/",
+        "recommended_for": [
+            "podcasters",
+            "youtubers"
+        ],
+        "marketing_use_cases": [
+            "webinar editing",
+            "podcast promotion"
+        ],
+        "workflow_tags": [
+            "audio editing",
+            "transcript editing"
+        ]
+    },
+    {
+        "tool_name": "Pika Labs",
+        "category": "Video Generation",
+        "description": "Generate cinematic AI videos using prompts and images.",
+        "use_cases": [
+            "cinematic shorts",
+            "visual storytelling"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "high quality animations",
+            "lip sync",
+            "region manipulation"
+        ],
+        "platforms_supported": [
+            "web",
+            "discord"
+        ],
+        "official_website": "https://pika.art/",
+        "recommended_for": [
+            "animators",
+            "creators"
+        ],
+        "marketing_use_cases": [
+            "teaser videos",
+            "social visuals"
+        ],
+        "workflow_tags": [
+            "AI cinema",
+            "motion graphics"
+        ]
+    },
+    {
+        "tool_name": "Kaiber",
+        "category": "Video Generation",
+        "description": "Convert images and music into animated motion videos.",
+        "use_cases": [
+            "YouTube visuals",
+            "music visuals",
+            "reels"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "audio-reactive visuals",
+            "style transfer"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios",
+            "android"
+        ],
+        "official_website": "https://www.kaiber.ai/",
+        "recommended_for": [
+            "musicians",
+            "vloggers"
+        ],
+        "marketing_use_cases": [
+            "Spotify canvases",
+            "Instagram reels"
+        ],
+        "workflow_tags": [
+            "motion video",
+            "music visuals"
+        ]
+    },
+    {
+        "tool_name": "Rytr",
+        "category": "Writing & Copy",
+        "description": "AI writing assistant that helps you create high-quality content, in just a few seconds.",
+        "use_cases": [
+            "emails",
+            "blog posts",
+            "ad copy"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "fast generation",
+            "affordable",
+            "multi-language"
+        ],
+        "platforms_supported": [
+            "web",
+            "chrome extension"
+        ],
+        "official_website": "https://rytr.me/",
+        "recommended_for": [
+            "freelancers",
+            "small businesses"
+        ],
+        "marketing_use_cases": [
+            "email marketing",
+            "social captions"
+        ],
+        "workflow_tags": [
+            "copywriting",
+            "content generation"
+        ]
+    },
+    {
+        "tool_name": "Copy.ai",
+        "category": "Writing & Copy",
+        "description": "AI-powered copywriter that generates high-converting marketing copy.",
+        "use_cases": [
+            "sales copy",
+            "blog outlines",
+            "social posts"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "marketing templates",
+            "workflow automation",
+            "brand voice"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.copy.ai/",
+        "recommended_for": [
+            "marketing agencies",
+            "sales teams"
+        ],
+        "marketing_use_cases": [
+            "landing page copy",
+            "ad variations"
+        ],
+        "workflow_tags": [
+            "copywriting",
+            "marketing automation"
+        ]
+    },
+    {
+        "tool_name": "Jasper AI",
+        "category": "Writing & Copy",
+        "description": "Enterprise-grade AI copilot for marketing teams to generate on-brand content.",
+        "use_cases": [
+            "long-form articles",
+            "campaigns",
+            "enterprise marketing"
+        ],
+        "pricing_model": "paid",
+        "strengths": [
+            "team collaboration",
+            "brand voice memory",
+            "SEO integration"
+        ],
+        "platforms_supported": [
+            "web",
+            "chrome extension"
+        ],
+        "official_website": "https://www.jasper.ai/",
+        "recommended_for": [
+            "enterprises",
+            "content teams"
+        ],
+        "marketing_use_cases": [
+            "SEO blogs",
+            "multi-channel campaigns"
+        ],
+        "workflow_tags": [
+            "enterprise writing",
+            "brand voice"
+        ]
+    },
+    {
+        "tool_name": "Notion AI",
+        "category": "Writing & Copy",
+        "description": "Integrated AI assistant inside Notion to write, summarize, and brainstorm.",
+        "use_cases": [
+            "meeting notes",
+            "project specs",
+            "brainstorming"
+        ],
+        "pricing_model": "paid add-on",
+        "strengths": [
+            "native workspace integration",
+            "table generation",
+            "summarization"
+        ],
+        "platforms_supported": [
+            "web",
+            "mac",
+            "windows",
+            "ios",
+            "android"
+        ],
+        "official_website": "https://www.notion.so/product/ai",
+        "recommended_for": [
+            "startups",
+            "product managers",
+            "teams"
+        ],
+        "marketing_use_cases": [
+            "content planning",
+            "drafting"
+        ],
+        "workflow_tags": [
+            "productivity",
+            "workspace AI"
+        ]
+    },
+    {
+        "tool_name": "QuillBot",
+        "category": "Writing & Copy",
+        "description": "AI paraphrasing tool to rewrite and enhance text.",
+        "use_cases": [
+            "academic writing",
+            "rewriting",
+            "grammar checking"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "paraphrasing modes",
+            "plagiarism checker",
+            "grammar tools"
+        ],
+        "platforms_supported": [
+            "web",
+            "chrome extension",
+            "word add-in"
+        ],
+        "official_website": "https://quillbot.com/",
+        "recommended_for": [
+            "students",
+            "writers",
+            "ESL users"
+        ],
+        "marketing_use_cases": [
+            "repurposing content"
+        ],
+        "workflow_tags": [
+            "editing",
+            "paraphrasing"
+        ]
+    },
+    {
+        "tool_name": "Writesonic",
+        "category": "Writing & Copy",
+        "description": "AI writer and chat assistant tailored for SEO and marketing.",
+        "use_cases": [
+            "SEO articles",
+            "ads",
+            "product descriptions"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "real-time Google data",
+            "SEO optimization",
+            "bulk generation"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://writesonic.com/",
+        "recommended_for": [
+            "SEO specialists",
+            "ecommerce"
+        ],
+        "marketing_use_cases": [
+            "SEO blogging",
+            "product catalogs"
+        ],
+        "workflow_tags": [
+            "SEO writing",
+            "content marketing"
+        ]
+    },
+    {
+        "tool_name": "Search Atlas AI Writer",
+        "category": "Writing & Copy",
+        "description": "SEO-focused AI content generator built directly into a comprehensive SEO platform.",
+        "use_cases": [
+            "SEO content",
+            "keyword integration",
+            "blog generation"
+        ],
+        "pricing_model": "paid",
+        "strengths": [
+            "deep SEO integration",
+            "content scoring"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://searchatlas.com/",
+        "recommended_for": [
+            "SEO agencies",
+            "growth hackers"
+        ],
+        "marketing_use_cases": [
+            "organic traffic growth",
+            "content siloing"
+        ],
+        "workflow_tags": [
+            "SEO",
+            "content ranking"
+        ]
+    },
+    {
+        "tool_name": "ChefGPT",
+        "category": "Writing & Copy",
+        "description": "AI recipe generator and culinary assistant.",
+        "use_cases": [
+            "recipe generation",
+            "meal planning",
+            "pantry tracking"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "ingredient matching",
+            "dietary customizations"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios",
+            "android"
+        ],
+        "official_website": "https://www.chefgpt.xyz/",
+        "recommended_for": [
+            "food bloggers",
+            "home cooks"
+        ],
+        "marketing_use_cases": [
+            "food content creation",
+            "recipe blogs"
+        ],
+        "workflow_tags": [
+            "lifestyle",
+            "recipe AI"
+        ]
+    },
+    {
+        "tool_name": "n8n",
+        "category": "AI Automation",
+        "description": "Fair-code workflow automation tool with deep AI node integrations.",
+        "use_cases": [
+            "business automation",
+            "custom AI agents",
+            "data syncing"
+        ],
+        "pricing_model": "freemium/open-source",
+        "strengths": [
+            "self-hosting",
+            "advanced logic",
+            "LangChain integration"
+        ],
+        "platforms_supported": [
+            "web",
+            "self-hosted"
+        ],
+        "official_website": "https://n8n.io/",
+        "recommended_for": [
+            "developers",
+            "automation engineers"
+        ],
+        "marketing_use_cases": [
+            "lead routing",
+            "automated outreach"
+        ],
+        "workflow_tags": [
+            "automation",
+            "workflow system",
+            "integration"
+        ]
+    },
+    {
+        "tool_name": "Zapier AI Actions",
+        "category": "AI Automation",
+        "description": "Connect thousands of apps using natural language and AI logic.",
+        "use_cases": [
+            "no-code automation",
+            "CRM syncing",
+            "email sorting"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "5000+ app integrations",
+            "ease of use",
+            "AI copilot"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://zapier.com/",
+        "recommended_for": [
+            "business owners",
+            "operations managers"
+        ],
+        "marketing_use_cases": [
+            "campaign triggers",
+            "lead capture"
+        ],
+        "workflow_tags": [
+            "no-code automation",
+            "integrations"
+        ]
+    },
+    {
+        "tool_name": "Eden AI",
+        "category": "AI Automation",
+        "description": "API platform that aggregates multiple AI engines (OpenAI, Google, AWS, etc.) in one place.",
+        "use_cases": [
+            "API integrations",
+            "model comparison",
+            "AI routing"
+        ],
+        "pricing_model": "pay-as-you-go",
+        "strengths": [
+            "unified API",
+            "multi-provider routing",
+            "cost optimization"
+        ],
+        "platforms_supported": [
+            "web",
+            "API"
+        ],
+        "official_website": "https://www.edenai.co/",
+        "recommended_for": [
+            "developers",
+            "AI engineers"
+        ],
+        "marketing_use_cases": [
+            "sentiment analysis",
+            "batch image processing"
+        ],
+        "workflow_tags": [
+            "API",
+            "AI aggregation"
+        ]
+    },
+    {
+        "tool_name": "Gumloop",
+        "category": "AI Automation",
+        "description": "Visual builder for creating custom AI workflows and scraping scripts.",
+        "use_cases": [
+            "web scraping",
+            "data extraction",
+            "AI agents"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "no-code scraping",
+            "browser automation"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.gumloop.com/",
+        "recommended_for": [
+            "growth hackers",
+            "researchers"
+        ],
+        "marketing_use_cases": [
+            "competitor analysis",
+            "lead scraping"
+        ],
+        "workflow_tags": [
+            "web scraping",
+            "data automation"
+        ]
+    },
+    {
+        "tool_name": "ManyChat",
+        "category": "AI Automation",
+        "description": "Chat marketing platform combining automation and AI for Instagram, Messenger, and WhatsApp.",
+        "use_cases": [
+            "DM automation",
+            "customer support",
+            "lead generation"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "social media integration",
+            "visual builder",
+            "AI chat routing"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios",
+            "android"
+        ],
+        "official_website": "https://manychat.com/",
+        "recommended_for": [
+            "influencers",
+            "ecommerce",
+            "marketers"
+        ],
+        "marketing_use_cases": [
+            "Instagram funnel",
+            "auto-reply campaigns"
+        ],
+        "workflow_tags": [
+            "chatbots",
+            "social media automation"
+        ]
+    },
+    {
+        "tool_name": "Tidio",
+        "category": "AI Automation",
+        "description": "Customer service platform featuring AI chatbots (Lyro) and live chat.",
+        "use_cases": [
+            "customer service",
+            "helpdesk",
+            "ecommerce support"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "Shopify integration",
+            "Lyro conversational AI",
+            "ticketing"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios",
+            "android"
+        ],
+        "official_website": "https://www.tidio.com/",
+        "recommended_for": [
+            "ecommerce stores",
+            "customer support teams"
+        ],
+        "marketing_use_cases": [
+            "cart abandonment recovery",
+            "FAQ automation"
+        ],
+        "workflow_tags": [
+            "customer support",
+            "AI chatbots"
+        ]
+    },
+    {
+        "tool_name": "Flowise AI",
+        "category": "AI Automation",
+        "description": "Open-source low-code UI to build customized LLM orchestration flows and AI agents.",
+        "use_cases": [
+            "RAG systems",
+            "custom chatbots",
+            "internal tools"
+        ],
+        "pricing_model": "free/open-source",
+        "strengths": [
+            "visual node editor",
+            "LangChain integration",
+            "self-hosting"
+        ],
+        "platforms_supported": [
+            "web",
+            "self-hosted"
+        ],
+        "official_website": "https://flowiseai.com/",
+        "recommended_for": [
+            "developers",
+            "AI researchers"
+        ],
+        "marketing_use_cases": [
+            "internal knowledge bots"
+        ],
+        "workflow_tags": [
+            "LLMOps",
+            "RAG",
+            "Agent builder"
+        ]
+    },
+    {
+        "tool_name": "AgentGPT",
+        "category": "AI Automation",
+        "description": "Assemble, configure, and deploy autonomous AI agents in your browser.",
+        "use_cases": [
+            "goal-driven tasks",
+            "research automation",
+            "task breakdown"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "browser-based",
+            "autonomous loop",
+            "open-source option"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://agentgpt.reworkd.ai/",
+        "recommended_for": [
+            "productivity enthusiasts",
+            "developers"
+        ],
+        "marketing_use_cases": [
+            "market research automation",
+            "campaign planning"
+        ],
+        "workflow_tags": [
+            "autonomous agents",
+            "task automation"
+        ]
+    },
+    {
+        "tool_name": "Chatbase",
+        "category": "AI Automation",
+        "description": "Custom ChatGPT builder for your website trained on your own data.",
+        "use_cases": [
+            "website chatbots",
+            "document Q&A",
+            "internal wiki search"
+        ],
+        "pricing_model": "paid",
+        "strengths": [
+            "easy training",
+            "embeddable widget",
+            "API access"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.chatbase.co/",
+        "recommended_for": [
+            "startups",
+            "SaaS",
+            "support teams"
+        ],
+        "marketing_use_cases": [
+            "lead qualification bot",
+            "site assistant"
+        ],
+        "workflow_tags": [
+            "custom GPT",
+            "website widget"
+        ]
+    },
+    {
+        "tool_name": "AdCreative.ai",
+        "category": "SEO & Analytics",
+        "description": "Generate conversion-focused ad creatives and social media post visuals in seconds.",
+        "use_cases": [
+            "social media ads",
+            "display ads",
+            "A/B testing"
+        ],
+        "pricing_model": "paid",
+        "strengths": [
+            "conversion score prediction",
+            "brand styling",
+            "mass generation"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.adcreative.ai/",
+        "recommended_for": [
+            "performance marketers",
+            "agencies",
+            "startups"
+        ],
+        "marketing_use_cases": [
+            "Facebook Ads",
+            "Google Display network creatives"
+        ],
+        "workflow_tags": [
+            "ad generation",
+            "performance marketing"
+        ]
+    },
+    {
+        "tool_name": "Semrush",
+        "category": "SEO & Analytics",
+        "description": "Comprehensive SaaS platform for SEO, content marketing, competitor research, and PPC.",
+        "use_cases": [
+            "keyword research",
+            "site audit",
+            "backlink analysis"
+        ],
+        "pricing_model": "paid",
+        "strengths": [
+            "massive data index",
+            "competitor intelligence",
+            "AI writing assistant"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.semrush.com/",
+        "recommended_for": [
+            "SEO professionals",
+            "agencies",
+            "enterprise marketing"
+        ],
+        "marketing_use_cases": [
+            "SEO strategy",
+            "competitor tracking"
+        ],
+        "workflow_tags": [
+            "SEO",
+            "analytics",
+            "market research"
+        ]
+    },
+    {
+        "tool_name": "Ahrefs Free Tools",
+        "category": "SEO & Analytics",
+        "description": "Free SEO tools provided by Ahrefs including keyword generator and backlink checker.",
+        "use_cases": [
+            "basic keyword research",
+            "site authority check",
+            "SEO audits"
+        ],
+        "pricing_model": "free",
+        "strengths": [
+            "accurate data",
+            "easy to use",
+            "no login required for basic tools"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://ahrefs.com/free-seo-tools",
+        "recommended_for": [
+            "bloggers",
+            "small business owners"
+        ],
+        "marketing_use_cases": [
+            "keyword discovery",
+            "quick audits"
+        ],
+        "workflow_tags": [
+            "SEO",
+            "free tools"
+        ]
+    },
+    {
+        "tool_name": "Google Analytics",
+        "category": "SEO & Analytics",
+        "description": "Industry standard web analytics service to track and report website traffic (GA4 uses machine learning insights).",
+        "use_cases": [
+            "traffic tracking",
+            "conversion tracking",
+            "user behavior analysis"
+        ],
+        "pricing_model": "free",
+        "strengths": [
+            "deep integration with Google Ads",
+            "predictive metrics",
+            "custom reporting"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios",
+            "android"
+        ],
+        "official_website": "https://analytics.google.com/",
+        "recommended_for": [
+            "everyone with a website",
+            "marketers",
+            "data analysts"
+        ],
+        "marketing_use_cases": [
+            "ROI measurement",
+            "campaign tracking"
+        ],
+        "workflow_tags": [
+            "web analytics",
+            "data tracking"
+        ]
+    },
+    {
+        "tool_name": "Google Trends",
+        "category": "SEO & Analytics",
+        "description": "Analyze the popularity of top search queries in Google Search across various regions and languages.",
+        "use_cases": [
+            "trend forecasting",
+            "seasonal marketing",
+            "keyword popularity check"
+        ],
+        "pricing_model": "free",
+        "strengths": [
+            "real-time data",
+            "visual graphs",
+            "geo-targeting insights"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://trends.google.com/",
+        "recommended_for": [
+            "content creators",
+            "strategists",
+            "researchers"
+        ],
+        "marketing_use_cases": [
+            "trend jacking",
+            "content calendar planning"
+        ],
+        "workflow_tags": [
+            "trend analysis",
+            "market research"
+        ]
+    },
+    {
+        "tool_name": "BuzzSumo",
+        "category": "SEO & Analytics",
+        "description": "Content marketing research tool to find trending topics, content, and influencers.",
+        "use_cases": [
+            "content discovery",
+            "influencer research",
+            "brand monitoring"
+        ],
+        "pricing_model": "paid",
+        "strengths": [
+            "social share metrics",
+            "influencer identification",
+            "trend alerts"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://buzzsumo.com/",
+        "recommended_for": [
+            "PR professionals",
+            "content marketers"
+        ],
+        "marketing_use_cases": [
+            "viral content research",
+            "influencer outreach"
+        ],
+        "workflow_tags": [
+            "content strategy",
+            "social listening"
+        ]
+    },
+    {
+        "tool_name": "Surfer AI",
+        "category": "SEO & Analytics",
+        "description": "AI-driven SEO tool that analyzes top-ranking pages to help you optimize and generate content.",
+        "use_cases": [
+            "content optimization",
+            "SEO outlines",
+            "AI article generation"
+        ],
+        "pricing_model": "paid",
+        "strengths": [
+            "data-driven NLP terms",
+            "SERP analyzer",
+            "content editor integration"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://surferseo.com/ai/",
+        "recommended_for": [
+            "SEO writers",
+            "content managers"
+        ],
+        "marketing_use_cases": [
+            "ranking on Google",
+            "optimizing old posts"
+        ],
+        "workflow_tags": [
+            "SEO optimization",
+            "content ranking"
+        ]
+    },
+    {
+        "tool_name": "Perplexity AI",
+        "category": "Research & Insights",
+        "description": "AI-powered search engine that provides cited, conversational answers for deep research.",
+        "use_cases": [
+            "market research",
+            "fact-checking",
+            "competitive analysis"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "real-time web search",
+            "inline citations",
+            "copilot guided research"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios",
+            "android"
+        ],
+        "official_website": "https://www.perplexity.ai/",
+        "recommended_for": [
+            "researchers",
+            "strategists",
+            "students"
+        ],
+        "marketing_use_cases": [
+            "competitor research",
+            "industry reports"
+        ],
+        "workflow_tags": [
+            "AI search",
+            "research engine"
+        ]
+    },
+    {
+        "tool_name": "Elicit",
+        "category": "Research & Insights",
+        "description": "AI research assistant that automates literature reviews and data extraction from papers.",
+        "use_cases": [
+            "academic research",
+            "data extraction",
+            "literature review"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "scientific database access",
+            "structured data extraction",
+            "summarization"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://elicit.com/",
+        "recommended_for": [
+            "academics",
+            "R&D teams",
+            "analysts"
+        ],
+        "marketing_use_cases": [
+            "whitepaper research",
+            "deep dives"
+        ],
+        "workflow_tags": [
+            "academic research",
+            "literature review"
+        ]
+    },
+    {
+        "tool_name": "Browse AI",
+        "category": "Research & Insights",
+        "description": "No-code web scraping tool to extract and monitor data from any website.",
+        "use_cases": [
+            "price monitoring",
+            "lead generation",
+            "competitor tracking"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "no-code point and click",
+            "scheduled monitoring",
+            "API webhooks"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://www.browse.ai/",
+        "recommended_for": [
+            "data analysts",
+            "growth marketers",
+            "sales teams"
+        ],
+        "marketing_use_cases": [
+            "scraping competitor prices",
+            "building contact lists"
+        ],
+        "workflow_tags": [
+            "web scraping",
+            "data monitoring"
+        ]
+    },
+    {
+        "tool_name": "Answer The Public",
+        "category": "Research & Insights",
+        "description": "Search listening tool that visualizes autocomplete data from search engines.",
+        "use_cases": [
+            "content ideation",
+            "consumer insights",
+            "SEO planning"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "visual keyword wheels",
+            "understanding user questions",
+            "long-tail queries"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://answerthepublic.com/",
+        "recommended_for": [
+            "content creators",
+            "SEO specialists",
+            "copywriters"
+        ],
+        "marketing_use_cases": [
+            "FAQ creation",
+            "blog topic generation"
+        ],
+        "workflow_tags": [
+            "search intent",
+            "keyword visualization"
+        ]
+    },
+    {
+        "tool_name": "Exploding Topics",
+        "category": "Research & Insights",
+        "description": "Discovers rapidly growing topics and trends before they take off.",
+        "use_cases": [
+            "trend spotting",
+            "product research",
+            "investment research"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "early trend detection",
+            "curated categories",
+            "historical growth data"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://explodingtopics.com/",
+        "recommended_for": [
+            "entrepreneurs",
+            "investors",
+            "marketers"
+        ],
+        "marketing_use_cases": [
+            "niche discovery",
+            "content strategy"
+        ],
+        "workflow_tags": [
+            "trend analysis",
+            "business intelligence"
+        ]
+    },
+    {
+        "tool_name": "Similarweb",
+        "category": "Research & Insights",
+        "description": "Digital intelligence provider for enterprise and SMBs to analyze website traffic and market share.",
+        "use_cases": [
+            "website traffic analysis",
+            "competitor benchmarking",
+            "audience insights"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "comprehensive traffic data",
+            "referral analysis",
+            "industry benchmarking"
+        ],
+        "platforms_supported": [
+            "web",
+            "chrome extension"
+        ],
+        "official_website": "https://www.similarweb.com/",
+        "recommended_for": [
+            "business analysts",
+            "marketers",
+            "executives"
+        ],
+        "marketing_use_cases": [
+            "competitive intelligence",
+            "affiliate research"
+        ],
+        "workflow_tags": [
+            "web analytics",
+            "market intelligence"
+        ]
+    },
+    {
+        "tool_name": "Gamma.app",
+        "category": "Presentation Tools",
+        "description": "AI-powered tool for creating beautiful presentations, documents, and websites in seconds.",
+        "use_cases": [
+            "pitch decks",
+            "memos",
+            "landing pages"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "instant generation",
+            "beautiful templates",
+            "fluid layout"
+        ],
+        "platforms_supported": [
+            "web"
+        ],
+        "official_website": "https://gamma.app/",
+        "recommended_for": [
+            "founders",
+            "consultants",
+            "sales teams"
+        ],
+        "marketing_use_cases": [
+            "client proposals",
+            "marketing decks"
+        ],
+        "workflow_tags": [
+            "presentations",
+            "document creation"
+        ]
+    },
+    {
+        "tool_name": "Tome.app",
+        "category": "Presentation Tools",
+        "description": "AI storytelling format for generating slide decks and interactive presentations.",
+        "use_cases": [
+            "storytelling",
+            "portfolios",
+            "presentations"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "AI narrative generation",
+            "DALL-E integration",
+            "mobile responsive"
+        ],
+        "platforms_supported": [
+            "web",
+            "ios"
+        ],
+        "official_website": "https://tome.app/",
+        "recommended_for": [
+            "creatives",
+            "product managers",
+            "founders"
+        ],
+        "marketing_use_cases": [
+            "creative briefs",
+            "campaign pitches"
+        ],
+        "workflow_tags": [
+            "storytelling",
+            "presentations"
+        ]
+    },
+    {
+        "tool_name": "Taskade",
+        "category": "Productivity Tools",
+        "description": "AI productivity workspace for mind mapping, task management, and team collaboration.",
+        "use_cases": [
+            "project management",
+            "mind mapping",
+            "AI agent workflows"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "multi-view boards",
+            "built-in AI assistants",
+            "real-time collaboration"
+        ],
+        "platforms_supported": [
+            "web",
+            "windows",
+            "mac",
+            "ios",
+            "android"
+        ],
+        "official_website": "https://www.taskade.com/",
+        "recommended_for": [
+            "remote teams",
+            "freelancers",
+            "agencies"
+        ],
+        "marketing_use_cases": [
+            "campaign planning",
+            "content calendar"
+        ],
+        "workflow_tags": [
+            "project management",
+            "collaboration"
+        ]
+    },
+    {
+        "tool_name": "GitMind",
+        "category": "Productivity Tools",
+        "description": "AI-powered mind mapping and brainstorming tool.",
+        "use_cases": [
+            "brainstorming",
+            "flowcharts",
+            "knowledge structuring"
+        ],
+        "pricing_model": "freemium",
+        "strengths": [
+            "AI node generation",
+            "cross-platform sync",
+            "collaboration"
+        ],
+        "platforms_supported": [
+            "web",
+            "windows",
+            "mac",
+            "ios",
+            "android"
+        ],
+        "official_website": "https://gitmind.com/",
+        "recommended_for": [
+            "project managers",
+            "students",
+            "designers"
+        ],
+        "marketing_use_cases": [
+            "funnel mapping",
+            "strategy brainstorming"
+        ],
+        "workflow_tags": [
+            "mind mapping",
+            "brainstorming"
+        ]
+    },
+    {
+        "tool_name": "Mem AI",
+        "category": "Productivity Tools",
+        "description": "AI-powered workspace that auto-organizes your notes and surfaces relevant knowledge.",
+        "use_cases": [
+            "personal knowledge management",
+            "meeting notes",
+            "CRM"
+        ],
+        "pricing_model": "paid",
+        "strengths": [
+            "self-organizing workspace",
+            "smart search",
+            "chat with your notes"
+        ],
+        "platforms_supported": [
+            "web",
+            "mac",
+            "windows",
+            "ios"
+        ],
+        "official_website": "https://mem.ai/",
+        "recommended_for": [
+            "executives",
+            "researchers",
+            "power users"
+        ],
+        "marketing_use_cases": [
+            "centralizing brand assets",
+            "meeting takeaways"
+        ],
+        "workflow_tags": [
+            "knowledge management",
+            "note taking"
+        ]
+    }
+]

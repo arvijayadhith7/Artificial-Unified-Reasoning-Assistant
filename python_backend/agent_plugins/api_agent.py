@@ -4,7 +4,19 @@ from agent_plugins.rag_advanced import AdvancedRAG
 
 class ApiAgent:
     def __init__(self):
-        db_path = os.path.join(os.path.dirname(__file__), '../../memory/vector_db')
+        # Resolve path robustly to support local and cloud/containerized environments
+        possible_paths = [
+            os.path.join(os.path.dirname(__file__), '../../memory/vector_db'),  # Local layout
+            os.path.join(os.path.dirname(__file__), '../memory/vector_db'),     # Deployed layout
+            os.path.abspath('memory/vector_db')                                 # Cwd layout
+        ]
+        db_path = possible_paths[0]
+        for p in possible_paths:
+            if os.path.exists(p):
+                db_path = p
+                break
+                
+        print(f"ApiAgent: Initializing ChromaDB at: {db_path}")
         self.client = chromadb.PersistentClient(path=db_path)
         self.collection = self.client.get_or_create_collection(name="aura_memory_vault")
         self.rag = AdvancedRAG(self.collection)

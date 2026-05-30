@@ -16,10 +16,7 @@
     if (!loc || loc.protocol === 'file:' || !loc.hostname) {
       return `ws://127.0.0.1:${DEFAULT_BACKEND_PORT}/overlay`;
     }
-    if (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1') {
-      return `ws://${loc.hostname}:${DEFAULT_BACKEND_PORT}/overlay`;
-    }
-    return `ws://127.0.0.1:${DEFAULT_BACKEND_PORT}/overlay`;
+    return `ws://${loc.hostname}:${DEFAULT_BACKEND_PORT}/overlay`;
   }
 
   function resolveBackendHttpUrl(path, explicitHost) {
@@ -30,10 +27,7 @@
     if (!loc || loc.protocol === 'file:' || !loc.hostname) {
       return `http://127.0.0.1:${DEFAULT_BACKEND_PORT}${path}`;
     }
-    if (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1') {
-      return `http://${loc.hostname}:${DEFAULT_BACKEND_PORT}${path}`;
-    }
-    return `http://127.0.0.1:${DEFAULT_BACKEND_PORT}${path}`;
+    return `http://${loc.hostname}:${DEFAULT_BACKEND_PORT}${path}`;
   }
 
   function buildSandbox(opts) {

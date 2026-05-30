@@ -36,6 +36,9 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
   WebSocketChannel? _channel;
   bool _isConnected = false;
   Timer? _analysisTimeout;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 3;
+  Timer? _reconnectTimer;
 
   final Map<String, Map<String, String>> _localizedTips = {
     "English": {
@@ -55,7 +58,7 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
     },
     "Telugu": {
       "idle": "లేఅవుట్‌ను స్కాన్ చేయడానికి 'Analyze' పై నొక్కండి.",
-      "analyzing": "లేఅవుట్ విశ్लेषण చేయబడుతోంది...",
+      "analyzing": "లేఅవుట్ విశ్లేషణ చేయబడుతోంది...",
       "tip": "దశ 1: మీ IFSC కోడ్‌ను నమోదు చేయండి. చాలా మంది దీనిని మరచిపోతారు."
     },
     "Kannada": {
@@ -79,6 +82,7 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
   void dispose() {
     _pulseController.dispose();
     _analysisTimeout?.cancel();
+    _reconnectTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }
@@ -87,10 +91,14 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
     if (_isConnected) return;
     try {
       final wsUrl = AppConfig.wsAssistUrl;
+      _channel?.sink.close();
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
       _isConnected = true;
       _channel!.stream.listen(
         (data) {
+          if (mounted) {
+            _reconnectAttempts = 0;
+          }
           try {
             final decoded = json.decode(data);
             if (decoded['type'] == 'context_detected') {
@@ -147,16 +155,31 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
         },
         onError: (err) {
           _isConnected = false;
-          _handleConnectionError();
+          _scheduleReconnect();
         },
         onDone: () {
           _isConnected = false;
+          _scheduleReconnect();
         },
       );
     } catch (e) {
       _isConnected = false;
-      _handleConnectionError();
+      _scheduleReconnect();
     }
+  }
+
+  void _scheduleReconnect() {
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      _handleConnectionError();
+      return;
+    }
+    _reconnectAttempts++;
+    final delay = Duration(seconds: 2 * _reconnectAttempts); // 2s, 4s, 6s
+    print("AURA Assist: Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$_maxReconnectAttempts)");
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(delay, () {
+      if (mounted) _connectWebSocket();
+    });
   }
 
   void _handleConnectionError() {
@@ -167,8 +190,8 @@ class _AuraAssistBubbleState extends ConsumerState<AuraAssistBubble> with Single
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("AURA Assist failed to connect to neural stream."),
-          duration: Duration(seconds: 2),
+          content: Text("AURA Assist failed to connect to neural stream. Tap Analyze to retry."),
+          duration: Duration(seconds: 3),
         ),
       );
     }

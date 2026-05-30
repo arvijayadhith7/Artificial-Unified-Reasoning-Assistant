@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>arvijayadhith7/Artificial-unified-reasoning-assistant--Aura- - GitHub</title>
+    <meta name="description" content="GitHub Repository for AURA: Autonomous, high-speed, local-first artificial unified reasoning assistant.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --clr-bg: #090d16;
+            --clr-card: #121826;
+            --clr-border: #1e293b;
+            --clr-border-highlight: #3b82f6;
+            --clr-primary: #8b5cf6;
+            --clr-secondary: #00f2ff;
+            --clr-success: #10b981;
+            --clr-text-main: #f8fafc;
+            --clr-text-muted: #94a3b8;
+            --clr-text-light: #cbd5e1;
+            --font-heading: 'Outfit', sans-serif;
+            --font-body: 'Plus Jakarta Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --border-radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--clr-bg);
+            color: var(--clr-text-main);
+            font-family: var(--font-body);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* 1. NAVBAR OVERRIDES */
+        .github-navbar {
+            background: rgba(18, 24, 38, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--clr-border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .github-logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .github-logo-group i {
+            font-size: 1.8rem;
+            color: var(--clr-text-main);
+        }
+
+        .github-logo-group .repo-path {
+            font-family: var(--font-heading);
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .github-logo-group .repo-path a {
+            color: var(--clr-text-main);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .github-logo-group .repo-path a:hover {
+            color: var(--clr-secondary);
+        }
+
+        .github-logo-group .repo-path .divider {
+            color: var(--clr-text-muted);
+            margin: 0 4px;
+        }
+
+        .github-logo-group .public-badge {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--clr-border);
+            border-radius: 9999px;
+            padding: 2px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--clr-text-muted);
+        }
+
+        .nav-right-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-github-action {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--clr-border);
+            color: var(--clr-text-main);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        .btn-github-action:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--clr-text-muted);
+        }
+
+        .btn-github-action.active-star {
+            background: rgba(139, 92, 246, 0.15);
+            border-color: var(--clr-primary);
+            color: var(--clr-secondary);
+        }
+
+        .btn-back-home {
+            background: transparent;
+            border: 1px solid var(--clr-secondary);
+            color: var(--clr-secondary);
+        }
+
+        .btn-back-home:hover {
+            background: rgba(0, 242, 255, 0.1);
+            border-color: var(--clr-secondary);
+        }
+
+        /* 2. REPO SUB-HEADER (TABS) */
+        .repo-tabs-bar {
+            background: rgba(18, 24, 38, 0.4);
+            border-bottom: 1px solid var(--clr-border);
+            padding: 0 24px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+        }
+
+        .repo-tab {
+            padding: 14px 16px;
+            font-size: 0.9rem;
+            color: var(--clr-text-muted);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: var(--transition);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .repo-tab:hover {
+            color: var(--clr-text-main);
+        }
+
+        .repo-tab.active {
+            color: var(--clr-text-main);
+            border-bottom-color: var(--clr-primary);
+        }
+
+        /* 3. MAIN GRID LAYOUT */
+        .repo-container {
+            max-width: 1280px;
+            margin: 32px auto;
+            padding: 0 24px;
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 32px;
+        }
+
+        @media (max-width: 992px) {
+            .repo-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 4. CODE VIEW / FILE EXPLORER (LEFT COLUMN) */
+        .branch-info-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .branch-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-branch {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--clr-border);
+            color: var(--clr-text-main);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .commit-stats {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.85rem;
+            color: var(--clr-text-muted);
+        }
+
+        .commit-stats span strong {
+            color: var(--clr-text-main);
+        }
+
+        /* File Explorer Table styling */
+        .file-explorer {
+            background: var(--clr-card);
+            border: 1px solid var(--clr-border);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .file-explorer-header {
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--clr-border);
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+
+        .last-commit-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--clr-text-light);
+        }
+
+        .last-commit-info img {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+        }
+
+        .last-commit-info .commit-msg {
+            color: var(--clr-text-muted);
+        }
+
+        .last-commit-time {
+            color: var(--clr-text-muted);
+        }
+
+        .file-row {
+            display: grid;
+            grid-template-columns: 240px 1fr 140px;
+            padding: 12px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 0.9rem;
+            align-items: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .file-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .file-row:last-child {
+            border-bottom: none;
+        }
+
+        .file-name-col {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: var(--clr-text-main);
+        }
+
+        .file-name-col i {
+            width: 16px;
+            text-align: center;
+        }
+
+        .file-name-col i.fa-folder {
+            color: #818cf8;
+        }
+
+        .file-name-col i.fa-file-lines {
+            color: #94a3b8;
+        }
+
+        .file-name-col i.fa-terminal {
+            color: #22c55e;
+        }
+
+        .file-commit-col {
+            color: var(--clr-text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-time-col {
+            color: var(--clr-text-muted);
+            text-align: right;
+            font-size: 0.85rem;
+        }
+
+        /* Monospaced Inline Code Viewer */
+        .inline-code-viewer {
+            display: none;
+            background: #0f1422;
+            border: 1px solid var(--clr-border);
+            border-radius: 8px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .code-viewer-header {
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--clr-border);
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: var(--font-heading);
+            font-weight: 600;
+        }
+
+        .btn-close-viewer {
+            background: none;
+            border: none;
+            color: var(--clr-text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-close-viewer:hover {
+            color: #ffffff;
+        }
+
+        .code-viewer-body {
+            padding: 20px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #e2e8f0;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.5;
+        }
+
+        /* 5. README RENDER CONTAINER */
+        .readme-container {
+            background: var(--clr-card);
+            border: 1px solid var(--clr-border);
+            border-radius: 8px;
+            padding: 48px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .readme-container {
+                padding: 24px;
+            }
+        }
+
+        .readme-header-banner {
+            text-align: center;
+            border-bottom: 1px solid var(--clr-border);
+            padding-bottom: 40px;
+            margin-bottom: 40px;
+        }
+
+        /* Huge Retro Pixel Logo Banner styling */
+        .retro-banner {
+            background: linear-gradient(135deg, #090d16 0%, #1e1b4b 100%);
+            border: 2px solid var(--clr-border);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 40px rgba(139, 92, 246, 0.15);
+        }
+
+        .retro-banner::before {
+            content: '';
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(circle, rgba(0, 242, 255, 0.05) 0%, transparent 60%);
+            animation: rotate-slow 15s infinite linear;
+        }
+
+        .retro-banner h1 {
+            font-family: var(--font-heading);
+            font-size: 4.5rem;
+            font-weight: 900;
+            letter-spacing: 0.1rem;
+            color: #ffffff;
+            position: relative;
+            z-index: 2;
+            text-shadow: 0 0 20px rgba(0, 242, 255, 0.6), 0 0 40px rgba(139, 92, 246, 0.4);
+            animation: pulse-glow 2s infinite alternate;
+        }
+
+        @keyframes rotate-slow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse-glow {
+            0% { text-shadow: 0 0 20px rgba(0, 242, 255, 0.4), 0 0 30px rgba(139, 92, 246, 0.3); }
+            100% { text-shadow: 0 0 35px rgba(0, 242, 255, 0.7), 0 0 50px rgba(139, 92, 246, 0.6); }
+        }
+
+        .readme-badges-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .badge-img {
+            height: 28px;
+            border-radius: 4px;
+        }
+
+        /* Typographic elements */
+        .readme-h2 {
+            font-family: var(--font-heading);
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--clr-border);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .readme-h3 {
+            font-family: var(--font-heading);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: #ffffff;
+        }
+
+        .readme-p {
+            font-size: 1rem;
+            color: var(--clr-text-light);
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+
+        /* High-fidelity Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--clr-border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .comparison-table th, .comparison-table td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid var(--clr-border);
+        }
+
+        .comparison-table th {
+            background: rgba(255, 255, 255, 0.03);
+            font-family: var(--font-heading);
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .comparison-table td strong {
+            color: var(--clr-secondary);
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Beautiful Code shell terminal blocks */
+        .terminal-block {
+            background: #0f1422;
+            border: 1px solid var(--clr-border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            position: relative;
+            color: #e2e8f0;
+        }
+
+        .terminal-block::before {
+            content: 'bash';
+            position: absolute;
+            top: 6px;
+            right: 12px;
+            font-size: 0.75rem;
+            color: var(--clr-text-muted);
+            text-transform: uppercase;
+        }
+
+        .terminal-cmd {
+            color: #3b82f6;
+        }
+
+        .terminal-comment {
+            color: var(--clr-text-muted);
+            font-style: italic;
+        }
+
+        .btn-copy-code {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--clr-text-muted);
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+        }
+
+        .btn-copy-code:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Custom alerts callout boxes */
+        .alert-callout {
+            background: rgba(139, 92, 246, 0.08);
+            border-left: 4px solid var(--clr-primary);
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 24px 0;
+        }
+
+        .alert-callout-title {
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--clr-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 6. SIDEBAR COLUMN (RIGHT COLUMN) */
+        .sidebar-panel {
+            margin-bottom: 30px;
+        }
+
+        .sidebar-title {
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #ffffff;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .sidebar-desc {
+            font-size: 0.9rem;
+            color: var(--clr-text-light);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 24px;
+        }
+
+        .sidebar-tag {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--clr-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+
+        .sidebar-tag:hover {
+            background: rgba(0, 242, 255, 0.15);
+        }
+
+        .release-badge {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--clr-success);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        /* Languages bar styling */
+        .languages-bar-wrap {
+            margin-top: 16px;
+        }
+
+        .languages-bar {
+            height: 8px;
+            border-radius: 9999px;
+            display: flex;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .lang-segment {
+            height: 100%;
+        }
+
+        .lang-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            color: var(--clr-text-light);
+        }
+
+        .lang-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* Global Toast Message */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(18, 24, 38, 0.9);
+            border: 1px solid var(--clr-secondary);
+            border-radius: 8px;
+            padding: 16px 24px;
+            color: #ffffff;
+            box-shadow: 0 10px 30px rgba(0, 242, 255, 0.15);
+            z-index: 3000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .toast.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast i {
+            color: var(--clr-secondary);
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. NAVBAR -->
+    <header class="github-navbar">
+        <div class="github-logo-group">
+            <i class="fa-brands fa-github"></i>
+            <div class="repo-path">
+                <a href="index.html">arvijayadhith7</a>
+                <span class="divider">/</span>
+                <a href="#" style="font-weight: 800;">Artificial-unified-reasoning-assistant--Aura-</a>
+                <span class="divider"></span>
+                <span class="public-badge">Public</span>
+            </div>
+        </div>
+        <div class="nav-right-actions">
+            <button class="btn-github-action" id="btn-star" onclick="toggleStar()">
+                <i class="fa-regular fa-star"></i> Star <span id="star-count">1.2k</span>
+            </button>
+            <button class="btn-github-action" onclick="showToast('Repository Forked to your workspace')">
+                <i class="fa-solid fa-code-fork"></i> Fork <span>89</span>
+            </button>
+            <a href="index.html" class="btn-github-action btn-back-home">
+                <i class="fa-solid fa-house"></i> View Website
+            </a>
+        </div>
+    </header>
+
+    <!-- 2. REPO SUB-HEADER (TABS) -->
+    <div class="repo-tabs-bar">
+        <a href="#" class="repo-tab active"><i class="fa-solid fa-code"></i> Code</a>
+        <a href="#" class="repo-tab" onclick="showToast('Issues page simulator coming soon')"><i class="fa-regular fa-circle-dot"></i> Issues <span style="background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:10px; font-size:0.75rem;">0</span></a>
+        <a href="#" class="repo-tab" onclick="showToast('Pull requests page simulator coming soon')"><i class="fa-solid fa-code-pull-request"></i> Pull Requests <span style="background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:10px; font-size:0.75rem;">0</span></a>
+        <a href="#" class="repo-tab" onclick="showToast('Actions page simulator coming soon')"><i class="fa-regular fa-circle-play"></i> Actions</a>
+        <a href="#" class="repo-tab" onclick="showToast('Projects page simulator coming soon')"><i class="fa-solid fa-table-columns"></i> Projects</a>
+        <a href="#" class="repo-tab" onclick="showToast('Wiki page simulator coming soon')"><i class="fa-solid fa-book-open"></i> Wiki</a>
+        <a href="#" class="repo-tab" onclick="showToast('Security tracker simulator coming soon')"><i class="fa-solid fa-shield-halved"></i> Security</a>
+    </div>
+
+    <!-- 3. MAIN CONTAINER -->
+    <div class="repo-container">
+        
+        <!-- LEFT COLUMN (CODE & README) -->
+        <main>
+            <!-- Branch bar -->
+            <div class="branch-info-bar">
+                <div class="branch-selector">
+                    <button class="btn-branch">
+                        <i class="fa-solid fa-code-branch"></i> main <i class="fa-solid fa-caret-down"></i>
+                    </button>
+                </div>
+                <div class="commit-stats">
+                    <span><i class="fa-solid fa-history"></i> <strong>247</strong> commits</span>
+                    <span><i class="fa-solid fa-code-branch"></i> <strong>1</strong> branch</span>
+                    <span><i class="fa-solid fa-tag"></i> <strong>1</strong> tag</span>
+                </div>
+            </div>
+
+            <!-- Monospaced Code Viewer (Visible only when clicking files) -->
+            <div class="inline-code-viewer" id="code-viewer">
+                <div class="code-viewer-header">
+                    <span id="code-viewer-title">File View</span>
+                    <button class="btn-close-viewer" onclick="closeViewer()">&times;</button>
+                </div>
+                <div class="code-viewer-body" id="code-viewer-content"></div>
+            </div>
+
+            <!-- File Explorer Table -->
+            <div class="file-explorer">
+                <div class="file-explorer-header">
+                    <div class="last-commit-info">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=50&q=80" alt="Vijay Avatar">
+                        <strong>arvijayadhith7</strong>
+                        <span class="commit-msg">Evolve AURA: Implement robust priority access waitlist controller node</span>
+                    </div>
+                    <span class="last-commit-time">12 mins ago</span>
+                </div>
+
+                <!-- Folders -->
+                <div class="file-row" onclick="viewFile('backend')">
+                    <div class="file-name-col"><i class="fa-solid fa-folder"></i> backend</div>
+                    <div class="file-commit-col">Bun routing gateway framework updates</div>
+                    <div class="file-time-col">2 hours ago</div>
+                </div>
+                <div class="file-row" onclick="viewFile('python_backend')">
+                    <div class="file-name-col"><i class="fa-solid fa-folder"></i> python_backend</div>
+                    <div class="file-commit-col">Qwen local SLM inference execution cores</div>
+                    <div class="file-time-col">Yesterday</div>
+                </div>
+                <div class="file-row" onclick="viewFile('desktop_overlay')">
+                    <div class="file-name-col"><i class="fa-solid fa-folder"></i> desktop_overlay</div>
+                    <div class="file-commit-col">Flutter UI Context tracking overlays</div>
+                    <div class="file-time-col">Yesterday</div>
+                </div>
+                <div class="file-row" onclick="viewFile('website')">
+                    <div class="file-name-col"><i class="fa-solid fa-folder"></i> website</div>
+                    <div class="file-commit-col">Refine waitlist validation submission nodes</div>
+                    <div class="file-time-col">12 mins ago</div>
+                </div>
+
+                <!-- Files -->
+                <div class="file-row" onclick="viewFile('Aura-Launcher.bat')">
+                    <div class="file-name-col"><i class="fa-solid fa-terminal"></i> Aura-Launcher.bat</div>
+                    <div class="file-commit-col">Optimized local service launch loops</div>
+                    <div class="file-time-col">2 days ago</div>
+                </div>
+                <div class="file-row" onclick="viewFile('requirements.txt')">
+                    <div class="file-name-col"><i class="fa-solid fa-file-lines"></i> requirements.txt</div>
+                    <div class="file-commit-col">Update OpenVINO dependencies</div>
+                    <div class="file-time-col">3 days ago</div>
+                </div>
+                <div class="file-row" onclick="scrollToReadme()">
+                    <div class="file-name-col"><i class="fa-solid fa-file-lines"></i> README.md</div>
+                    <div class="file-commit-col">Redesign features and add comprehensive guide</div>
+                    <div class="file-time-col">4 days ago</div>
+                </div>
+            </div>
+
+            <!-- README.md Container -->
+            <div class="readme-container" id="readme-panel">
+                <div class="readme-header-banner">
+                    <!-- Huge Retro Pixel Style Title Banner -->
+                    <div class="retro-banner">
+                        <h1>AURA.</h1>
+                    </div>
+                    
+                    <div class="readme-badges-row">
+                        <img src="https://img.shields.io/badge/License-MIT-00f2ff.svg?style=for-the-badge&logoWidth=20" alt="MIT Badge" class="badge-img">
+                        <img src="https://img.shields.io/badge/Platform-Flutter-02569B.svg?style=for-the-badge&logo=flutter" alt="Flutter Badge" class="badge-img">
+                        <img src="https://img.shields.io/badge/Backend-Bun%20%2F%20FastAPI-orange.svg?style=for-the-badge&logo=fastapi" alt="FastAPI Badge" class="badge-img">
+                        <img src="https://img.shields.io/badge/Inference-Intel%20OpenVINO-dynamic.svg?style=for-the-badge&logo=intel&logoColor=white&color=0068B5" alt="Intel Badge" class="badge-img">
+                    </div>
+
+                    <h3 class="readme-h3" style="text-align: center; margin-top: 24px; color: var(--clr-text-muted);">
+                        The Next Generation of Autonomous, High-Speed Intelligence
+                    </h3>
+                    <p style="text-align: center; font-size: 1rem; color: var(--clr-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Unified Reasoning. Agentic Power. Lightning Speed.
+                    </p>
+                </div>
+
+                <!-- Introduction -->
+                <h2 class="readme-h2"><i class="fa-solid fa-circle-info" style="color:var(--clr-secondary);"></i> Introduction</h2>
+                <p class="readme-p">
+                    <strong>AURA</strong> is an enterprise-grade, high-performance hybrid AI assistant ecosystem designed to bridge the gap between lightning-fast cloud intelligence and private, localized tool-calling capabilities. Featuring a gorgeous glassmorphic Flutter client and a high-speed Python/Bun backend gateway, AURA delivers real-time workspace tracking, contextual screen scanning, and self-improving memory recall.
+                </p>
+                <p class="readme-p">
+                    Unlike standard LLM interfaces, AURA is specifically engineered for custom hardware configurations, integrating <strong>Intel OpenVINO</strong> instruction sets to provide hardware-accelerated "Turbo Mode" inference directly on consumer CPUs without requiring expensive Nvidia GPUs.
+                </p>
+
+                <!-- Core Capabilities Comparison Table -->
+                <h2 class="readme-h2"><i class="fa-solid fa-list-check" style="color:var(--clr-secondary);"></i> Core Capabilities</h2>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Feature System</th>
+                            <th>Details & Specifications</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>⚡ Instant Reasoning</strong></td>
+                            <td>Powered by hybrid cloud-scale models delivering extreme inference throughput.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🧠 Local Agentic Brain</strong></td>
+                            <td>Orchestrates private local tool-calling workflows utilizing optimized local execution.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>💻 OpenVINO Intel "Turbo"</strong></td>
+                            <td>Bypasses CUDA GPU requirements by using Intel CPU AI acceleration instructions to execute local models at high speeds.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🧬 Real-time Neural Overlay</strong></td>
+                            <td>A transparent Flutter layout tracker that captures active workflow contexts and serves recommendations over secure WebSockets.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🌐 Ultra-High-Speed Gateway</strong></td>
+                            <td>Engineered on the <strong>Bun Runtime</strong> for sub-millisecond real-time message routing.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🛠️ Autonomous Tool Registry</strong></td>
+                            <td>Localized tool suite including recursive file search, python sandbox interpreter, and web scrapers.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Quick Install Block -->
+                <h2 class="readme-h2"><i class="fa-solid fa-terminal" style="color:var(--clr-secondary);"></i> Quick Install</h2>
+                
+                <h3 class="readme-h3">Linux, macOS, WSL2, Termux</h3>
+                <div class="terminal-block">
+                    <span class="terminal-cmd">curl</span> -fssL https://aura-net.io/install.sh | bash
+                    <button class="btn-copy-code" onclick="copyText('curl -fssL https://aura-net.io/install.sh | bash')">
+                        <i class="fa-regular fa-copy"></i> Copy
+                    </button>
+                </div>
+
+                <h3 class="readme-h3">Windows (PowerShell) - Native Early Beta</h3>
+                <div class="terminal-block">
+                    <span class="terminal-cmd">iex</span> (iwr https://aura-net.io/install.ps1).Content
+                    <button class="btn-copy-code" onclick="copyText('iex (iwr https://aura-net.io/install.ps1).Content')">
+                        <i class="fa-regular fa-copy"></i> Copy
+                    </button>
+                </div>
+
+                <div class="alert-callout">
+                    <div class="alert-callout-title">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Early Stage Diagnostic Notes
+                    </div>
+                    <p class="readme-p" style="margin-bottom: 0; font-size: 0.9rem;">
+                        Heads up: Native Windows support is early beta. It installs and runs, but has not been road tested as broadly as our Linux/macOS/WSL2 paths. Please raise priority issues inside the feedback stack tracker.
+                    </p>
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT COLUMN (SIDEBAR) -->
+        <aside>
+            <div class="sidebar-panel">
+                <h4 class="sidebar-title">About</h4>
+                <p class="sidebar-desc">
+                    Evolve your device with Aura. A futuristic visual operating layer that guides, automates, and reasons natively over third-party applications.
+                </p>
+                <div class="sidebar-tags">
+                    <span class="sidebar-tag">flutter</span>
+                    <span class="sidebar-tag">openvino</span>
+                    <span class="sidebar-tag">fastapi</span>
+                    <span class="sidebar-tag">bun-gateway</span>
+                    <span class="sidebar-tag">lrm-reasoning</span>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <h4 class="sidebar-title">Releases</h4>
+                <span class="release-badge">v1.0.0 Latest</span>
+                <p class="sidebar-desc" style="font-size:0.85rem;">Released yesterday</p>
+            </div>
+
+            <div class="sidebar-panel">
+                <h4 class="sidebar-title">Languages</h4>
+                <div class="languages-bar">
+                    <div class="lang-segment" style="width: 58.4%; background-color: #02569b;"></div>
+                    <div class="lang-segment" style="width: 24.6%; background-color: #3572A5;"></div>
+                    <div class="lang-segment" style="width: 17.0%; background-color: #f1e05a;"></div>
+                </div>
+                <div class="lang-item">
+                    <span class="lang-dot" style="background-color: #02569b;"></span>
+                    <strong>Dart</strong> (58.4%)
+                </div>
+                <div class="lang-item">
+                    <span class="lang-dot" style="background-color: #3572A5;"></span>
+                    <strong>Python</strong> (24.6%)
+                </div>
+                <div class="lang-item">
+                    <span class="lang-dot" style="background-color: #f1e05a;"></span>
+                    <strong>JavaScript</strong> (17.0%)
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- TOAST ALERT -->
+    <div class="toast" id="toast-message">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-text">Text Copied!</span>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        // Star Repository
+        let isStarred = false;
+        function toggleStar() {
+            const btn = document.getElementById('btn-star');
+            const count = document.getElementById('star-count');
+            isStarred = !isStarred;
+            if (isStarred) {
+                btn.classList.add('active-star');
+                btn.innerHTML = `<i class="fa-solid fa-star"></i> Starred <span id="star-count">1.2k</span>`;
+                showToast("Repository added to your stars list");
+            } else {
+                btn.classList.remove('active-star');
+                btn.innerHTML = `<i class="fa-regular fa-star"></i> Star <span id="star-count">1.2k</span>`;
+                showToast("Repository removed from your stars list");
+            }
+        }
+
+        // Copy Terminal Command
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Install command copied to clipboard!");
+            });
+        }
+
+        // Show Custom Toast
+        function showToast(message) {
+            const toast = document.getElementById('toast-message');
+            const txt = document.getElementById('toast-text');
+            txt.innerText = message;
+            toast.classList.add('active');
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+
+        // Scroll to Readme
+        function scrollToReadme() {
+            document.getElementById('readme-panel').scrollIntoView({ behavior: 'smooth' });
+            closeViewer();
+        }
+
+        // Virtual Monospaced Code Viewer
+        const files = {
+            'backend': `// Bun high-speed Gateway Server\nconst PORT = 3000;\nconsole.log("Serving high-performance bun websockets routing...");`,
+            'python_backend': `# FastAPI Cognitive Reasoning Server\nfrom fastapi import FastAPI\napp = FastAPI()\n@app.get("/")\ndef read_root():\n    return {"brain": "active", "SLM": "Qwen2.5-0.5B"}`,
+            'desktop_overlay': `// Flutter transparent overlay manager\nvoid launchOverlayLayer() {\n  runApp(const TransparentOverlayCore());\n}`,
+            'website': `<!-- AURA Premium Web Client -->\n<!DOCTYPE html>\n<html lang="en">\n  <head><title>AURA</title></head>\n</html>`,
+            'Aura-Launcher.bat': `@echo off\necho Launching local AURA multi-service orchestrator...\nstart py server.py\nstart python python_backend/main.py\nexit`,
+            'requirements.txt': `fastapi>=0.100.0\nuvicorn>=0.22.0\nopenvino-telemetry>=2023.2.1\nbeautifulsoup4>=4.12.2\nrequests>=2.31.0`
+        };
+
+        function viewFile(name) {
+            const viewer = document.getElementById('code-viewer');
+            const title = document.getElementById('code-viewer-title');
+            const content = document.getElementById('code-viewer-content');
+
+            title.innerText = `arvijayadhith7 / Artificial-unified-reasoning-assistant--Aura- / ${name}`;
+            content.innerText = files[name] || `// Folder: ${name}\n// Interactive explorer showing folder contents. Click on file lines below to preview.`;
+            
+            viewer.style.display = 'block';
+            viewer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeViewer() {
+            document.getElementById('code-viewer').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

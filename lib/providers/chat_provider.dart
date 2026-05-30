@@ -52,9 +52,30 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(activeConvId: null, currentMessages: []);
   }
 
+  Future<bool> deleteChat(String convId, {String? projectId}) async {
+    final success = await _service.deleteChat(convId);
+    if (success) {
+      // If we deleted the active chat, clear the viewport
+      if (state.activeConvId == convId) {
+        state = state.copyWith(activeConvId: null, currentMessages: []);
+      }
+      // Refresh the sidebar list
+      await loadRecentChats(projectId: projectId);
+    }
+    return success;
+  }
+
   void addMessage(Map<String, dynamic> msg) {
     msg['timestamp'] = DateTime.now().toIso8601String();
     state = state.copyWith(currentMessages: [...state.currentMessages, msg]);
+  }
+
+  void truncateMessages(int length) {
+    if (length >= 0 && length <= state.currentMessages.length) {
+      state = state.copyWith(
+        currentMessages: state.currentMessages.sublist(0, length),
+      );
+    }
   }
   
   void updateLastMessage(String content, {bool isFullReplace = false}) {

@@ -52,9 +52,22 @@ ipcMain.handle('get-active-context', async () => {
 
 ipcMain.handle('build-message-context', async (_event, { prompt, forceScreen }) => {
   try {
-    return await contextEngine.buildMessageContext(prompt || '', { forceScreen: !!forceScreen });
+    if (mainWindow) {
+      mainWindow.hide();
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    const context = await contextEngine.buildMessageContext(prompt || '', { forceScreen: !!forceScreen });
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+    return context;
   } catch (e) {
     console.error('[AURA] build-message-context:', e);
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
     return {
       activeApp: '',
       windowTitle: '',
@@ -66,9 +79,27 @@ ipcMain.handle('build-message-context', async (_event, { prompt, forceScreen }) 
 });
 
 ipcMain.handle('capture-screen', async () => {
-  const shot = await contextEngine.captureScreenJpegBase64();
-  return shot || 'local';
+  try {
+    if (mainWindow) {
+      mainWindow.hide();
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    const shot = await contextEngine.captureScreenJpegBase64();
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+    return shot || 'local';
+  } catch (e) {
+    console.error('[AURA] capture-screen:', e);
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+    return 'local';
+  }
 });
+
 
 ipcMain.handle('focus-overlay', () => {
   if (!mainWindow) return false;

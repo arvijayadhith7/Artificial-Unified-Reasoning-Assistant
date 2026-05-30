@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../app_theme.dart';
 import '../services/research_service.dart';
 
@@ -133,6 +134,14 @@ class _ResearchScreenState extends ConsumerState<ResearchScreen> {
                     const SizedBox(height: 16),
                     MarkdownBody(
                       data: researchState.synthesis,
+                      onTapLink: (text, href, title) async {
+                        if (href != null) {
+                          final uri = Uri.parse(href);
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        }
+                      },
                       styleSheet: MarkdownStyleSheet(
                         p: GoogleFonts.outfit(color: Colors.white70, fontSize: 14, height: 1.6),
                         h1: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),

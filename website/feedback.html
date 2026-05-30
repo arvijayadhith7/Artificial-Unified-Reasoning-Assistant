@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA | Cognitive Feedback Portal</title>
+    <meta name="description" content="Help shape the future of AURA. Submit bug reports, feature suggestions, or general feedback about the Neural Operating Layer.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Specific Styles for Feedback Page (Aura Light Mode theme) */
+        body {
+            background-color: var(--clr-bg);
+            color: var(--clr-text-main);
+            font-family: var(--font-body);
+        }
+
+        .feedback-section {
+            min-height: calc(100vh - var(--nav-height) - 180px);
+            padding-top: calc(var(--nav-height) + 60px);
+            padding-bottom: 80px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Light theme ambient glows */
+        .feedback-section::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            right: -20%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(0, 242, 255, 0.05) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .feedback-section::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -20%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .feedback-container {
+            width: 90%;
+            max-width: 680px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .feedback-card {
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: var(--border-radius-lg);
+            padding: 48px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+            transition: var(--transition-smooth);
+        }
+
+        .feedback-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .feedback-header h1 {
+            font-family: var(--font-heading);
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            color: var(--clr-text-main);
+        }
+
+        .feedback-header p {
+            color: var(--clr-text-muted);
+            font-size: 1rem;
+        }
+
+        /* Light Forms */
+        .feedback-form .form-group {
+            margin-bottom: 24px;
+        }
+
+        .feedback-form label {
+            display: block;
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--clr-text-muted);
+            margin-bottom: 10px;
+        }
+
+        .feedback-form input[type="text"],
+        .feedback-form input[type="email"],
+        .feedback-form select,
+        .feedback-form textarea {
+            width: 100%;
+            background: #ffffff;
+            border: 1.5px solid rgba(0, 0, 0, 0.08);
+            color: var(--clr-text-main);
+            padding: 14px 18px;
+            border-radius: var(--border-radius-sm);
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            outline: none;
+            transition: var(--transition-fast);
+        }
+
+        .feedback-form input:focus,
+        .feedback-form select:focus,
+        .feedback-form textarea:focus {
+            border-color: var(--clr-primary);
+            background: #ffffff;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
+        }
+
+        .feedback-form select option {
+            background-color: #ffffff;
+            color: var(--clr-text-main);
+        }
+
+        .feedback-form textarea {
+            height: 120px;
+            resize: none;
+        }
+
+        /* Interactive Star Rating */
+        .rating-stars-input {
+            display: flex;
+            gap: 12px;
+            font-size: 1.75rem;
+            color: rgba(0, 0, 0, 0.1);
+            margin-bottom: 8px;
+        }
+
+        .rating-stars-input i {
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .rating-stars-input i.hover,
+        .rating-stars-input i.active {
+            color: #fbbf24;
+            text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+        }
+
+        .rating-caption {
+            font-size: 0.85rem;
+            color: var(--clr-text-muted);
+            font-style: italic;
+        }
+
+        /* Submit Button Styling Override */
+        .btn-submit {
+            width: 100%;
+            background: var(--clr-text-main);
+            color: var(--clr-text-light);
+            border: none;
+            font-size: 1.05rem;
+            font-weight: 700;
+            padding: 16px;
+            margin-top: 12px;
+            border-radius: var(--border-radius-full);
+            transition: var(--transition-fast);
+        }
+
+        .btn-submit:hover {
+            background-color: var(--clr-primary);
+            box-shadow: 0 10px 20px var(--clr-primary-glow);
+            transform: translateY(-2px);
+        }
+
+        /* Success Screen CSS */
+        .success-state {
+            display: none;
+            text-align: center;
+            padding: 40px 0;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .success-icon-halo {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, 0.1);
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: var(--clr-primary);
+            margin: 0 auto 30px auto;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+            animation: pulse-success 2s infinite ease-in-out;
+        }
+
+        .success-state h2 {
+            font-family: var(--font-heading);
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            color: var(--clr-text-main);
+        }
+
+        .success-state p {
+            color: var(--clr-text-muted);
+            font-size: 1.05rem;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-success {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(139, 92, 246, 0.15); }
+            50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(139, 92, 246, 0.3); }
+        }
+
+        /* Nav active override */
+        .navbar {
+            background: rgba(248, 250, 252, 0.8) !important;
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .navbar .logo {
+            color: var(--clr-text-main) !important;
+        }
+
+        .navbar .nav-link {
+            color: var(--clr-text-muted) !important;
+        }
+
+        .navbar .nav-link:hover, .navbar .nav-link.active {
+            color: var(--clr-text-main) !important;
+        }
+
+        .navbar .btn-outline {
+            border-color: var(--clr-text-main) !important;
+            color: var(--clr-text-main) !important;
+        }
+
+        .navbar .btn-outline:hover, .navbar .btn-outline.active {
+            background-color: var(--clr-text-main) !important;
+            color: var(--clr-text-light) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo" id="nav-logo">AURA.</a>
+            <nav class="nav-menu" id="nav-menu">
+                <a href="index.html#home" class="nav-link" id="link-home">HOME</a>
+                <a href="index.html#features" class="nav-link" id="link-features">FEATURES</a>
+                <a href="index.html#halo" class="nav-link" id="link-halo">HALO</a>
+                <a href="index.html#architecture" class="nav-link" id="link-architecture">ARCHITECTURE</a>
+            </nav>
+            <div class="nav-actions">
+                <a href="feedback.html" class="btn btn-outline active" id="btn-open-portal" style="border-color: var(--clr-primary); color: var(--clr-primary);">Feedback</a>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Toggle Navigation Menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Feedback Body -->
+    <section class="feedback-section">
+        <div class="feedback-container">
+            <div class="feedback-card">
+                
+                <!-- Feedback Form State -->
+                <form class="feedback-form" id="feedback-form" onsubmit="submitFeedback(event)">
+                    <div class="feedback-header">
+                        <h1>AURA Diagnostics & Feedback</h1>
+                        <p>Have observations? Submit logs, report bugs, or share feature requests directly to the AURA memory stack.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="feedback-name">Your Name</label>
+                        <input type="text" id="feedback-name" required placeholder="e.g. Alex Carter">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="feedback-email">Email Address</label>
+                        <input type="email" id="feedback-email" required placeholder="e.g. alex@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="feedback-category">Feedback Class</label>
+                        <select id="feedback-category" required>
+                            <option value="general" selected>General Feedback</option>
+                            <option value="bug">Bug Report (Linter/UI)</option>
+                            <option value="feature">Feature Request (Plugin/Executor)</option>
+                            <option value="technical">Cognitive Core LRM Performance</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>LRM Rating</label>
+                        <div class="rating-stars-input" id="stars-container">
+                            <i class="fa-solid fa-star" data-value="1"></i>
+                            <i class="fa-solid fa-star" data-value="2"></i>
+                            <i class="fa-solid fa-star" data-value="3"></i>
+                            <i class="fa-solid fa-star" data-value="4"></i>
+                            <i class="fa-solid fa-star" data-value="5"></i>
+                        </div>
+                        <input type="hidden" id="feedback-rating" value="5">
+                        <div class="rating-caption" id="rating-caption">Excellent strategic reasoning capability</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="feedback-message">Observations & Messages</label>
+                        <textarea id="feedback-message" required placeholder="Describe your experience or logs here..."></textarea>
+                    </div>
+
+
+
+                    <button type="submit" class="btn btn-submit" id="btn-submit-feedback">
+                        <i class="fa-regular fa-paper-plane"></i> Submit Feedback Node
+                    </button>
+                </form>
+
+                <!-- Success Confirmation State -->
+                <div class="success-state" id="success-view">
+                    <div class="success-icon-halo">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <h2>Feedback Node Registered</h2>
+                    <p>Observations and diagnostics have been successfully stored in the AURA local cache database. Your logs will help refine Strategic Reasoning models.</p>
+                    <a href="index.html" class="btn btn-outline" id="btn-back-home">
+                        <i class="fa-solid fa-chevron-left"></i> Back to Home
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-branding">
+                <h2 class="logo">AURA.</h2>
+                <p>Open-source, local-first neural operating assistant</p>
+            </div>
+            <div class="footer-socials">
+                <a href="https://github.com/arvijayadhith7/Artificial-unified-reasoning-assistant--Aura-" target="_blank" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+                <a href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
+                <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Star Rating Interactive Logic
+        const stars = document.querySelectorAll('#stars-container i');
+        const ratingInput = document.getElementById('feedback-rating');
+        const ratingCaption = document.getElementById('rating-caption');
+
+        const captions = {
+            '1': 'Insufficient logic capacity / failures detected',
+            '2': 'Sub-optimal reasoning or slow context tracking',
+            '3': 'Decent ambient assistant functionality',
+            '4': 'Strong AST parser and sandboxed execution',
+            '5': 'Excellent strategic reasoning capability'
+        };
+
+        stars.forEach(star => {
+            // Mouse Hover In
+            star.addEventListener('mouseover', () => {
+                const val = star.getAttribute('data-value');
+                highlightStars(val, 'hover');
+            });
+
+            // Mouse Hover Out
+            star.addEventListener('mouseout', () => {
+                resetStars();
+            });
+
+            // Mouse Click
+            star.addEventListener('click', () => {
+                const val = star.getAttribute('data-value');
+                ratingInput.value = val;
+                ratingCaption.innerText = captions[val];
+                highlightStars(val, 'active');
+            });
+        });
+
+        function highlightStars(val, className) {
+            stars.forEach(star => {
+                const starVal = star.getAttribute('data-value');
+                if (parseInt(starVal) <= parseInt(val)) {
+                    star.classList.add(className);
+                } else {
+                    star.classList.remove(className);
+                }
+            });
+        }
+
+        function resetStars() {
+            stars.forEach(star => star.classList.remove('hover'));
+            const activeVal = ratingInput.value;
+            highlightStars(activeVal, 'active');
+        }
+
+        // Set initial stars
+        highlightStars(5, 'active');
+
+        // Form Submit Handler
+        function submitFeedback(event) {
+            event.preventDefault();
+            
+            // Collect Form Values (simulated submission)
+            const name = document.getElementById('feedback-name').value;
+            const email = document.getElementById('feedback-email').value;
+            const category = document.getElementById('feedback-category').value;
+            const rating = ratingInput.value;
+            const message = document.getElementById('feedback-message').value;
+
+            console.log("Feedback Submitted:", { name, email, category, rating, message });
+
+            // Swap Form display with Success screen
+            document.getElementById('feedback-form').style.display = 'none';
+            document.getElementById('success-view').style.display = 'block';
+        }
+
+        // Mobile Nav Toggle
+        const menuToggle = document.getElementById('menu-toggle');
+        const navMenu = document.getElementById('nav-menu');
+        
+        menuToggle.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            const icon = menuToggle.querySelector('i');
+            if(navMenu.classList.contains('active')) {
+                icon.classList.replace('fa-bars', 'fa-xmark');
+            } else {
+                icon.classList.replace('fa-xmark', 'fa-bars');
+            }
+        });
+    </script>
+</body>
+</html>

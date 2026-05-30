@@ -5,7 +5,6 @@ import '../widgets/glowing_orb.dart';
 import '../app_theme.dart';
 import 'main_screen.dart';
 
-
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -29,11 +28,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
     _controller.forward();
     
-    // Direct navigation after 2 seconds - no SharedPreferences dependency here
+    // Navigate directly to MainScreen after splash animation
     Timer(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainScreen()),
+          MaterialPageRoute(
+            builder: (_) => const MainScreen(),
+          ),
         );
       }
     });

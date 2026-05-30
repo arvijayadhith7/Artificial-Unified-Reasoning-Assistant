@@ -114,6 +114,8 @@ class RealtimeIngestionCluster:
         asyncio.create_task(self._ingestion_loop())
 
     async def _ingestion_loop(self):
+        # Allow startup connection without network congestion
+        await asyncio.sleep(30)
         while self.is_running:
             try:
                 from agent_plugins.search_agent import ResearchAgent
@@ -187,6 +189,8 @@ async def startup_event():
         print("NEURAL BOOT: Initializing Memory and Databases...")
         try:
             Base.metadata.create_all(bind=engine)
+            # Pre-load ChromaDB and SentenceTransformer in startup background thread
+            _ = memory.client
             print("NEURAL BOOT: Systems Synchronized.")
         except Exception as e:
             print(f"BOOT ERROR: {e}")
@@ -195,9 +199,244 @@ async def startup_event():
     await ingestion_cluster.start()
 
 # 3. Database Setup
+import httpx
+import requests
+
+def map_model_for_backend(model: str) -> str:
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    custom_vision_url = os.environ.get("CUSTOM_VISION_API_URL")
+    if openrouter_key:
+        # OpenRouter Mapping
+        if "llama-3.3-70b" in model or model == "llama-3.3-70b-versatile":
+            return "nousresearch/hermes-3-llama-3.1-70b"
+        elif "llama-3.1-8b" in model or model == "llama-3.1-8b-instant":
+            return "nousresearch/hermes-3-llama-3.1-70b"
+        elif "scout" in model:
+            return model  # Let it pass through since meta-llama/llama-4-scout-17b-16e-instruct is valid
+        elif "minicpm" in model:
+            if custom_vision_url:
+                return model  # Let it pass through to custom endpoints/OpenRouter
+            else:
+                # Fallback to a supported high-performance cloud vision model on OpenRouter
+                return "google/gemini-1.5-flash"
+        elif "vision" in model:
+            return "meta-llama/llama-3.2-11b-vision-instruct"
+        return model
+    else:
+        # GroqCloud Mapping
+        if "minicpm" in model:
+            if custom_vision_url:
+                return model
+            else:
+                # Fallback to a supported vision model on Groq
+                return "llama-3.2-90b-vision-preview"
+        if "scout" in model or "vision" in model:
+            return "llama-3.2-90b-vision-preview"
+        if "llama-3.1-8b" in model:
+            return "llama-3.1-8b-instant"
+        if "llama-3.3-70b" in model:
+            return "llama-3.3-70b-versatile"
+        return model
+
+class OpenRouterClient:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.chat = self.Chat(api_key)
+
+    class Chat:
+        def __init__(self, api_key: str):
+            self.completions = OpenRouterClient.Completions(api_key)
+
+    class Completions:
+        def __init__(self, api_key: str):
+            self.api_key = api_key
+
+        def create(self, model: str, messages: list, temperature: float = 0.7, max_tokens: int = 1000, **kwargs):
+            mapped_model = map_model_for_backend(model)
+
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://aura-ai.vercel.app",
+                "X-Title": "AURA Assistant",
+            }
+            payload = {
+                "model": mapped_model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+
+            resp = requests.post("https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers, timeout=60.0)
+            resp.raise_for_status()
+            data = resp.json()
+
+            class Message:
+                def __init__(self, content):
+                    self.content = content
+            class Choice:
+                def __init__(self, content):
+                    self.message = Message(content)
+            class Response:
+                def __init__(self, content):
+                    self.choices = [Choice(content)]
+            return Response(data["choices"][0]["message"]["content"])
+
+class AsyncOpenRouterClient:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.chat = self.Chat(api_key)
+
+    class Chat:
+        def __init__(self, api_key: str):
+            self.completions = AsyncOpenRouterClient.Completions(api_key)
+
+    class Completions:
+        def __init__(self, api_key: str):
+            self.api_key = api_key
+
+        async def create(self, model: str, messages: list, temperature: float = 0.7, max_tokens: int = 1000, stream: bool = False, **kwargs):
+            mapped_model = map_model_for_backend(model)
+
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://aura-ai.vercel.app",
+                "X-Title": "AURA Assistant",
+            }
+            payload = {
+                "model": mapped_model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": stream
+            }
+
+            if not stream:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post("https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers)
+                    resp.raise_for_status()
+                    data = resp.json()
+
+                    class Message:
+                        def __init__(self, content):
+                            self.content = content
+                    class Choice:
+                        def __init__(self, content):
+                            self.message = Message(content)
+                    class Response:
+                        def __init__(self, content):
+                            self.choices = [Choice(content)]
+                    return Response(data["choices"][0]["message"]["content"])
+            else:
+                async def stream_generator():
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        async with client.stream("POST", "https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers) as response:
+                            response.raise_for_status()
+                            async for line in response.aiter_lines():
+                                if not line:
+                                    continue
+                                if line.startswith("data: "):
+                                    print(f"RAW OPENROUTER LINE: {line}")
+                                    data_str = line[6:].strip()
+                                    if data_str == "[DONE]":
+                                        break
+                                    try:
+                                        import json
+                                        chunk_data = json.loads(data_str)
+                                        content = chunk_data["choices"][0]["delta"].get("content", "")
+                                        if content:
+                                            class Delta:
+                                                def __init__(self, content):
+                                                    self.content = content
+                                            class Choice:
+                                                def __init__(self, content):
+                                                    self.delta = Delta(content)
+                                            class Chunk:
+                                                def __init__(self, content):
+                                                    self.choices = [Choice(content)]
+                                            yield Chunk(content)
+                                    except Exception as err:
+                                        print(f"Error parsing OpenRouter stream chunk: {err}")
+                return stream_generator()
+
 groq_key = os.environ.get("GROQ_API_KEY")
-groq_client = GroqClient(api_key=groq_key) if groq_key else None
-async_groq_client = AsyncGroq(api_key=groq_key) if groq_key else None
+openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+
+if openrouter_key:
+    print("[SYSTEM] AURA cognitive brain: Running on OpenRouter (Nous Research Hermes-3)")
+    groq_client = OpenRouterClient(api_key=openrouter_key)
+    async_groq_client = AsyncOpenRouterClient(api_key=openrouter_key)
+else:
+    print("[SYSTEM] AURA cognitive brain: Running on GroqCloud")
+    groq_client = GroqClient(api_key=groq_key) if groq_key else None
+    async_groq_client = AsyncGroq(api_key=groq_key) if groq_key else None
+
+custom_vision_url = os.environ.get("CUSTOM_VISION_API_URL")
+custom_vision_key = os.environ.get("CUSTOM_VISION_API_KEY", "no_key_needed")
+custom_vision_client = None
+
+if custom_vision_url:
+    print(f"[SYSTEM] AURA local vision router: Active using endpoint {custom_vision_url}")
+    from openai import AsyncOpenAI
+    custom_vision_client = AsyncOpenAI(
+        base_url=custom_vision_url,
+        api_key=custom_vision_key
+    )
+
+def serialize_to_toon(data: Any, indent: int = 0) -> str:
+    """
+    Serializes standard dictionary/list objects to Token-Oriented Object Notation (TOON) / YAML-like format.
+    Reduces LLM context token usage by 30-50% compared to raw JSON.
+    """
+    if isinstance(data, dict):
+        lines = []
+        for k, v in data.items():
+            spacing = "  " * indent
+            if isinstance(v, (dict, list)):
+                lines.append(f"{spacing}{k}:")
+                lines.append(serialize_to_toon(v, indent + 1))
+            else:
+                lines.append(f"{spacing}{k}: {v}")
+        return "\n".join(lines)
+    elif isinstance(data, list):
+        if not data:
+            return "  " * indent + "[]"
+        # Check if uniform array of dicts (tabular format)
+        first = data[0]
+        if isinstance(first, dict):
+            keys = list(first.keys())
+            is_uniform = True
+            for item in data:
+                if not isinstance(item, dict) or list(item.keys()) != keys:
+                    is_uniform = False
+                    break
+            if is_uniform:
+                spacing = "  " * indent
+                lines = []
+                header_str = ", ".join(keys)
+                lines.append(f"{spacing}[{header_str}]")
+                for item in data:
+                    row_vals = []
+                    for k in keys:
+                        v = item[k]
+                        row_vals.append(str(v).replace('[', '').replace(']', ''))
+                    row_str = ", ".join(row_vals)
+                    lines.append(f"{spacing}- [{row_str}]")
+                return "\n".join(lines)
+        
+        lines = []
+        for item in data:
+            spacing = "  " * indent
+            if isinstance(item, (dict, list)):
+                lines.append(f"{spacing}-")
+                lines.append(serialize_to_toon(item, indent + 1))
+            else:
+                lines.append(f"{spacing}- {item}")
+        return "\n".join(lines)
+    else:
+        return "  " * indent + str(data)
+
 
 class NeuralMemory:
     def __init__(self, path):
@@ -205,15 +444,18 @@ class NeuralMemory:
         self._client = None
         self._collection = None
         self._rag = None
+        self._lock = ThreadingLock()
 
     @property
     def client(self):
         if self._client is None:
-            print("NEURAL BOOT: Initializing ChromaDB Memory Vault...")
-            self._client = chromadb.PersistentClient(path=self.path)
-            self._collection = self._client.get_or_create_collection(name="aura_memory_vault")
-            from agent_plugins.rag_advanced import AdvancedRAG
-            self._rag = AdvancedRAG(self._collection)
+            with self._lock:
+                if self._client is None:
+                    print("NEURAL BOOT: Initializing ChromaDB Memory Vault...")
+                    self._client = chromadb.PersistentClient(path=self.path)
+                    self._collection = self._client.get_or_create_collection(name="aura_memory_vault")
+                    from agent_plugins.rag_advanced import AdvancedRAG
+                    self._rag = AdvancedRAG(self._collection)
         return self._client
 
     def retrieve_context(self, query, project_id=None, top_k=3):
@@ -370,9 +612,12 @@ class InferenceEngine:
             except Exception:
                 pass
 
+        # Determine if running in a cloud/headless environment or if client is android
+        is_cloud = os.environ.get("SPACE_ID") is not None or os.name != "nt"
+        
         # Check for local screenshot request or automatic desktop capture
         screenshot_data = sandbox.get("screenshot") or sandbox.get("screenshot_data")
-        if screenshot_data == "local" or (ocr_active and any(k in prompt.lower() for k in ["screen", "screenshot", "analyze display", "capture"])):
+        if not is_cloud and (screenshot_data == "local" or (ocr_active and any(k in prompt.lower() for k in ["screen", "screenshot", "analyze display", "capture"]))):
             try:
                 from PIL import ImageGrab
                 screenshot = ImageGrab.grab()
@@ -383,11 +628,14 @@ class InferenceEngine:
                 print(f"Failed to grab screen locally: {grab_err}")
 
         base64_image_content = None
-        if screenshot_data and screenshot_data.startswith("data:image"):
-            try:
-                base64_image_content = screenshot_data.split(",")[1]
-            except Exception as b64_err:
-                print(f"Error parsing screenshot base64: {b64_err}")
+        if screenshot_data and isinstance(screenshot_data, str) and screenshot_data.strip():
+            if "," in screenshot_data:
+                try:
+                    base64_image_content = screenshot_data.split(",")[1]
+                except Exception as b64_err:
+                    print(f"Error parsing screenshot base64: {b64_err}")
+            else:
+                base64_image_content = screenshot_data.strip()
 
         # Check if the user is asking about their screen / layout / what is visible,
         # but we don't have a valid screenshot.
@@ -396,11 +644,27 @@ class InferenceEngine:
             "what's on my", "see my", "screenshot", "this page", "on my screen", "my display"
         ])
         if is_screen_query and not base64_image_content:
-            yield ("content", (
-                "I can't capture your screen right now. "
-                "Make sure the AURA backend is running on this PC (port 7860), then try again. "
-                "Or tell me which app you're in and what you're trying to do."
-            ))
+            platform = sandbox.get("platform", "pc")
+            if platform in ["android", "android_app"]:
+                yield ("content", (
+                    "I can't capture your screen right now. Please make sure that you have granted "
+                    "screen recording/capture permissions to AURA on your Android device and that you are using "
+                    "AURA outside the app via the floating overlay assistant. "
+                    "Or, tell me which app you're in and what you're trying to do."
+                ))
+            elif is_cloud:
+                yield ("content", (
+                    "I can't capture your PC screen right now because the AURA backend is running on the cloud. "
+                    "To enable PC screen analysis, please run the AURA backend locally on this PC (port 7860) "
+                    "and connect the client interface to localhost. "
+                    "Or, tell me which app you're in and what you're trying to do."
+                ))
+            else:
+                yield ("content", (
+                    "I can't capture your screen right now. "
+                    "Make sure the AURA backend is running on this PC (port 7860), then try again. "
+                    "Or tell me which app you're in and what you're trying to do."
+                ))
             return
 
         # Active App Guideline
@@ -504,64 +768,110 @@ class InferenceEngine:
         # Skip search for simple SLM queries unless explicitly requested via deep analysis
         search_query = prompt
         
+        # Force Search Override prefixes
+        force_search = False
+        lower_prompt = prompt.strip().lower()
+        search_prefixes = ["search ", "/search ", "/live ", "/web ", "find ", "தேடு ", "பற்றி "]
+        for prefix in search_prefixes:
+            if lower_prompt.startswith(prefix):
+                force_search = True
+                search_query = prompt.strip()[len(prefix):].strip()
+                break
+
+        if force_search:
+            is_research_needed = True
+            print(f"FORCE SEARCH OVERRIDE: Triggered web search for: '{search_query}'")
         # Search intent: main chat always eligible; overlay only in research mode
-        if search_strategy != "local-only" and (not overlay_mode or sandbox.get("assistant_mode") == "research"):
-            intent_prompt = f"""Identify if the user query requires real-time web search or current/temporal information (e.g., live games, scores, current events, weather, stock prices, recent news, software releases/updates).
-Queries NOT requiring search include general coding questions (e.g., how to use Flutter, explain React hooks, what is Python, how to print in C), general math, creative writing, or basic conversation.
-
-User Query: "{prompt}"
-
-Respond with ONLY "SEARCH" or "NO_SEARCH" (nothing else, no explanation, no punctuation)."""
+        elif search_strategy != "local-only" and (not overlay_mode or sandbox.get("assistant_mode") == "research"):
+            # Check for temporal keywords override first to prevent LLM classifier from incorrectly skipping
+            p_lower = prompt.lower()
+            tech_skip = ["python", "javascript", "typescript", "java", "c#", "c++", "rust", "html", "css", "flutter", "dart", "react", "angular", "vue", "docker", "git", "sql", "code", "programming", "array", "object", "string", "loop", "regex"]
+            has_tech_skip = any(tk in p_lower for tk in tech_skip)
             
-            try:
-                intent_res = await async_groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": intent_prompt}],
-                    max_tokens=5,
-                    temperature=0.0,
-                    timeout=4.0
-                )
-                expanded = intent_res.choices[0].message.content.strip().upper()
-                if "SEARCH" in expanded and "NO_SEARCH" not in expanded:
-                    is_research_needed = True
-                    print(f"NEURAL INTENT CLASSIFICATION: Detected search requirement.")
-                else:
-                    print(f"NEURAL INTENT CLASSIFICATION: Query is static.")
-            except Exception as ex:
-                print(f"LLM Intent Classification failed, falling back to keywords: {ex}")
-                # Fallback keyword-based check
-                is_research_needed = any(k in prompt.lower() for k in [
-                    "score", "news", "today", "weather", "match", "latest", 
-                    "who is", "what is", "how is", "price", "stock", "search", "update",
-                    "current", "now", "live", "results", "scheduled", "vs", "who won",
-                    "standing", "points", "ranking", "winner", "tomorrow", "tonight", "happening"
-                ])
-                if any(k in prompt.lower() for k in ["how to", "code", "function", "install", "react hooks", "flutter", "python"]):
-                    is_research_needed = False
+            temporal_kws = [
+                "current", "latest", "weather", "news", "score", "match", "today", "yesterday", "tomorrow", 
+                "tonight", "who is", "who won", "ipl", "stock", "price", "update", "now", "live", "results", 
+                "vs", "standing", "points", "ranking", "winner", "election", "chief minister", "prime minister", 
+                "president", "cm of", "pm of", "minister of", "cabinet", "governor of", "ceo of"
+            ]
+            
+            if any(tk in p_lower for tk in temporal_kws) and not has_tech_skip:
+                is_research_needed = True
+                print(f"TEMPORAL KEYWORD OVERRIDE: Triggered web search for: '{prompt}'")
+            else:
+                intent_prompt = f"""Identify if the user query requires real-time web search or current/temporal information (e.g., live games, scores, current events, weather, stock prices, recent news, software releases/updates).
+                Queries NOT requiring search include general coding questions (e.g., how to use Flutter, explain React hooks, what is Python, how to print in C), general math, creative writing, or basic conversation.
+
+                User Query: "{prompt}"
+
+                Respond with ONLY "SEARCH" or "NO_SEARCH" (nothing else, no explanation, no punctuation)."""
+                
+                try:
+                    intent_res = await async_groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": intent_prompt}],
+                        max_tokens=5,
+                        temperature=0.0,
+                        timeout=4.0
+                    )
+                    expanded = intent_res.choices[0].message.content.strip().upper()
+                    if "SEARCH" in expanded and "NO_SEARCH" not in expanded:
+                        is_research_needed = True
+                        print(f"NEURAL INTENT CLASSIFICATION: Detected search requirement.")
+                    else:
+                        print(f"NEURAL INTENT CLASSIFICATION: Query is static.")
+                except Exception as ex:
+                    print(f"LLM Intent Classification failed, falling back to keywords: {ex}")
+                    # Fallback keyword-based check
+                    is_research_needed = any(k in prompt.lower() for k in [
+                        "score", "news", "today", "weather", "match", "latest", 
+                        "who is", "what is", "how is", "price", "stock", "search", "update",
+                        "current", "now", "live", "results", "scheduled", "vs", "who won",
+                        "standing", "points", "ranking", "winner", "tomorrow", "tonight", "happening"
+                    ])
+                    if any(k in prompt.lower() for k in ["how to", "code", "function", "install", "react hooks", "flutter", "python"]):
+                        is_research_needed = False
 
         # Conversational Query Expansion if needed
         if history and is_research_needed:
-            try:
-                chat_history_str = "\n".join([f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in history[-3:]])
-                expansion_prompt = f"""Given the following chat history and a follow-up query, generate an optimized single search query.
+            # Filter out the current prompt if it was already added to history by the frontend
+            filtered_history = [m for m in history if m.get('content') != prompt]
+            if filtered_history:
+                try:
+                    chat_history_str = "\n".join([f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in filtered_history[-3:]])
+                    expansion_prompt = f"""Given the following chat history and a follow-up query, generate an optimized single search query.
+Note: The current year is 2026. If the query asks for temporal or current events, ensure the search query targets 2026 or the present.
 CHAT HISTORY:
 {chat_history_str}
 
 FOLLOW-UP QUERY:
 {prompt}
 
-RESPONSE FORMAT: Output ONLY the optimized search query, nothing else."""
-                intent_res = await async_groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": expansion_prompt}],
-                    max_tokens=30,
-                    temperature=0.0
-                )
-                expanded = intent_res.choices[0].message.content.strip()
-                search_query = expanded.replace('"', '')
-                print(f"NEURAL INTENT: Query expanded to '{search_query}'")
-            except Exception as ex:
-                print(f"Intent expansion failed: {ex}")
+RESPONSE FORMAT: Output ONLY the optimized search query, nothing else. Do NOT include conversational text, lists, or newlines."""
+                    intent_res = await async_groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": expansion_prompt}],
+                        max_tokens=30,
+                        temperature=0.0
+                    )
+                    expanded = intent_res.choices[0].message.content.strip()
+                    search_query = expanded.replace('"', '').replace('\n', ' ').strip()
+                    print(f"NEURAL INTENT: Query expanded to '{search_query}'")
+                except Exception as ex:
+                    print(f"Intent expansion failed: {ex}")
+                    search_query = prompt
+            else:
+                search_query = prompt
+        else:
+            search_query = prompt
+
+        # Refine search query with current year if it has temporal intent and does not already contain the year
+        current_year = "2026"
+        temporal_kws = ["current", "latest", "news", "today", "weather", "match", "score", "ipl", "stock", "price", "who is", "who won", "election", "cm", "pm", "president", "now"]
+        p_lower = prompt.lower()
+        if is_research_needed and any(tk in p_lower for tk in temporal_kws) and current_year not in search_query:
+            search_query = f"{search_query} {current_year}"
+            print(f"TEMPORAL SEARCH QUERY REFINE: Expanded search query to: '{search_query}'")
 
         research_context = ""
         if is_research_needed:
@@ -596,7 +906,7 @@ RESPONSE FORMAT: Output ONLY the optimized search query, nothing else."""
         if overlay_mode:
             memory_context = api_context
         else:
-            memory_context = memory.retrieve_context(prompt, project_id=project_id)
+            memory_context = await asyncio.to_thread(memory.retrieve_context, prompt, project_id)
             if api_context and "No matching free APIs" not in api_context:
                 memory_context += "\n\n" + api_context
 
@@ -611,7 +921,7 @@ RESPONSE FORMAT: Output ONLY the optimized search query, nothing else."""
                 workspace_title = active_ws.get('title', workspace_title)
                 workspace_instructions = active_ws.get('description', workspace_instructions)
                 if active_ws.get('blueprint'):
-                    workspace_blueprint = f"\nPROJECT BLUEPRINT & ROADMAP:\n{json.dumps(active_ws['blueprint'])}"
+                    workspace_blueprint = f"\nPROJECT BLUEPRINT & ROADMAP:\n{serialize_to_toon(active_ws['blueprint'])}"
         except: pass
 
         workflow = classify_workflow(active_process, active_app_info, accessibility_text)
@@ -864,25 +1174,84 @@ LIVE DATA RULES:
             
             # Start direct streaming of final response
             try:
-                response_stream = await async_groq_client.chat.completions.create(
-                    model=chosen_model,
-                    messages=messages,
-                    temperature=overlay_params.get("temperature", 0.7),
-                    max_tokens=overlay_params.get("max_tokens", 2048),
-                    stream=True
-                )
+                if base64_image_content and custom_vision_client:
+                    print(f"CUSTOM VISION ROUTING: Sending screenshot to self-hosted endpoint: {custom_vision_url}")
+                    response_stream = await custom_vision_client.chat.completions.create(
+                        model=chosen_model,
+                        messages=messages,
+                        temperature=overlay_params.get("temperature", 0.7),
+                        max_tokens=overlay_params.get("max_tokens", 2048),
+                        stream=True
+                    )
+                else:
+                    response_stream = await async_groq_client.chat.completions.create(
+                        model=map_model_for_backend(chosen_model),
+                        messages=messages,
+                        temperature=overlay_params.get("temperature", 0.7),
+                        max_tokens=overlay_params.get("max_tokens", 2048),
+                        stream=True
+                    )
                 
                 async for chunk in response_stream:
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        yield ("content", chunk.choices[0].delta.content)
+                    if chunk.choices and len(chunk.choices) > 0:
+                        delta = chunk.choices[0].delta
+                        content = getattr(delta, "content", None)
+                        if not content and isinstance(delta, dict):
+                            content = delta.get("content")
+                        if content:
+                            yield ("content", content)
                         
             except Exception as e:
-                print(f"Groq Inference failed: {e}. Seamlessly falling back to NVIDIA NIM...")
+                cerebras_key = os.environ.get("CEREBRAS_API_KEY")
+                if cerebras_key:
+                    print(f"Groq Inference failed: {e}. Seamlessly falling back to Cerebras...")
+                    try:
+                        from openai import AsyncOpenAI
+                        cerebras_client = AsyncOpenAI(
+                            base_url="https://api.cerebras.ai/v1",
+                            api_key=cerebras_key
+                        )
+                        
+                        # Map model names to Cerebras supported ones
+                        cerebras_model = "llama3.1-8b"
+                        if "70b" in chosen_model or chosen_model == "llama-3.3-70b-versatile":
+                            cerebras_model = "llama3.1-70b"
+                        
+                        # Strip out images if any (Cerebras is text-only)
+                        cerebras_messages = []
+                        for msg in messages:
+                            content = msg.get("content")
+                            if isinstance(content, list):
+                                text_content = ""
+                                for item in content:
+                                    if item.get("type") == "text":
+                                        text_content += item.get("text", "")
+                                cerebras_messages.append({"role": msg.get("role"), "content": text_content})
+                            else:
+                                cerebras_messages.append(msg)
+
+                        response_stream = await cerebras_client.chat.completions.create(
+                            model=cerebras_model,
+                            messages=cerebras_messages,
+                            temperature=overlay_params.get("temperature", 0.7),
+                            max_tokens=overlay_params.get("max_tokens", 2048),
+                            stream=True
+                        )
+                        
+                        async for chunk in response_stream:
+                            if chunk.choices and getattr(chunk.choices[0], "delta", None) and chunk.choices[0].delta.content:
+                                yield ("content", chunk.choices[0].delta.content)
+                        return # Successfully completed using Cerebras
+                    except Exception as ce:
+                        print(f"Cerebras fallback failed: {ce}")
+
+                print(f"Falling back to NVIDIA NIM...")
                 try:
                     from openai import AsyncOpenAI
+                    nvidia_key = os.environ.get("NVIDIA_API_KEY") or "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"
                     nim_client = AsyncOpenAI(
                         base_url="https://integrate.api.nvidia.com/v1",
-                        api_key="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"
+                        api_key=nvidia_key
                     )
                     
                     response_stream = await nim_client.chat.completions.create(
@@ -964,6 +1333,26 @@ class ChatHistoryManager:
             else:
                 return [c for c in convs if c.get('project_id') == project_id]
 
+    def delete_conversation(self, user_id, conv_id):
+        """Delete a conversation: remove message file and index entry."""
+        # Remove the messages file
+        msg_file = os.path.join(self.db_dir, f'{conv_id}.json')
+        if os.path.exists(msg_file):
+            os.remove(msg_file)
+
+        # Remove from user's conversation index
+        conv_file = self._get_user_conv_file(user_id)
+        if os.path.exists(conv_file):
+            with open(conv_file, 'r', encoding='utf-8') as f:
+                convs = json.load(f)
+            original_len = len(convs)
+            convs = [c for c in convs if c.get('id') != conv_id]
+            if len(convs) < original_len:
+                with open(conv_file, 'w', encoding='utf-8') as f:
+                    json.dump(convs, f)
+                return True
+        return False
+
 chat_manager = ChatHistoryManager()
 
 # 7. Workspace Manager
@@ -978,7 +1367,20 @@ class WorkspaceManager:
 
     def generate_onboarding_questions(self, title, category="General"):
         """Generate 10 dynamic, category-specific questions for project architecture."""
-        if not self.groq: return []
+        fallback_questions = [
+            {"id": 1, "question": f"What is the primary target audience for '{title}'?", "options": ["General Consumers", "Enterprise Clients", "Developers/Creators", "Niche Community"]},
+            {"id": 2, "question": "What is the core user interaction model?", "options": ["Web Portal / Dashboard", "Mobile Application", "Browser Extension / Desktop Overlay", "Command Line Interface (CLI)"]},
+            {"id": 3, "question": "What is the primary monetization strategy?", "options": ["Subscription Model (SaaS)", "One-time Purchase / License", "Ad-supported / Freemium", "Open Source / Community-driven"]},
+            {"id": 4, "question": "Which tech stack tier is most critical for MVP?", "options": ["High-performance backend (Go/Rust/Python)", "Interactive frontend (React/Flutter)", "Real-time communication (WebSockets)", "Cloud database & Auth (Supabase/Firebase)"]},
+            {"id": 5, "question": "What is the expected system scalability requirement?", "options": ["Single-instance server (Low budget)", "Auto-scaling container group (Medium scale)", "Multi-region serverless deployment", "Distributed microservices"]},
+            {"id": 6, "question": "What kind of data storage is primary?", "options": ["Relational Database (PostgreSQL/SQLite)", "NoSQL Document Store (MongoDB)", "In-memory database / Cache (Redis)", "Vector Database (Chroma/Pinecone)"]},
+            {"id": 7, "question": "What security standard is required for MVP launch?", "options": ["Basic OAuth / email-password auth", "Multi-factor authentication (MFA)", "Enterprise SSO / SAML integration", "End-to-end encrypted storage"]},
+            {"id": 8, "question": "Are there any immediate AI/ML opportunities?", "options": ["Pre-trained LLM API wrappers (OpenAI/Groq)", "Local self-hosted models (Ollama/SLM)", "Custom ML regression/classification", "No AI required for Phase 1"]},
+            {"id": 9, "question": "How will updates and deployments be managed?", "options": ["Manual FTP / Git pull on server", "Automated CI/CD pipelines (GitHub Actions)", "Docker container builds and registries", "Serverless auto-deployment (Vercel/Render)"]},
+            {"id": 10, "question": "What is the timeline constraint for version 1.0?", "options": ["1-2 weeks (Rapid prototyping)", "1 month (Focused build)", "3 months (Production grade)", "Flexible / Ongoing development"]}
+        ]
+        if not self.groq:
+            return fallback_questions
         prompt = f"""Generate 10 highly specific architectural and product questions for a new project titled '{title}' in category '{category}'.
         The questions should cover: Purpose, User Persona, Monetization, Tech Complexity, Scalability, and AI Opportunities.
         Return ONLY a JSON list of objects: [{{"id": 1, "question": "...", "options": ["...", "..."]}}]"""
@@ -990,18 +1392,52 @@ class WorkspaceManager:
             )
             data = json.loads(response.choices[0].message.content)
             return data.get("questions", [])[:10]
-        except: return []
+        except:
+            return fallback_questions
 
     def generate_adaptive_onboarding_questions(self, title, experience_level, project_details):
         """Generate dynamic, adaptive questions based on user experience level and project details."""
-        if not self.groq: return []
-        
         # Determine number of questions based on experience level
         q_count = 5
         if experience_level == "Beginner":
             q_count = 3
         elif experience_level == "Advanced":
             q_count = 8
+
+        fallback_beginner = [
+            {"id": 1, "question": "How will users access your app or website?", "options": ["Web browser on desktop/mobile", "Downloadable Mobile App", "Desktop program / Overlay", "Other"]},
+            {"id": 2, "question": "Will users need to log in to save their progress/data?", "options": ["Yes, with username/password or Google", "No, it should be open for everyone without login", "Only some optional features require login"]},
+            {"id": 3, "question": "Do you want users to be able to use the app offline?", "options": ["Yes, it should work without internet", "No, it requires an active internet connection", "Not sure yet"]}
+        ]
+        
+        fallback_intermediate = [
+            {"id": 1, "question": "Which database service do you prefer for user data?", "options": ["Firebase (Real-time NoSQL)", "Supabase / PostgreSQL (Relational)", "Local storage / SQLite (Simple)", "Other / Undecided"]},
+            {"id": 2, "question": "What style of API communication fits best?", "options": ["REST APIs (Standard HTTP calls)", "GraphQL (Flexible schema queries)", "WebSockets (Real-time duplex)", "Serverless Functions / Direct database bindings"]},
+            {"id": 3, "question": "How do you plan to handle application state management?", "options": ["Riverpod / Provider (Flutter standard)", "Redux / Zustand (React/Web standard)", "Simple setState / local variables", "Bloc / RxDart (Enterprise reactive)"]},
+            {"id": 4, "question": "Where do you plan to host the backend server?", "options": ["Render / Railway (PaaS)", "AWS / GCP VM Instance (IaaS)", "Serverless edge functions (Vercel/Cloudflare)", "Local machine hosting / self-hosted"]},
+            {"id": 5, "question": "What is the primary authentication provider?", "options": ["Email and Password", "Google / Social Sign-In", "Passwordless / Magic Link", "Anonymous / No authentication"]}
+        ]
+
+        fallback_advanced = [
+            {"id": 1, "question": "What architectural pattern will govern the backend services?", "options": ["Monolithic MVC (Standard API app)", "Microservices (Independent service scale)", "Event-driven / Pub-sub (Kafka/RabbitMQ)", "Serverless Edge APIs"]},
+            {"id": 2, "question": "Which Vector Database or LLM cache strategy will you employ?", "options": ["ChromaDB / pgvector (Local/Open-source)", "Pinecone / Milvus (Cloud managed)", "In-memory cache (Redis/Memcached)", "None / Standard SQL text matching"]},
+            {"id": 3, "question": "How will you synchronize state across multiple clients or replicas?", "options": ["WebSocket with Redis pub/sub layer", "CRDTs (Conflict-Free Replicated Data Types)", "Polling / Periodic HTTP refresh", "Distributed transactional database lock"]},
+            {"id": 4, "question": "What is the CI/CD pipeline strategy for micro-deployment?", "options": ["GitHub Actions to Docker Hub + K8s rolling update", "Terraform with AWS ECS Fargate", "Serverless edge build triggers", "Manual Docker compose pull script"]},
+            {"id": 5, "question": "How do you manage telemetry and performance monitoring?", "options": ["Prometheus + Grafana cluster", "Sentry / Datadog APM Integration", "ELK Stack (Elasticsearch/Logstash/Kibana)", "Basic cloud console stdout logging"]},
+            {"id": 6, "question": "What LLM orchestration library fits the project context?", "options": ["LangChain / LangGraph (Complex agents)", "LlamaIndex (Data retrieval heavy)", "Direct API requests (Minimal dependency)", "Custom internal semantic agent core"]},
+            {"id": 7, "question": "What caching layer will be used for database query results?", "options": ["Redis cluster", "In-memory local caching (Guava/LRU)", "Database-level view caching", "No caching required for Phase 1"]},
+            {"id": 8, "question": "How will API rate limiting and gateway routing be configured?", "options": ["NGINX reverse proxy with rate limiting module", "Kong API Gateway", "Cloudflare rules and edge controls", "Application-level custom middleware"]}
+        ]
+
+        if experience_level == "Beginner":
+            fallback = fallback_beginner
+        elif experience_level == "Advanced":
+            fallback = fallback_advanced
+        else:
+            fallback = fallback_intermediate
+
+        if not self.groq:
+            return fallback[:q_count]
             
         prompt = f"""You are an Expert Startup Architect. Generate EXACTLY {q_count} highly specific, intelligent, adaptive questions to design the technical architecture and product roadmap for this project.
         
@@ -1046,25 +1482,33 @@ class WorkspaceManager:
             return data.get("questions", [])[:q_count]
         except Exception as e:
             print(f"Error generating adaptive questions: {e}")
-            if experience_level == "Beginner":
-                return [
-                    {"id": i, "question": f"Beginner question {i} for {title}", "options": ["Yes", "No", "Not sure", "Other"]}
-                    for i in range(1, q_count + 1)
-                ]
-            elif experience_level == "Advanced":
-                return [
-                    {"id": i, "question": f"Advanced architectural question {i} for {title}", "options": ["Option A", "Option B", "Option C", "Option D"]}
-                    for i in range(1, q_count + 1)
-                ]
-            else:
-                return [
-                    {"id": i, "question": f"Intermediate feature question {i} for {title}", "options": ["Option A", "Option B", "Option C", "Option D"]}
-                    for i in range(1, q_count + 1)
-                ]
+            return fallback[:q_count]
 
     def perform_project_analysis(self, title, answers, experience_level="Intermediate", project_details=None):
         """Analyze project onboarding data to generate roadmap, stack, domain clusters, and tech blueprint."""
-        if not self.groq: return {}
+        fallback_analysis = {
+            "summary": f"Fallback architectural blueprint for '{title}' (Offline Mode).",
+            "tech_stack": ["HTML5/CSS3/JavaScript", "Python FastAPI", "SQLite (Local Dev)", "GitHub Actions", "Render / local deployment"],
+            "architecture_suggestion": "Layered MVC monolith architecture with direct REST APIs and basic file-system caching.",
+            "ai_opportunities": ["Rule-based heuristic classifier", "Local HuggingFace model integration (Offline)"],
+            "monetization": ["Direct licensing / premium tier", "Self-hosted Enterprise plan"],
+            "roadmap": {
+                "Phase 1: Setup": "Initialize Git repository, configure database models, and write core router endpoints.",
+                "Phase 2: MVP Core": "Implement main user input flow, process basic templates, and show static dashboards.",
+                "Phase 3: Deploy": "Dockerize application and deploy to Render or local host on port 8085."
+            },
+            "risks": ["External API rate limits", "Development bottleneck with single builder"],
+            "scalability_suggestions": ["Configure Redis caching in later stages", "Optimize SQLite indexes"],
+            "domain_clusters": {
+                "domains": ["Software Engineering"],
+                "subdomains": ["Interactive Web App"],
+                "related_technologies": ["FastAPI", "Uvicorn", "ChromaDB"],
+                "recommended_architecture": "Single-Node Monolith",
+                "learning_roadmap": ["FastAPI Tutorial", "RESTful API Standards"]
+            }
+        }
+        if not self.groq:
+            return fallback_analysis
         if project_details is None:
             project_details = {}
 
@@ -1451,6 +1895,14 @@ async def list_chats(token: str = Header(None), project_id: str = None):
 async def get_history(conv_id: str, token: str = Header(None)):
     return chat_manager.get_messages(conv_id)
 
+@app.delete("/chats/{conv_id}")
+async def delete_chat(conv_id: str, token: str = Header(None)):
+    user_id = "guest_user_aura"
+    success = chat_manager.delete_conversation(user_id, conv_id)
+    if not success:
+        raise HTTPException(404, "Conversation not found")
+    return {"status": "success", "deleted": conv_id}
+
 @app.get("/system/active-window")
 async def active_window():
     """Retrieve details of the current frontmost active window on Windows."""
@@ -1537,7 +1989,7 @@ async def api_chat_fallback(data: dict):
     try:
         if not incognito:
             chat_manager.save_message(user_id, conv_id, project_id, "user", prompt)
-            memory.store_fragment(f"User Question in {project_id}: {prompt}")
+            asyncio.create_task(asyncio.to_thread(memory.store_fragment, f"User Question in {project_id}: {prompt}", project_id))
 
         full_reply = ""
         async for chunk_type, content in inference_core.generate_stream(prompt, data.get("history", []), sandbox=sandbox):
@@ -1547,7 +1999,7 @@ async def api_chat_fallback(data: dict):
         if not incognito:
             chat_manager.save_message(user_id, conv_id, project_id, "assistant", full_reply)
             if len(full_reply) > 50:
-                memory.store_fragment(f"Aura Strategic Advice: {full_reply[:500]}...")
+                asyncio.create_task(asyncio.to_thread(memory.store_fragment, f"Aura Strategic Advice: {full_reply[:500]}...", project_id))
 
         return {"response": strip_robotic_preamble(full_reply)}
     except Exception as e:
@@ -1572,7 +2024,7 @@ async def secured_chat(websocket: WebSocket):
             
             if not incognito:
                 chat_manager.save_message(user_id, conv_id, project_id, "user", prompt)
-                memory.store_fragment(f"User Question in {project_id}: {prompt}")
+                asyncio.create_task(asyncio.to_thread(memory.store_fragment, f"User Question in {project_id}: {prompt}", project_id))
             
             full_reply = ""
             accumulated_thought = ""
@@ -1604,7 +2056,7 @@ async def secured_chat(websocket: WebSocket):
             if not incognito:
                 chat_manager.save_message(user_id, conv_id, project_id, "assistant", full_reply, thought=accumulated_thought)
                 if len(full_reply) > 50:
-                    memory.store_fragment(f"Aura Strategic Advice: {full_reply[:500]}...")
+                    asyncio.create_task(asyncio.to_thread(memory.store_fragment, f"Aura Strategic Advice: {full_reply[:500]}...", project_id))
                 
             await websocket.send_text(json.dumps({"done": True}))
 
@@ -1618,14 +2070,6 @@ async def secured_chat(websocket: WebSocket):
             await websocket.send_text(json.dumps({"done": True}))
         except: pass
 
-
-@app.websocket("/overlay")
-async def overlay_unified_socket(websocket: WebSocket):
-    """
-    Unified overlay WebSocket endpoint for system-level copilot.
-    """
-    from overlay_runtime.overlay_socket import overlay_socket_handler
-    await overlay_socket_handler(websocket)
 
 
 @app.websocket("/overlay/chat")
@@ -1685,72 +2129,84 @@ async def research_socket(websocket: WebSocket):
             if category == "GitHub": search_query += " site:github.com"
             elif category == "Academic": search_query += " research papers journals"
             
-            research_data = researcher.search_live(search_query, max_results=6)
+            research_data = await researcher.search_live_async(search_query, max_results=6)
             
             if "NO_DATA" in research_data:
                 research_data = "No live research data available. Use your internal knowledge."
 
-            await websocket.send_text(json.dumps({"type": "sources", "content": []}))
+            # Parse and extract source URLs to send as standard list
+            sources = []
+            seen_urls = set()
+            for match in re.finditer(r"Source:\s*(.*?)\nURL:\s*(.*?)\n", research_data):
+                url = match.group(2).strip()
+                if url not in seen_urls:
+                    seen_urls.add(url)
+                    sources.append(url)
+
+            await websocket.send_text(json.dumps({"type": "sources", "content": sources}))
             
             # 2. AI REASONING & STRUCTURED SYNTHESIS PHASE
             
             # Truncate research data to prevent context overflow
             safe_research_data = research_data[:10000] if research_data else "No data available."
             
-            reasoning_prompt = f"""You are the AURA Research Engine. Synthesize the following data into a HIGH-FIDELITY STRUCTURED JSON response.
+            reasoning_prompt = f"""You are the AURA Research Engine. Synthesize the following real-time web search results into a highly structured, professional, and detailed markdown response for the query: "{prompt}".
 
-{REALTIME_SEARCH_RESPONSE_RULES}
-
-QUERY: {prompt}
-CATEGORY: {category}
-DATA CLUSTERS (internal — do not mention search or date in output):
+SEARCH DATA:
 {safe_research_data}
 
-RULES:
-- Return ONLY a JSON object.
-- Provide deep technical analysis.
-- Key findings must be actionable.
-- References must be strictly from the provided data.
-- Detect future trends and community insights.
-- Never mention searching the web, current date, or how data was retrieved.
-
-JSON SCHEMA:
-{{
-  "query": "{prompt}",
-  "title": "Title of Research",
-  "summary": "Concise high-level summary",
-  "key_findings": ["Finding 1", "Finding 2"],
-  "technical_analysis": "Deep dive into the tech/mechanics",
-  "statistics": ["Data point 1", "Data point 2"],
-  "community_insights": ["Reddit/GitHub sentiment/trends"],
-  "comparisons": ["A vs B analysis"],
-  "future_scope": "Predicted trajectory",
-  "references": [{{ "title": "", "url": "", "source": "", "published_date": "" }}]
-}}"""
+INSTRUCTIONS:
+1. Synthesize the search data clearly and objectively.
+2. Structure your response with appropriate Markdown headers:
+   - # [Descriptive Research Title]
+   - ## Executive Summary
+   - ## Key Findings (detailed bullet points)
+   - ## Technical Analysis / Deep Dive
+   - ## Sources & References (strictly list actual urls and page titles found in the SEARCH DATA above, using markdown links)
+3. For any facts, data points, or figures you mention, cite the source directly using standard clickable Markdown links, like [Source Name](URL) (do not write plain URLs).
+4. Keep the tone professional, authoritative, and strategic.
+5. Do not mention searching the web, current date, or how you retrieved this information.
+6. Provide a rich, comprehensive analysis.
+"""
             
-            if groq_client:
+            if async_groq_client:
                 try:
-                    response = groq_client.chat.completions.create(
+                    await websocket.send_text(json.dumps({"type": "status", "content": "Analyzing search results..."}))
+                    
+                    stream = await async_groq_client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
                         messages=[{"role": "user", "content": reasoning_prompt}],
-                        response_format={"type": "json_object"}
+                        stream=True,
+                        temperature=0.3,
+                        max_tokens=2500
                     )
-                    structured_data = json.loads(response.choices[0].message.content)
-                    await websocket.send_text(json.dumps({"type": "synthesis", "content": structured_data}))
+                    
+                    await websocket.send_text(json.dumps({"type": "status", "content": "Synthesizing research stream..."}))
+                    
+                    buffer = ""
+                    async for chunk in stream:
+                        content = chunk.choices[0].delta.content or ""
+                        if content:
+                            buffer += content
+                            if len(buffer) > 10 or "\n" in buffer:
+                                await websocket.send_text(json.dumps({"type": "synthesis", "content": buffer}))
+                                buffer = ""
+                    if buffer:
+                        await websocket.send_text(json.dumps({"type": "synthesis", "content": buffer}))
                 except Exception as je:
-                    print(f"Research Synthesis Error: {je}")
+                    print(f"Research Streaming Error: {je}")
                     await websocket.send_text(json.dumps({"type": "status", "content": "Compiling results..."}))
-                    # Fallback to simple completion if JSON fails
-                    raw_fallback = groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[{"role": "user", "content": f"Summarize this research data for: {prompt}\n\nData: {safe_research_data[:2000]}"}]
-                    )
-                    await websocket.send_text(json.dumps({"type": "synthesis", "content": raw_fallback.choices[0].message.content}))
+                    # Fallback to simple completion if streaming fails
+                    if groq_client:
+                        raw_fallback = groq_client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=[{"role": "user", "content": reasoning_prompt}]
+                        )
+                        await websocket.send_text(json.dumps({"type": "synthesis", "content": raw_fallback.choices[0].message.content}))
             else:
                 await websocket.send_text(json.dumps({"type": "status", "content": "Connection issue."}))
 
             await websocket.send_text(json.dumps({"done": True}))
-
             
     except Exception as e:
         print(f"WS Research Error: {e}")
@@ -1829,6 +2285,15 @@ async def intelligence_search(query: str):
 # ========================
 # AURA ASSIST OVERLAY CORE
 # ========================
+@app.get("/debug/overlay")
+async def debug_overlay():
+    import traceback
+    try:
+        from overlay_runtime.overlay_socket import overlay_socket_handler
+        return {"status": "ok", "message": "Import overlay_socket_handler succeeded"}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+
 @app.websocket("/overlay")
 @app.websocket("/assist/stream")
 async def overlay_websocket_route(websocket: WebSocket):
@@ -1837,6 +2302,35 @@ async def overlay_websocket_route(websocket: WebSocket):
     """
     from overlay_runtime.overlay_socket import overlay_socket_handler
     await overlay_socket_handler(websocket)
+
+
+from pydantic import BaseModel
+class IngestRequest(BaseModel):
+    directory_path: str
+    pack_name: str
+
+class QueryRequest(BaseModel):
+    query: str
+    pack_name: str
+    top_k: int = 5
+
+@app.post("/api/rag/ingest")
+async def api_rag_ingest(req: IngestRequest):
+    try:
+        from ingest_dataset import ingest_directory
+        ingest_directory(req.directory_path, req.pack_name)
+        return {"status": "success", "message": f"Ingestion started/completed for pack {req.pack_name}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/rag/query")
+async def api_rag_query(req: QueryRequest):
+    try:
+        from services.rag_pipeline import query_knowledge_pack
+        results = query_knowledge_pack(req.query, req.pack_name, req.top_k)
+        return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))

@@ -401,8 +401,9 @@ class ProjectDashboardScreen extends StatelessWidget {
 
   Widget _buildTechStack(dynamic stack) {
     List<String> items = [];
-    if (stack is List) items = stack.map((e) => e.toString()).toList();
-    else if (stack is Map) items = stack.values.map((e) => e.toString()).toList();
+    if (stack is List) {
+      items = stack.map((e) => e.toString()).toList();
+    } else if (stack is Map) items = stack.values.map((e) => e.toString()).toList();
 
     return Wrap(
       spacing: 8,

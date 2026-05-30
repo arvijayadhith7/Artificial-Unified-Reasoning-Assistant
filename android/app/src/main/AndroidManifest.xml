@@ -18,7 +18,7 @@
 
         <!-- AURA Foreground Overlay Service -->
         <service
-            android:name=".AuraForegroundService"
+            android:name="com.example.ai_chatbot.AuraForegroundService"
             android:enabled="true"
             android:exported="false"
             android:stopWithTask="false"
@@ -27,7 +27,7 @@
         </service>
 
         <!-- AURA Device Reboot Receiver -->
-        <receiver android:name=".AuraBootReceiver" android:enabled="true" android:exported="true">
+        <receiver android:name="com.example.ai_chatbot.AuraBootReceiver" android:enabled="true" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -36,7 +36,7 @@
 
         <!-- AURA Screen Ingestion Accessibility Service -->
         <service
-            android:name=".AuraAccessibilityService"
+            android:name="com.example.ai_chatbot.AuraAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true"
             android:label="AURA Intelligence Context Extractor">
@@ -49,7 +49,7 @@
         </service>
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.ai_chatbot.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

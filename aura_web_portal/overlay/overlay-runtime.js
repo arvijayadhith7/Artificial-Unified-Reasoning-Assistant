@@ -196,6 +196,7 @@
     const p = document.getElementById('sb-persona');
     const d = document.getElementById('sb-search-depth');
     const w = document.getElementById('sb-workspace-path');
+    const chatModeSelect = document.getElementById('chat-mode-select');
     const modeEl = getEl('overlay-assistant-mode');
     if (modeEl && modeEl.value) assistantMode = modeEl.value;
 
@@ -240,12 +241,37 @@
       console.warn("Could not retrieve active window:", err);
     }
 
+    let persona = 'warm-narrative';
+    let searchStrategy = 'multi-tier';
+    let workspacePath = '';
+
+    if (chatModeSelect) {
+      const mode = chatModeSelect.value;
+      if (mode === 'research') {
+        persona = 'warm-narrative';
+        searchStrategy = 'multi-tier';
+        workspacePath = '';
+      } else if (mode === 'workspace') {
+        persona = 'ultra-technical';
+        searchStrategy = 'local-only';
+        workspacePath = 'd:\\ANTIGRAVITY\\llm APP';
+      } else { // chat
+        persona = 'warm-narrative';
+        searchStrategy = 'multi-tier';
+        workspacePath = '';
+      }
+    } else {
+      persona = (p && p.value) || 'warm-narrative';
+      searchStrategy = (d && d.value) || 'multi-tier';
+      workspacePath = (w && w.value) || '';
+    }
+
     return {
       platform: global.electronAPI ? 'windows' : 'web',
       assistantMode: assistantMode,
-      persona: (p && p.value) || 'warm-narrative',
-      searchStrategy: (d && d.value) || 'multi-tier',
-      workspacePath: (w && w.value) || '',
+      persona: persona,
+      searchStrategy: searchStrategy,
+      workspacePath: workspacePath,
       screenshot: screenshot,
       active_app: activeApp,
       window_title: windowTitle,
@@ -292,6 +318,7 @@
     const text = input.value.trim();
     if (!text) return;
 
+    if (window.CyberSound) window.CyberSound.playEnter();
     input.value = '';
     isSending = true;
 
@@ -351,6 +378,7 @@
   }
 
   async function triggerScreenScan() {
+    if (window.CyberSound) window.CyberSound.playScan();
     const ClientClass = getClientClass();
     if (!ClientClass) return;
 

@@ -1,36 +1,41 @@
 import os
-import requests
+import argparse
+from langchain_community.document_loaders import DirectoryLoader, TextLoader
+from services.rag_pipeline import ingest_documents_to_pack
 
-def ingest_directory(directory_path, api_url):
-    print(f"Starting ingestion from: {directory_path}")
-    for root, dirs, files in os.walk(directory_path):
-        for file in files:
-            if file.endswith('.md') or file.endswith('.txt'):
-                file_path = os.path.join(root, file)
-                print(f"Processing: {file_path}")
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    
-                # Split large files into chunks for better retrieval
-                chunks = [content[i:i+2000] for i in range(0, len(content), 2000)]
-                
-                for i, chunk in enumerate(chunks):
-                    payload = {
-                        "text": chunk,
-                        "metadata": {"source": file, "chunk": i, "path": file_path}
-                    }
-                    try:
-                        response = requests.post(api_url, json=payload)
-                        if response.status_code == 200:
-                            print(f"  Successfully ingested chunk {i} of {file}")
-                        else:
-                            print(f"  Failed to ingest chunk {i}: {response.text}")
-                    except Exception as e:
-                        print(f"  Connection error: {e}")
+def ingest_directory(directory_path, pack_name):
+    print(f"Starting ingestion from: {directory_path} into pack: {pack_name}")
+    
+    # Load all markdown and text files
+    print("Loading documents...")
+    loader = DirectoryLoader(directory_path, glob="**/*.md", loader_cls=TextLoader, loader_kwargs={'autodetect_encoding': True})
+    documents = loader.load()
+    
+    txt_loader = DirectoryLoader(directory_path, glob="**/*.txt", loader_cls=TextLoader, loader_kwargs={'autodetect_encoding': True})
+    txt_documents = txt_loader.load()
+    
+    all_documents = documents + txt_documents
+    
+    if not all_documents:
+        print("No documents found in the specified directory.")
+        return
+        
+    print(f"Loaded {len(all_documents)} documents. Starting chunking and embedding...")
+    
+    # Process and ingest
+    chunks_processed = ingest_documents_to_pack(all_documents, pack_name)
+    
+    print(f"Ingestion complete! Successfully added {chunks_processed} chunks to '{pack_name}'.")
 
 if __name__ == "__main__":
-    DATASET_DIR = r'D:\ANTIGRAVITY\llm APP\llm-datasets-main'
-    API_URL = "http://localhost:8000/add_document"
+    parser = argparse.ArgumentParser(description="Ingest documentation into AURA Knowledge Packs")
+    parser.add_argument("--dir", type=str, required=True, help="Directory containing .md or .txt files")
+    parser.add_argument("--pack-name", type=str, required=True, help="Name of the ChromaDB collection (e.g. photoshop_pack)")
     
-    ingest_directory(DATASET_DIR, API_URL)
-    print("Ingestion complete!")
+    args = parser.parse_args()
+    
+    if not os.path.exists(args.dir):
+        print(f"Error: Directory '{args.dir}' does not exist.")
+        exit(1)
+        
+    ingest_directory(args.dir, args.pack_name)

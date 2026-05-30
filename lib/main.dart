@@ -5,6 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_theme.dart';
 import 'providers/settings_provider.dart';
 import 'screens/splash_screen.dart';
+import 'overlay_runtime/overlay_ui.dart';
+
+@pragma('vm:entry-point')
+void overlayMain() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const ProviderScope(child: OverlayApp()));
+}
 
 void main() {
   runZonedGuarded(() {

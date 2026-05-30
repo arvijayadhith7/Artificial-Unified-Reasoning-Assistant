@@ -9,11 +9,18 @@ from huggingface_hub import login, HfApi
 # 3. Run: py upload_space.py
 # -------------------------------------------------------------------------
 
-HF_TOKEN = "YOUR_HF_WRITE_TOKEN_HERE"
+import sys
+
+HF_TOKEN = os.environ.get("HF_TOKEN") or "YOUR_HF_WRITE_TOKEN_HERE"
 SPACE_ID = "Vijayadhith7/AURA-Backend"
 
-if HF_TOKEN == "YOUR_HF_WRITE_TOKEN_HERE":
-    print("ERROR: Please replace 'YOUR_HF_WRITE_TOKEN_HERE' with your actual Hugging Face Write Token in the script.")
+# Check if token is passed via command-line argument
+if len(sys.argv) > 1 and sys.argv[1] != "":
+    HF_TOKEN = sys.argv[1]
+
+if HF_TOKEN == "YOUR_HF_WRITE_TOKEN_HERE" or not HF_TOKEN:
+    print("ERROR: Please provide your actual Hugging Face Write Token.")
+    print("Usage: py upload_space.py <HF_WRITE_TOKEN> or set HF_TOKEN environment variable.")
     exit(1)
 
 # Login to Hugging Face

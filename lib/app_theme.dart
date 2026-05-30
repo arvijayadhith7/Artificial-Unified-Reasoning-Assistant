@@ -84,7 +84,6 @@ class AppTheme {
               tertiary: AppColors.violetGlow,
               surface: cardBg,
               onSurface: textPrimary,
-              background: bg,
             )
           : ColorScheme.light(
               primary: accent,
@@ -92,7 +91,6 @@ class AppTheme {
               tertiary: AppColors.violetGlow,
               surface: cardBg,
               onSurface: textPrimary,
-              background: bg,
             ),
       textTheme: GoogleFonts.outfitTextTheme(
         TextTheme(

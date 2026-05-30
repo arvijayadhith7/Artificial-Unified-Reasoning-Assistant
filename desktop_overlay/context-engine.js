@@ -37,17 +37,40 @@ async function getActiveWindowFromBackend() {
   }
 }
 
+let lastNonOverlayWindow = {
+  title: 'VS Code',
+  owner: { name: 'Code' },
+  process: 'Code.exe',
+};
+
 async function getActiveWindow() {
+  let win = null;
   if (activeWinModule) {
     try {
-      const win = await activeWinModule();
-      if (win) return win;
+      win = await activeWinModule();
     } catch (e) {
       console.warn('[AURA Context] active-win failed:', e.message);
     }
   }
-  return getActiveWindowFromBackend();
+  if (!win) {
+    win = await getActiveWindowFromBackend();
+  }
+
+  if (win) {
+    const appName = (win.owner?.name || win.process || '').toLowerCase();
+    const title = (win.title || '').toLowerCase();
+    const isOverlay =
+      appName.includes('electron') ||
+      appName.includes('aura') ||
+      title.includes('aura universal overlay') ||
+      title.includes('aura system overlay');
+    if (!isOverlay) {
+      lastNonOverlayWindow = win;
+    }
+  }
+  return lastNonOverlayWindow;
 }
+
 
 function getClipboardText() {
   try {

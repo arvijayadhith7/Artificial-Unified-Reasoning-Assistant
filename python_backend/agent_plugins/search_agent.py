@@ -55,27 +55,35 @@ class ResearchAgent:
         if not results:
             results = self._search_ddg_html_sync(clean_query, max_results)
 
-        # 3. Exa API
+        # 3. AOL Search Scraper Fallback (Highly resilient in cloud environments)
+        if not results:
+            results = self._search_aol_sync(clean_query, max_results)
+
+        # 4. Exa API
         if not results and self.exa_key:
             results = self._search_exa_sync(clean_query, max_results)
 
-        # 4. SerpAPI
+        # 5. SerpAPI
         if not results and self.serpapi_key:
             results = self._search_serpapi_sync(clean_query, max_results)
 
-        # 5. Firecrawl
+        # 6. Firecrawl
         if not results and self.firecrawl_key:
             results = self._search_firecrawl_sync(clean_query, max_results)
 
-        # 6. Serper API
+        # 7. Serper API
         if not results and self.serper_key:
             results = self._search_serper_sync(clean_query, max_results)
 
-        # 7. Brave API
+        # 8. Brave API
         if not results and self.brave_key:
             results = self._search_brave_sync(clean_query, max_results)
             
-        # 8. Google Scraper Fallback
+        # 9. SearXNG Fallback (Synchronous)
+        if not results:
+            results = self._search_searxng_sync(clean_query, max_results)
+            
+        # 10. Google Scraper Fallback
         if not results:
             results = self._search_google_scrape_sync(clean_query, max_results)
             
@@ -120,7 +128,11 @@ class ResearchAgent:
         if not results:
             results = await self._search_ddg_html_async(clean_query, max_results)
 
-        # 3. Exa (if key available)
+        # 3. AOL Search Scraper Fallback (Highly resilient in cloud environments)
+        if not results:
+            results = await self._search_aol_async(clean_query, max_results)
+
+        # 4. Exa (if key available)
         if not results and self.exa_key:
             results = await self._search_exa_async(clean_query, max_results)
 
@@ -150,6 +162,24 @@ class ResearchAgent:
             
         if not results:
             return "NO_DATA: All search gateways exhausted. Relying on neural knowledge base."
+
+        # Dynamic Enrichment: Crawl top 3 URLs using Splash for richer context
+        if results and os.getenv("SPLASH_ENABLED", "true").lower() == "true":
+            print(f"NEURAL RESEARCH [SPLASH]: Enriched crawling of top pages active.")
+            tasks = []
+            top_results = results[:3]
+            for r in top_results:
+                url = r.get('href', '#')
+                if url.startswith('http'):
+                    tasks.append(self._scrape_page_with_splash(url))
+            
+            if tasks:
+                scraped_contents = await asyncio.gather(*tasks)
+                for idx, content in enumerate(scraped_contents):
+                    if content and len(content.strip()) > 100:
+                        print(f"Splash successfully crawled: {top_results[idx]['href']} ({len(content)} chars)")
+                        # Replace snippet body with the rich full page content
+                        top_results[idx]['body'] = content[:5000]
 
         # Rerank and Compress
         return self.chunk_and_rerank(query, results, max_results=max_results)
@@ -576,39 +606,202 @@ class ResearchAgent:
             print(f"Firecrawl Async Fail: {e}")
         return []
 
-    async def _search_searxng_async(self, query: str, max_results: int) -> list:
-        """Search via public SearXNG instances - works well from cloud servers."""
-        instances = [
-            "https://search.sapti.me",
+    def _get_active_searxng_instances(self) -> list:
+        """Fetch working public SearXNG instances from searx.space dynamically."""
+        fallback_instances = [
+            "https://priv.au",
+            "https://searx.dresden.network",
+            "https://paulgo.io",
+            "https://search.mdosch.de",
+            "https://searx.tsmdt.de",
+            "https://sx.catgirl.cloud",
+            "https://grep.vim.wtf",
             "https://searx.tiekoetter.com",
-            "https://search.bus-hit.me",
-            "https://searx.be",
+            "https://search.url4irl.com",
+            "https://www.gruble.de"
         ]
-        for base_url in instances:
+        try:
+            print("NEURAL RESEARCH [SEARXNG]: Fetching live instances from searx.space...")
+            r = httpx.get("https://searx.space/data/instances.json", timeout=6.0)
+            if r.status_code == 200:
+                data = r.json()
+                instances_dict = data.get("instances", {})
+                candidates = []
+                for url, info in instances_dict.items():
+                    clean_url = url.rstrip('/')
+                    http_info = info.get("http", {})
+                    if http_info.get("status_code") == 200 and info.get("network_type") == "normal":
+                        rt = info.get("timing", {}).get("initial", {}).get("all", {}).get("value", 999.0)
+                        uptime = info.get("uptime", {}).get("uptimeDay", 0.0)
+                        candidates.append({
+                            "url": clean_url,
+                            "rt": rt,
+                            "uptime": uptime
+                        })
+                candidates.sort(key=lambda x: (x['rt'], -x['uptime']))
+                active_urls = [c['url'] for c in candidates if c['rt'] < 2.0]
+                if active_urls:
+                    print(f"NEURAL RESEARCH [SEARXNG]: Found {len(active_urls)} active live instances.")
+                    combined = list(dict.fromkeys(active_urls + fallback_instances))
+                    return combined
+        except Exception as e:
+            print(f"NEURAL RESEARCH [SEARXNG]: Dynamic instances fetch failed: {e}")
+        
+        return fallback_instances
+
+    def _search_searxng_sync(self, query: str, max_results: int) -> list:
+        """Search via public SearXNG instances synchronously."""
+        instances = self._get_active_searxng_instances()
+        for base_url in instances[:6]:
             try:
-                print(f"NEURAL RESEARCH [SEARXNG]: Trying {base_url}...")
-                async with httpx.AsyncClient() as client:
-                    r = await client.get(
-                        f"{base_url}/search",
-                        params={"q": query, "format": "json", "categories": "general", "language": "en"},
-                        headers={"User-Agent": random.choice(self.user_agents)},
-                        timeout=6.0,
-                        follow_redirects=True
-                    )
-                    if r.status_code == 200:
-                        data = r.json()
-                        results = []
-                        for x in data.get('results', [])[:max_results]:
-                            results.append({
-                                'title': x.get('title', 'SearXNG Source'),
-                                'body': x.get('content', ''),
-                                'href': x.get('url', '#')
-                            })
-                        if results:
-                            print(f"SEARXNG Success from {base_url}: {len(results)} results")
-                            return results
+                print(f"NEURAL RESEARCH [SEARXNG-SYNC]: Trying {base_url}...")
+                r = httpx.get(
+                    f"{base_url}/search",
+                    params={"q": query, "format": "json", "categories": "general", "language": "en"},
+                    headers={"User-Agent": random.choice(self.user_agents)},
+                    timeout=5.0,
+                    follow_redirects=True
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    results = []
+                    for x in data.get('results', [])[:max_results]:
+                        results.append({
+                            'title': x.get('title', 'SearXNG Source'),
+                            'body': x.get('content', ''),
+                            'href': x.get('url', '#')
+                        })
+                    if results:
+                        print(f"SEARXNG-SYNC Success from {base_url}: {len(results)} results")
+                        return results
             except Exception as e:
-                print(f"SearXNG Fail ({base_url}): {e}")
+                print(f"SearXNG Sync Fail ({base_url}): {e}")
                 continue
         return []
+
+    async def _search_searxng_async(self, query: str, max_results: int) -> list:
+        """Search via public SearXNG instances asynchronously by offloading to a worker thread."""
+        try:
+            return await asyncio.to_thread(self._search_searxng_sync, query, max_results)
+        except Exception as e:
+            print(f"SearXNG Async Offload Fail: {e}")
+        return []
+
+    def _search_aol_sync(self, query: str, max_results: int) -> list:
+        """Search via AOL (Yahoo backend) synchronously. Highly resilient in cloud environments."""
+        try:
+            print(f"NEURAL RESEARCH [AOL-SYNC]: Searching for '{query}'...")
+            url = "https://search.aol.com/aol/search"
+            headers = {
+                "User-Agent": random.choice(self.user_agents),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5"
+            }
+            r = httpx.get(
+                url,
+                params={"q": query},
+                headers=headers,
+                timeout=8.0,
+                follow_redirects=True
+            )
+            if r.status_code == 200:
+                soup = BeautifulSoup(r.text, 'html.parser')
+                results = []
+                items = soup.find_all('li')
+                for item in items:
+                    h3 = item.find('h3', class_='title')
+                    if h3:
+                        a = h3.find('a')
+                        if a:
+                            title = a.text.strip()
+                            href = a.get('href', '')
+                            
+                            # Decode AOL redirection click link if needed
+                            match = re.search(r'/RU=(.*?)/RK=', href)
+                            if match:
+                                href = urllib.parse.unquote(match.group(1))
+                                
+                            # Filter out links to AOL/Yahoo internal searches
+                            if "search.aol.com" in href or "search.yahoo.com" in href:
+                                continue
+                            
+                            desc_div = item.find('div', class_='compText') or item.find('span', class_='compText')
+                            if not desc_div:
+                                desc_div = item.find('p')
+                                
+                            body = desc_div.text.strip() if desc_div else ""
+                            results.append({
+                                'title': title,
+                                'body': body,
+                                'href': href
+                            })
+                            if len(results) >= max_results:
+                                break
+                print(f"AOL-SYNC Success: Found {len(results)} results")
+                return results
+        except Exception as e:
+            print(f"AOL Sync Fail: {e}")
+        return []
+
+    async def _search_aol_async(self, query: str, max_results: int) -> list:
+        """Search via AOL asynchronously by offloading to a worker thread."""
+        try:
+            return await asyncio.to_thread(self._search_aol_sync, query, max_results)
+        except Exception as e:
+            print(f"AOL Async Offload Fail: {e}")
+        return []
+
+    def _clean_html(self, html_content: str) -> str:
+        """Removes script, style, navigation, and other non-content tags from HTML."""
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            for element in soup(["script", "style", "iframe", "noscript", "header", "footer", "nav"]):
+                element.decompose()
+            text = soup.get_text(separator=' ')
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            clean_text = '\n'.join(chunk for chunk in chunks if chunk)
+            return clean_text
+        except Exception:
+            return ""
+
+    async def _scrape_page_with_splash(self, url: str) -> str:
+        """Scrapes the full rendered HTML of a web page using a Splash server (BSD 3-Clause),
+        with an automated direct HTTP client fallback if Splash is offline."""
+        splash_enabled = os.getenv("SPLASH_ENABLED", "true").lower() == "true"
+        splash_url = os.getenv("SPLASH_URL", "http://localhost:8050/render.html")
+        
+        # 1. Try Splash Scraper first
+        if splash_enabled:
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        splash_url,
+                        params={"url": url, "timeout": 12, "wait": 1.0},
+                        timeout=15.0
+                    )
+                    if response.status_code == 200:
+                        clean_content = self._clean_html(response.text)
+                        if clean_content and len(clean_content.strip()) > 100:
+                            return clean_content
+            except Exception as e:
+                print(f"[Splash Scrape Fail] Error crawling {url} via Splash: {e}. Trying direct HTTP fallback...")
+
+        # 2. Direct HTTP Fallback Scraper (non-JS render)
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5"
+            }
+            async with httpx.AsyncClient(follow_redirects=True) as client:
+                response = await client.get(url, headers=headers, timeout=10.0)
+                if response.status_code == 200:
+                    clean_content = self._clean_html(response.text)
+                    if clean_content and len(clean_content.strip()) > 100:
+                        return clean_content
+        except Exception as direct_err:
+            print(f"[Direct Scrape Fail] Error crawling {url} directly: {direct_err}")
+            
+        return ""
 

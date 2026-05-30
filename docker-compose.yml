@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # The Local Agentic Brain (Python FastAPI + OpenVINO)
+  python-core:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aura-python-core
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./python_backend:/app/python_backend
+      - ./memory:/app/memory
+    environment:
+      - HOST=0.0.0.0
+      - PORT=7860
+      - SPLASH_URL=http://splash:8050/render.html
+    depends_on:
+      - splash
+    restart: unless-stopped
+
+  # Headless JS-Rendering Scraper Engine (Splash)
+  splash:
+    image: scrapinghub/splash:latest
+    container_name: aura-splash
+    ports:
+      - "8050:8050"
+    restart: unless-stopped
+
+  # The High-Speed Gateway (Bun / Node)
+  gateway:
+    image: oven/bun:latest
+    container_name: aura-gateway
+    working_dir: /app/backend
+    volumes:
+      - .:/app
+    ports:
+      - "3000:3000"
+    command: bun run server.js
+    environment:
+      - PORT=3000
+      - PYTHON_BACKEND_URL=http://python-core:7860
+      # Add your API keys here or in a .env file
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    depends_on:
+      - python-core
+    restart: unless-stopped

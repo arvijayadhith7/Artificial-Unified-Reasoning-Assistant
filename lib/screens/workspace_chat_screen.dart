@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'dart:ui';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,10 +25,12 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
   String _currentResponse = "";
 
   String _statusMessage = "Searching latest information...";
   bool _isSending = false;
+  bool _isAutoScrollPaused = false;
 
   final List<String> _quickActions = [
     "Build API Plan",
@@ -42,6 +44,11 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
   @override
   void initState() {
     super.initState();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        _scrollToBottom(force: true);
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final notifier = ref.read(cofounderChatProvider.notifier);
       notifier.loadProjectChats(widget.project.id);
@@ -57,6 +64,7 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
           _currentResponse += content;
         });
         ref.read(cofounderChatProvider.notifier).updateLastMessage(content);
+        _scrollToBottom(isStreaming: true);
       } else if (type == 'status' && content != null) {
         setState(() {
           _statusMessage = content;
@@ -70,18 +78,26 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
           _isSending = false;
           _statusMessage = "Looking that up...";
         });
+        _scrollToBottom(force: true);
       }
-      _scrollToBottom();
     });
   }
 
-  void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
+  void _scrollToBottom({bool force = false, bool isStreaming = false}) {
+    if (!_scrollController.hasClients) return;
+    if (_isAutoScrollPaused && !force) return;
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      
+      if (isStreaming) {
+        _scrollController.jumpTo(maxScroll);
+      } else {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
+          maxScroll,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
         );
       }
     });
@@ -136,6 +152,7 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
     _chatService.dispose();
     _textController.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -143,6 +160,7 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: true,
       appBar: _buildAppBar(),
       body: Stack(
         children: [
@@ -215,19 +233,46 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
   Widget _buildChatList() {
     final messages = ref.watch(cofounderChatProvider).currentMessages;
     return Expanded(
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        itemCount: messages.length + (_isSending && _currentResponse.isEmpty ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index < messages.length) {
-            final msg = messages[index];
-            final isUser = msg['role'] == 'user';
-            return _buildMessageBubble(isUser, msg['content'] ?? '');
-          } else {
-            return _buildTypingIndicatorBubble();
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification notification) {
+          if (notification is ScrollUpdateNotification) {
+            final isUserScroll = notification.dragDetails != null ||
+                _scrollController.position.userScrollDirection != ScrollDirection.idle;
+            if (isUserScroll) {
+              final metrics = notification.metrics;
+              if (metrics.extentAfter > 30) {
+                if (!_isAutoScrollPaused) {
+                  setState(() {
+                    _isAutoScrollPaused = true;
+                  });
+                }
+              } else {
+                if (_isAutoScrollPaused) {
+                  setState(() {
+                    _isAutoScrollPaused = false;
+                  });
+                }
+              }
+            }
           }
+          return false;
         },
+        child: ListView.builder(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          itemCount: messages.length + (_isSending && _currentResponse.isEmpty ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index < messages.length) {
+              final msg = messages[index];
+              final isUser = msg['role'] == 'user';
+              return _buildMessageBubble(isUser, msg['content'] ?? '');
+            } else {
+              return _buildTypingIndicatorBubble();
+            }
+          },
+        ),
       ),
     );
   }
@@ -339,39 +384,43 @@ class _WorkspaceChatScreenState extends ConsumerState<WorkspaceChatScreen> {
   }
 
   Widget _buildInputSection() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 15),
-                    decoration: InputDecoration(
-                      hintText: "Consult with your AI Co-Founder...",
-                      hintStyle: GoogleFonts.outfit(color: Colors.white24, fontSize: 14),
-                      border: InputBorder.none,
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withOpacity(0.05)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _textController,
+                      focusNode: _focusNode,
+                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 15),
+                      decoration: InputDecoration(
+                        hintText: "Consult with your AI Co-Founder...",
+                        hintStyle: GoogleFonts.outfit(color: Colors.white24, fontSize: 14),
+                        border: InputBorder.none,
+                      ),
+                      onSubmitted: (val) => _handleSend(),
                     ),
-                    onSubmitted: (val) => _handleSend(),
                   ),
-                ),
-                NeuralSendButton(
-                  onTap: _handleSend,
-                  isActive: _textController.text.isNotEmpty,
-                  isSending: _isSending,
-                ),
-              ],
+                  NeuralSendButton(
+                    onTap: _handleSend,
+                    isActive: _textController.text.isNotEmpty,
+                    isSending: _isSending,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -21,16 +21,16 @@ class AppConfig {
 
   /// Dedicated overlay engine — isolated from main chat WebSocket
   static String get wsOverlayUrl => useLocalBackend
-      ? 'ws://$localHost:7860/overlay'
-      : 'wss://vijayadhith7-aura-backend.hf.space/overlay';
+      ? 'ws://$localHost:7860/overlay/chat'
+      : 'wss://vijayadhith7-aura-backend.hf.space/overlay/chat';
 
   static String get wsResearchUrl => useLocalBackend 
       ? 'ws://$localHost:7860/research' 
       : 'wss://vijayadhith7-aura-backend.hf.space/research';
 
   static String get wsAssistUrl => useLocalBackend
-      ? 'ws://$localHost:7860/overlay'
-      : 'wss://vijayadhith7-aura-backend.hf.space/overlay';
+      ? 'ws://$localHost:7860/overlay/chat'
+      : 'wss://vijayadhith7-aura-backend.hf.space/overlay/chat';
       
   static String get wsWorkspaceUrl => useLocalBackend
       ? 'ws://$localHost:7860/workspace/chat'

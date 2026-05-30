@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 title AURA Neural Operating Layer Launcher
 color 0b
 cls
@@ -15,7 +16,7 @@ echo ====================================================================
 echo             AURA NEURAL OS LAYER - WINDOWS DESKTOP LAUNCHER
 echo ====================================================================
 echo.
-echo [SYSTEM] Starting Core LRM FastAPI Backend on port 7860...
+echo [SYSTEM] Starting Core LRM FastAPI Backend (with Hermes Agent Bridge) on port 7860...
 start "AURA Backend" /min py python_backend/main.py
 
 echo [SYSTEM] Starting Ambient Web Server on port 8085...

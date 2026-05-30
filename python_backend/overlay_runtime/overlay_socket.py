@@ -83,8 +83,8 @@ async def overlay_socket_handler(websocket: WebSocket):
                     sandbox["screenshot"] = msg["screenshot"]
                 elif "screenshot_data" in msg:
                     sandbox["screenshot"] = msg["screenshot_data"]
-                    
-                async for chunk_type, content in generate_overlay_stream(prompt, history, sandbox):
+                from main import inference_core
+                async for chunk_type, content in inference_core.generate_stream(prompt, history, sandbox=sandbox):
                     if chunk_type == "content":
                         full_reply += content
                         await stream_sender.send_chunk(content)

@@ -34,46 +34,43 @@ class _SemanticRevealState extends State<SemanticReveal> with TickerProviderStat
     }
   }
 
+  MarkdownStyleSheet _getMarkdownStyle() {
+    return MarkdownStyleSheet(
+      p: GoogleFonts.outfit(color: AppColors.textPrimary, fontSize: 16, height: 1.7),
+      h1: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 22, fontWeight: FontWeight.bold),
+      h2: GoogleFonts.outfit(color: AppColors.electricBlue, fontSize: 18, fontWeight: FontWeight.bold),
+      code: GoogleFonts.firaCode(backgroundColor: Colors.white.withOpacity(0.05), color: AppColors.neonCyan, fontSize: 13),
+      codeblockPadding: const EdgeInsets.all(16),
+      codeblockDecoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      blockquote: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 15, fontStyle: FontStyle.italic),
+      blockquoteDecoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: AppColors.neonCyan, width: 3)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.isStreaming) {
+      // Direct rendering during streaming for maximum speed and zero jank
+      return MarkdownBody(
+        data: widget.text,
+        selectable: true,
+        styleSheet: _getMarkdownStyle(),
+      );
+    }
+
     return AnimatedSize(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.05),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
-            ),
-          );
-        },
-        child: MarkdownBody(
-          key: ValueKey(_displayText.length), // Key changes on growth to trigger animation
-          data: _displayText,
-          selectable: true,
-          styleSheet: MarkdownStyleSheet(
-            p: GoogleFonts.outfit(color: AppColors.textPrimary, fontSize: 16, height: 1.7),
-            h1: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 22, fontWeight: FontWeight.bold),
-            h2: GoogleFonts.outfit(color: AppColors.electricBlue, fontSize: 18, fontWeight: FontWeight.bold),
-            code: GoogleFonts.firaCode(backgroundColor: Colors.white.withOpacity(0.05), color: AppColors.neonCyan, fontSize: 13),
-            codeblockPadding: const EdgeInsets.all(16),
-            codeblockDecoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
-            ),
-            blockquote: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 15, fontStyle: FontStyle.italic),
-            blockquoteDecoration: const BoxDecoration(
-              border: Border(left: BorderSide(color: AppColors.neonCyan, width: 3)),
-            ),
-          ),
-        ),
+      child: MarkdownBody(
+        data: _displayText,
+        selectable: true,
+        styleSheet: _getMarkdownStyle(),
       ),
     );
   }

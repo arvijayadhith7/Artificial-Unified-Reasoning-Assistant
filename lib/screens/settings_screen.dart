@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_theme.dart';
 import '../providers/settings_provider.dart';
-import 'login_screen.dart';
 import '../services/overlay_service.dart';
+import '../widgets/overlay_permission_dialog.dart';
 
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -255,7 +254,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 isDark: isDark,
                 customTrailing: _buildSwitch(settings.overlayEnabled, (val) {
                   if (val) {
-                    _simulateOverlayPermissionDialog(accent, isDark);
+                    showOverlayPermissionDialog(context, ref);
                   } else {
                     _updateSettingField('overlayEnabled', false, "Overlay assistant disabled.");
                     OverlayService.stopOverlay();
@@ -373,9 +372,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ]),
             const SizedBox(height: 36),
-
-            _buildSignOutButton(accent, isDark),
-            const SizedBox(height: 28),
 
             _buildDiagnosticPanel(settings, isDark, accent),
             const SizedBox(height: 40),
@@ -624,7 +620,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Switch(
       value: value,
       onChanged: onChanged,
-      activeColor: accent,
+      activeThumbColor: accent,
       activeTrackColor: accent.withOpacity(0.2),
     );
   }
@@ -708,46 +704,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildSignOutButton(Color accent, bool isDark) {
-    return InkWell(
-      onTap: () async {
-        await ref.read(settingsProvider.notifier).updateSetting('activeSessions', ['Android Device - Terminated']);
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-            (route) => false,
-          );
-        }
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
-          color: Colors.redAccent.withOpacity(0.04),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 18),
-            const SizedBox(width: 12),
-            Text(
-              "TERMINATE SESSION",
-              style: GoogleFonts.outfit(
-                color: Colors.redAccent,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildDiagnosticPanel(AuraSettings settings, bool isDark, Color accent) {
     final statusColor = _pingTime != -1 ? accent : Colors.redAccent;
@@ -1273,259 +1230,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _simulateOverlayPermissionDialog(Color accent, bool isDark) {
-    bool isClosed = false;
-    bool systemOverlayGranted = false;
-    bool accessibilityGranted = false;
-    bool batteryOptimizationIgnored = false;
-    bool screenCaptureGranted = false;
 
-    void checkPermissions(Function setDlgState) async {
-      if (isClosed || !mounted) return;
-      final overlayOk = await OverlayService.checkOverlayPermission();
-      final accessOk = await OverlayService.checkAccessibilityPermission();
-      final batteryOk = await OverlayService.checkBatteryOptimizationIgnored();
-      final screenOk = await OverlayService.checkScreenCapturePermission();
-      if (overlayOk != systemOverlayGranted || 
-          accessOk != accessibilityGranted || 
-          batteryOk != batteryOptimizationIgnored ||
-          screenOk != screenCaptureGranted) {
-        setDlgState(() {
-          systemOverlayGranted = overlayOk;
-          accessibilityGranted = accessOk;
-          batteryOptimizationIgnored = batteryOk;
-          screenCaptureGranted = screenOk;
-        });
-      }
-      Future.delayed(const Duration(seconds: 1), () => checkPermissions(setDlgState));
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: isDark ? const Color(0xFF0A0A0A) : Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (context) => StatefulBuilder(builder: (context, setDlgState) {
-        checkPermissions(setDlgState);
-
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "ANDROID SYSTEM PERMISSIONS",
-                    style: GoogleFonts.outfit(
-                      color: isDark ? Colors.white38 : Colors.black38,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      isClosed = true;
-                      ref.read(settingsProvider.notifier).updateSetting('overlayEnabled', false);
-                      Navigator.pop(context);
-                    },
-                    child: const Icon(Icons.close_rounded, color: Colors.grey, size: 20),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "Overlay Assistant Verification",
-                style: GoogleFonts.outfit(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "To display the floating AI assistant over other application interfaces, AURA OS requires system permissions. Click enable below for each node:",
-                style: GoogleFonts.outfit(
-                  color: isDark ? Colors.white54 : Colors.black54,
-                  fontSize: 12,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildPermissionTile(
-                icon: Icons.filter_none_outlined,
-                title: "Display over other apps",
-                subtitle: systemOverlayGranted ? "Permission Granted" : "Allow AURA to appear above apps so it can assist you anywhere.",
-                value: systemOverlayGranted,
-                accent: accent,
-                isDark: isDark,
-                onChanged: (val) {
-                  if (!systemOverlayGranted) {
-                    OverlayService.requestOverlayPermission();
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildPermissionTile(
-                icon: Icons.accessibility_new_rounded,
-                title: "Accessibility Services",
-                subtitle: accessibilityGranted ? "Permission Granted" : "Allow accessibility access so AURA can understand app context and guide you intelligently.",
-                value: accessibilityGranted,
-                accent: accent,
-                isDark: isDark,
-                onChanged: (val) {
-                  if (!accessibilityGranted) {
-                    OverlayService.requestAccessibilityPermission();
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildPermissionTile(
-                icon: Icons.screenshot_monitor_rounded,
-                title: "Screen Capture Permission",
-                subtitle: screenCaptureGranted ? "Screen Access Active" : "Allow screen access so AURA can analyze visible content and help in realtime.",
-                value: screenCaptureGranted,
-                accent: accent,
-                isDark: isDark,
-                onChanged: (val) {
-                  if (!screenCaptureGranted) {
-                    OverlayService.requestScreenCapturePermission();
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildPermissionTile(
-                icon: Icons.battery_saver_rounded,
-                title: "Ignore Battery Optimizations",
-                subtitle: batteryOptimizationIgnored ? "Process Protection Active" : "Prevents Android from killing AURA in background",
-                value: batteryOptimizationIgnored,
-                accent: accent,
-                isDark: isDark,
-                onChanged: (val) {
-                  if (!batteryOptimizationIgnored) {
-                    OverlayService.requestIgnoreBatteryOptimization();
-                  }
-                },
-              ),
-              if (!systemOverlayGranted) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          "Allow display over other apps to enable AURA Assistant.",
-                          style: GoogleFonts.outfit(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: (!systemOverlayGranted)
-                      ? null
-                      : () async {
-                           isClosed = true;
-                           Navigator.pop(context);
-                           _updateSettingField('overlayEnabled', true, "Overlay assistant and permissions locked.");
-                           _updateSettingField('floatingAssistantEnabled', true, "Floating helper activated.");
-                           _updateSettingField('backgroundServiceEnabled', accessibilityGranted, "Accessibility listeners ${accessibilityGranted ? 'activated' : 'inactive'}.");
-                           await OverlayService.startOverlay();
-                         },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accent,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    disabledBackgroundColor: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
-                  ),
-                  child: Text(
-                    (!systemOverlayGranted) ? "AWAITING PERMISSIONS..." : "CONFIRM PERMISSION ACCESS",
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      color: (!systemOverlayGranted) ? Colors.grey : Colors.black,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      }),
-    );
-  }
-
-
-  Widget _buildPermissionTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required Color accent,
-    required bool isDark,
-    required Function(bool) onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: value ? accent.withOpacity(0.3) : (isDark ? Colors.white10 : Colors.black.withOpacity(0.1))),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: value ? accent.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: value ? accent : Colors.grey, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    color: isDark ? Colors.white : Colors.black,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.outfit(
-                    color: isDark ? Colors.white38 : Colors.black38,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _buildSwitch(value, onChanged, accent),
-        ],
-      ),
-    );
-  }
 
   // --- STRING FORMATTERS ---
 

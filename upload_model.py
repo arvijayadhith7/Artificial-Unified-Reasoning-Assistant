@@ -10,7 +10,7 @@ from huggingface_hub import login, HfApi
 # 4. Run: py upload_model.py
 # -------------------------------------------------------------------------
 
-HF_TOKEN = "YOUR_HF_WRITE_TOKEN_HERE"
+HF_TOKEN = ""
 REPO_ID = "your-username/aura-qwen-0.5b"
 
 if HF_TOKEN == "YOUR_HF_WRITE_TOKEN_HERE":

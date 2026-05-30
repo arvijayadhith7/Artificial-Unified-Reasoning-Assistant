@@ -89,15 +89,113 @@ async def analyze_screen_context(
     accessibility_text: str,
     screenshot_b64: str = None
 ) -> dict:
-    # Attempt import of client
+    import asyncio
+    import tempfile
+    import base64
+    import sys
+    
+    # 1. Attempt to delegate to Hermes Agent CLI
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    hermes_dir = os.path.abspath(os.path.join(current_dir, "..", "..", "hermes-agent"))
+    venv_python = os.path.join(hermes_dir, ".venv", "Scripts", "python.exe")
+    cli_script = os.path.join(hermes_dir, "cli.py")
+
+    if not os.path.exists(venv_python):
+        venv_python = sys.executable
+
+    temp_img_path = None
+    if screenshot_b64:
+        try:
+            clean_b64 = screenshot_b64
+            if "," in clean_b64:
+                clean_b64 = clean_b64.split(",")[1]
+            img_data = base64.b64decode(clean_b64)
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+                temp_file.write(img_data)
+                temp_img_path = temp_file.name
+        except Exception as e:
+            print(f"AURA Hermes Context Bridge: Failed to decode/save screenshot: {e}")
+
+    prompt_query = (
+        f"Analyze active screen context:\n"
+        f"Active App: {active_app or 'Unknown'}\n"
+        f"Window Title: {window_title or 'Unknown'}\n"
+        f"Accessibility Text: {accessibility_text or ''}\n\n"
+        f"You MUST return a JSON object with this exact schema:\n"
+        f"{{\n"
+        f"  \"detected_items\": [\"tag1\", \"tag2\", \"tag3\"],\n"
+        f"  \"suggestions\": [\n"
+        f"    {{\"label\": \"Short Action Button Label\", \"prompt\": \"The detailed query that is executed when user clicks this button\"}}\n"
+        f"  ]\n"
+        f"}}\n"
+        f"Do not write any markdown wrappers, preambles, or postambles. Output ONLY valid JSON."
+    )
+
+    args = [
+        cli_script,
+        "--skills", "aura_overlay",
+        "--model", "nousresearch/hermes-3-llama-3.1-70b",
+        "--toolsets", "none",
+        "--quiet",
+        "-q", prompt_query
+    ]
+
+    if temp_img_path:
+        args.extend(["--image", temp_img_path])
+
+    env = os.environ.copy()
+    env["HERMES_HOME"] = hermes_dir
+
     try:
-        from main import async_groq_client
+        print(f"AURA Hermes Context Bridge: Invoking Hermes Agent context scan...")
+        process = await asyncio.create_subprocess_exec(
+            venv_python,
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env
+        )
+        stdout_bytes, stderr_bytes = await process.communicate()
+        stdout_text = stdout_bytes.decode("utf-8", errors="ignore")
+        stderr_text = stderr_bytes.decode("utf-8", errors="ignore")
+
+        if process.returncode == 0:
+            res = parse_json_robust(stdout_text)
+            if "detected_items" in res and "suggestions" in res:
+                res["detected_items"] = [str(x)[:25] for x in res["detected_items"]][:4]
+                clean_sug = []
+                for item in res["suggestions"]:
+                    if isinstance(item, dict) and "label" in item and "prompt" in item:
+                        item["label"] = str(item["label"])[:25]
+                        clean_sug.append(item)
+                    elif isinstance(item, str):
+                        clean_sug.append({"label": item[:25], "prompt": item})
+                res["suggestions"] = clean_sug[:4]
+                print("AURA Hermes Context Bridge: Successfully analyzed screen context via Hermes Agent.")
+                return res
+            else:
+                print("AURA Hermes Context Bridge: Invalid structure returned by Hermes Agent. Falling back.")
+        else:
+            print(f"AURA Hermes Context Bridge: CLI run failed (exit {process.returncode}). Stderr: {stderr_text}. Falling back.")
+    except Exception as e:
+        print(f"AURA Hermes Context Bridge Error: {e}. Falling back.")
+    finally:
+        if temp_img_path and os.path.exists(temp_img_path):
+            try:
+                os.remove(temp_img_path)
+            except Exception:
+                pass
+
+    # 2. Fallback to Groq/OpenRouter API Client
+    try:
+        from main import async_groq_client, map_model_for_backend
         client = async_groq_client
     except ImportError:
         client = None
+        map_model_for_backend = lambda x: x
 
     if not client:
-        print("AURA Context Engine: Groq client unavailable. Using fallback.")
+        print("AURA Context Engine: API client unavailable. Using local rule-based fallback.")
         return get_local_fallback_context(active_app, window_title, accessibility_text)
 
     system_prompt = """You are AURA Context Engine, a system-level real-time screen analysis service.
@@ -131,6 +229,7 @@ Do not write any markdown wrappers, preambles, or postambles. Output ONLY valid 
         user_content = f"Active App: {active_app or 'Unknown'}\nWindow Title: {window_title or 'Unknown'}\nAccessibility Text: {accessibility_text or ''}"
         
         if has_img:
+            clean_b64 = screenshot_b64.split(",")[1] if "," in screenshot_b64 else screenshot_b64
             messages = [
                 {"role": "system", "content": system_prompt},
                 {
@@ -140,7 +239,7 @@ Do not write any markdown wrappers, preambles, or postambles. Output ONLY valid 
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/jpeg;base64,{screenshot_b64}"
+                                "url": f"data:image/jpeg;base64,{clean_b64}"
                             }
                         }
                     ]
@@ -152,27 +251,23 @@ Do not write any markdown wrappers, preambles, or postambles. Output ONLY valid 
                 {"role": "user", "content": user_content}
             ]
 
-        # Call Groq
+        # Call API client
         response = await client.chat.completions.create(
-            model=model,
+            model=map_model_for_backend(model),
             messages=messages,
             temperature=0.2,
             max_tokens=600,
-            response_format={"type": "json_object"} if not has_img else None # Vision doesn't always support json_object mode
+            response_format={"type": "json_object"} if not has_img else None
         )
         
         raw_text = response.choices[0].message.content
         res = parse_json_robust(raw_text)
         
-        # Ensure correct structure
         if "detected_items" in res and "suggestions" in res:
-            # Shorten detected items tags for UI display
             res["detected_items"] = [str(x)[:25] for x in res["detected_items"]][:4]
-            # Ensure suggestions is list of dicts
             clean_sug = []
             for item in res["suggestions"]:
                 if isinstance(item, dict) and "label" in item and "prompt" in item:
-                    # Clean length
                     item["label"] = str(item["label"])[:25]
                     clean_sug.append(item)
                 elif isinstance(item, str):
@@ -181,6 +276,6 @@ Do not write any markdown wrappers, preambles, or postambles. Output ONLY valid 
             return res
             
     except Exception as e:
-        print(f"AURA Context Engine error: {e}. Using fallback.")
+        print(f"AURA Context Engine fallback error: {e}. Using local rule-based fallback.")
         
     return get_local_fallback_context(active_app, window_title, accessibility_text)

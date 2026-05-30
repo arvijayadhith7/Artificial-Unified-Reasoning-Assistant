@@ -3,6 +3,31 @@
    Provides: Chat handshakes, real-time thought streams, sandbox maps & hotloads
    ========================================================================== */
 
+// AURA Backend Configuration
+// Set this to your live backend URL (e.g. 'https://vijayadhith7-aura-backend.hf.space') when deploying.
+// Leave as empty string to automatically connect to your local backend on port 7860.
+const PRODUCTION_BACKEND_URL = ""; 
+
+function getBackendHost(currentHost) {
+    if (PRODUCTION_BACKEND_URL) {
+        return PRODUCTION_BACKEND_URL.replace(/^(http|https|ws|wss):\/\//, '');
+    }
+    let host = currentHost || 'localhost:7860';
+    const hostname = host.split(':')[0];
+    const isLocal = hostname === 'localhost' || 
+                    hostname === '127.0.0.1' || 
+                    hostname.startsWith('192.168.') || 
+                    hostname.startsWith('10.') || 
+                    hostname.startsWith('172.') ||
+                    host.includes(':8085') ||
+                    host.includes(':8080');
+    
+    if (isLocal) {
+        return hostname + ':7860';
+    }
+    return host;
+}
+
 // Page layout hooks
 const bgGrid = document.getElementById('bg-grid');
 const glowC = document.getElementById('glow-c');
@@ -11,28 +36,271 @@ const chatMessages = document.getElementById('chat-messages');
 const userInput = document.getElementById('terminal-user-input');
 const sendMsgBtn = document.getElementById('btn-send-msg');
 const welcomeView = document.getElementById('welcome-view');
-const detailsPanel = document.getElementById('app-details-panel');
 
-// Sandbox state hooks
-const sbPersona = document.getElementById('sb-persona');
-const sbSearchDepth = document.getElementById('sb-search-depth');
-const modOCR = document.getElementById('mod-ocr');
-const modLint = document.getElementById('mod-lint');
-const sbWorkspacePath = document.getElementById('sb-workspace-path');
-
-// Visual memory indicators
-const vizSysInst = document.getElementById('viz-sys-inst');
-const vizIngest = document.getElementById('viz-ingest');
-const vizWorkspace = document.getElementById('viz-workspace');
-const vizRetrieval = document.getElementById('viz-retrieval');
-const vizTokenBar = document.getElementById('viz-token-bar');
-const vizTokenText = document.getElementById('viz-token-text');
-const syncStatus = document.getElementById('sandbox-sync-status');
+// Chat Mode Select Hook
+const chatModeSelect = document.getElementById('chat-mode-select');
 
 // Diagnostic logs
 const thinkingProgressBar = document.getElementById('thinking-progress-bar');
 const thinkingProgressLabel = document.getElementById('thinking-progress-label');
 const thoughtStepsLog = document.getElementById('thought-steps-log');
+
+// State mappings for modes
+// Web Audio API Synthesizer for Cyberpunk HUD Sound Effects
+const CyberSound = {
+    ctx: null,
+    init() {
+        if (!this.ctx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+                this.ctx = new AudioContextClass();
+            }
+        }
+    },
+    playClick() {
+        this.init();
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1400, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.06);
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.06);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.06);
+    },
+    playKeypress() {
+        this.init();
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'sine';
+        const freq = 1200 + Math.random() * 400;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.02);
+        gain.gain.setValueAtTime(0.015, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.02);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.02);
+    },
+    playEnter() {
+        this.init();
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const time = this.ctx.currentTime;
+        const osc1 = this.ctx.createOscillator();
+        const gain1 = this.ctx.createGain();
+        osc1.connect(gain1);
+        gain1.connect(this.ctx.destination);
+        osc1.type = 'square';
+        osc1.frequency.setValueAtTime(900, time);
+        gain1.gain.setValueAtTime(0.03, time);
+        gain1.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+        osc1.start();
+        osc1.stop(time + 0.08);
+        setTimeout(() => {
+            const osc2 = this.ctx.createOscillator();
+            const gain2 = this.ctx.createGain();
+            osc2.connect(gain2);
+            gain2.connect(this.ctx.destination);
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(1600, this.ctx.currentTime);
+            gain2.gain.setValueAtTime(0.05, this.ctx.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+            osc2.start();
+            osc2.stop(this.ctx.currentTime + 0.12);
+        }, 60);
+    },
+    playScan() {
+        this.init();
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const time = this.ctx.currentTime;
+        const duration = 0.55;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(200, time);
+        osc.frequency.exponentialRampToValueAtTime(2000, time + duration);
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(400, time);
+        filter.frequency.exponentialRampToValueAtTime(3200, time + duration);
+        filter.Q.value = 6.0;
+        gain.gain.setValueAtTime(0.1, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+        osc.start();
+        osc.stop(time + duration);
+    }
+};
+window.CyberSound = CyberSound;
+
+// Global Click Sound Trigger (Capturing Phase to bypass stopPropagation)
+document.addEventListener('click', (e) => {
+    const target = e.target.closest('button, select, .history-item, .suggestion-card, .quick-action-pill, a, .state-action-btn, .ctrl-btn');
+    if (target) {
+        CyberSound.playClick();
+    }
+}, true);
+
+// Global Typing Sound Trigger
+document.addEventListener('keydown', (e) => {
+    const target = e.target;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        const quietKeys = ['Enter', 'Tab', 'Shift', 'Control', 'Alt', 'Meta', 'Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (!quietKeys.includes(e.key)) {
+            CyberSound.playKeypress();
+        }
+    }
+}, true);
+
+let activeChatMode = 'chat';
+
+function changeMode(mode) {
+    activeChatMode = mode;
+    
+    // Update active class on tab buttons
+    const tabs = document.querySelectorAll('.mode-tab-btn');
+    tabs.forEach(tab => {
+        if (tab.getAttribute('data-mode') === mode) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // Sync to hidden select
+    const chatModeSelect = document.getElementById('chat-mode-select');
+    if (chatModeSelect) {
+        chatModeSelect.value = mode;
+    }
+    
+    onChatModeChange(mode);
+}
+
+function getSandboxConfig() {
+    const mode = activeChatMode;
+    if (mode === 'research') {
+        return {
+            persona: 'warm-narrative',
+            search_strategy: 'multi-tier',
+            ocr: false,
+            lint: false,
+            workspace_path: ''
+        };
+    } else if (mode === 'workspace') {
+        return {
+            persona: 'ultra-technical',
+            search_strategy: 'local-only',
+            ocr: true,
+            lint: true,
+            workspace_path: 'd:\\ANTIGRAVITY\\llm APP'
+        };
+    } else { // default 'chat'
+        return {
+            persona: 'warm-narrative',
+            search_strategy: 'multi-tier',
+            ocr: false,
+            lint: false,
+            workspace_path: ''
+        };
+    }
+}
+
+function onChatModeChange(mode) {
+    if (!userInput) return;
+    
+    const validModes = ['chat', 'research', 'workspace'];
+    const activeMode = validModes.includes(mode) ? mode : 'chat';
+    
+    document.body.classList.remove('theme-chat', 'theme-research', 'theme-workspace');
+    document.body.classList.add('theme-' + activeMode);
+    
+    // Sync theme to floating Picture-in-Picture window if active
+    if (pipWindow && !pipWindow.closed && pipWindow.document) {
+        pipWindow.document.body.classList.remove('theme-chat', 'theme-research', 'theme-workspace');
+        pipWindow.document.body.classList.add('theme-' + activeMode);
+    }
+    
+    const promptSugs = document.querySelector('.prompt-suggestions');
+    const welcomeHalo = document.querySelector('.welcome-halo');
+    const welcomeTitle = document.querySelector('.welcome-title');
+    const welcomeStatus = document.getElementById('dashboard-status-label');
+    const welcomeControls = document.querySelector('.welcome-halo-controls');
+    
+    const workspaceHub = document.getElementById('workspace-hub');
+    const researchHub = document.getElementById('research-hub');
+    
+    if (activeMode === 'research') {
+        userInput.placeholder = "Research with AURA...";
+        setHaloState('listening', 'COGNITIVE STATE: RESEARCH MODE ACTIVE');
+        
+        // Ensure welcome-view is visible and hubs are toggled
+        if (welcomeView) welcomeView.style.display = 'flex';
+        if (chatMessages) chatMessages.style.display = 'none';
+        
+        // Keep halo and status readout visible, but hide suggestions/controls, show research hub
+        if (welcomeHalo) welcomeHalo.style.display = 'block';
+        if (welcomeTitle) welcomeTitle.style.display = 'none';
+        if (welcomeStatus) welcomeStatus.style.display = 'block';
+        if (welcomeControls) welcomeControls.style.display = 'none';
+        if (promptSugs) promptSugs.style.display = 'none';
+        if (workspaceHub) workspaceHub.style.display = 'none';
+        if (researchHub) researchHub.style.display = 'block';
+        
+        resetResearchConsole(); // Reset to fresh input
+    } else if (activeMode === 'workspace') {
+        userInput.placeholder = "Analyze Workspace with AURA...";
+        setHaloState('scanning', 'COGNITIVE STATE: WORKSPACE MODE ACTIVE');
+        
+        // Ensure welcome-view is visible and hubs are toggled
+        if (welcomeView) welcomeView.style.display = 'flex';
+        if (chatMessages) chatMessages.style.display = 'none';
+        
+        // Keep halo and status readout visible, but hide suggestions/controls, show workspace hub
+        if (welcomeHalo) welcomeHalo.style.display = 'block';
+        if (welcomeTitle) welcomeTitle.style.display = 'none';
+        if (welcomeStatus) welcomeStatus.style.display = 'block';
+        if (welcomeControls) welcomeControls.style.display = 'none';
+        if (promptSugs) promptSugs.style.display = 'none';
+        if (researchHub) researchHub.style.display = 'none';
+        if (workspaceHub) workspaceHub.style.display = 'flex';
+        
+        loadWorkspaceProjects(); // Load projects list from backend
+    } else {
+        userInput.placeholder = "Message AURA...";
+        setHaloState('idle', 'COGNITIVE STATE: CHAT MODE ACTIVE');
+        
+        // Show standard welcome elements or message feed depending on if history is loaded
+        const hasHistory = chatMessages && chatMessages.children.length > 0;
+        if (hasHistory) {
+            if (welcomeView) welcomeView.style.display = 'none';
+            if (chatMessages) chatMessages.style.display = 'flex';
+        } else {
+            if (welcomeView) welcomeView.style.display = 'flex';
+            if (chatMessages) chatMessages.style.display = 'none';
+            
+            if (welcomeHalo) welcomeHalo.style.display = 'block';
+            if (welcomeTitle) welcomeTitle.style.display = 'block';
+            if (welcomeStatus) welcomeStatus.style.display = 'block';
+            if (welcomeControls) welcomeControls.style.display = 'flex';
+            if (promptSugs) promptSugs.style.display = 'grid';
+        }
+        
+        if (workspaceHub) workspaceHub.style.display = 'none';
+        if (researchHub) researchHub.style.display = 'none';
+    }
+}
 
 let isThinking = false;
 let ws = null;
@@ -83,7 +351,7 @@ const simulatedResponses = {
 
 // UI Toggles
 function toggleDetailsPanel() {
-    detailsPanel.classList.toggle('hidden');
+    // Workspace Diagnostics panel has been removed.
 }
 
 function setQuickInput(text) {
@@ -93,12 +361,11 @@ function setQuickInput(text) {
 }
 
 function getBackendUrl(endpoint) {
-    let host = window.location.host || 'localhost:7860';
-    if (host.includes('localhost:') || host.includes('127.0.0.1:')) {
-        host = host.split(':')[0] + ':7860';
-    } else if (host === 'localhost' || host === '127.0.0.1') {
-        host = host + ':7860';
+    if (PRODUCTION_BACKEND_URL) {
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+        return `${PRODUCTION_BACKEND_URL.replace(/\/$/, '')}${cleanEndpoint}`;
     }
+    let host = getBackendHost(window.location.host);
     const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
     const finalProtocol = (protocol === 'file') ? 'http' : protocol;
     return `${finalProtocol}://${host}${endpoint}`;
@@ -164,6 +431,9 @@ function renderHistory(chats) {
                 <div class="history-item ${isActive}" onclick="loadSelectedChat('${item.id}')" id="history-item-${item.id}">
                     <i class="fa-regular fa-message item-icon"></i>
                     <span class="item-text" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</span>
+                    <button class="history-delete-btn" onclick="confirmDeleteChat(event, '${item.id}')" title="Delete chat">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
                 </div>
             `;
         });
@@ -177,6 +447,153 @@ function renderHistory(chats) {
     fullHtml += createSection('Previous Chats', groups.older);
     
     container.innerHTML = fullHtml;
+}
+
+let activeDeleteTarget = null;
+let deleteModalType = 'chat';
+let pendingDeletedChats = {};
+
+function openCustomDeleteModal(type, targetId) {
+    activeDeleteTarget = targetId;
+    deleteModalType = type;
+    
+    const modal = document.getElementById('aura-delete-modal');
+    const titleEl = document.getElementById('delete-modal-title');
+    const subtitleEl = document.getElementById('delete-modal-subtitle');
+    
+    if (!modal) return;
+    
+    if (type === 'chat') {
+        if (titleEl) titleEl.innerText = "Delete conversation?";
+        if (subtitleEl) subtitleEl.innerText = "This will permanently remove this chat from your AURA workspace.";
+    } else if (type === 'workspace') {
+        if (titleEl) titleEl.innerText = "Purge workspace?";
+        if (subtitleEl) subtitleEl.innerText = "This will permanently delete this neural core workspace and all its blueprints.";
+    }
+    
+    if (window.CyberSound) window.CyberSound.playScan();
+    
+    modal.style.display = 'flex';
+    modal.offsetHeight; // force reflow
+    modal.classList.add('active');
+}
+
+function closeCustomDeleteModal() {
+    const modal = document.getElementById('aura-delete-modal');
+    if (!modal) return;
+    
+    modal.classList.remove('active');
+    setTimeout(() => {
+        modal.style.display = 'none';
+        activeDeleteTarget = null;
+    }, 300);
+}
+
+function confirmDeleteChat(event, convId) {
+    if (event) event.stopPropagation();
+    openCustomDeleteModal('chat', convId);
+}
+
+function executeCustomDeleteAction() {
+    if (!activeDeleteTarget) {
+        closeCustomDeleteModal();
+        return;
+    }
+    
+    const target = activeDeleteTarget;
+    const type = deleteModalType;
+    
+    closeCustomDeleteModal();
+    
+    if (type === 'chat') {
+        triggerUndoableChatDelete(target);
+    } else if (type === 'workspace') {
+        executeWorkspaceDelete(target);
+    }
+}
+
+function triggerUndoableChatDelete(convId) {
+    if (pendingDeletedChats[convId]) {
+        clearTimeout(pendingDeletedChats[convId].timeout);
+        performActualChatDelete(convId);
+    }
+    
+    if (window.CyberSound) window.CyberSound.playEnter();
+    
+    const sidebarItem = document.getElementById(`history-item-${convId}`);
+    if (sidebarItem) {
+        sidebarItem.style.display = 'none';
+    }
+    
+    let wasActive = (activeConvId === convId);
+    let originalHistory = [...chatHistory];
+    if (wasActive) {
+        activeConvId = null;
+        chatHistory = [];
+        if (chatMessages) chatMessages.innerHTML = '';
+        if (welcomeView) welcomeView.style.display = 'flex';
+        if (chatMessages) chatMessages.style.display = 'none';
+    }
+    
+    const toast = document.getElementById('aura-undo-toast-container');
+    const toastMsg = document.getElementById('aura-toast-message');
+    const undoBtn = document.getElementById('aura-toast-undo-btn');
+    const progressBar = document.getElementById('aura-toast-progress-bar');
+    
+    if (toast && toastMsg && undoBtn && progressBar) {
+        toastMsg.innerText = "Conversation deleted";
+        toast.classList.add('active');
+        
+        progressBar.style.transition = 'none';
+        progressBar.style.transform = 'scaleX(1)';
+        progressBar.offsetHeight; // force reflow
+        progressBar.style.transition = 'transform 5s linear';
+        progressBar.style.transform = 'scaleX(0)';
+        
+        undoBtn.onclick = function() {
+            if (pendingDeletedChats[convId]) {
+                clearTimeout(pendingDeletedChats[convId].timeout);
+                delete pendingDeletedChats[convId];
+            }
+            
+            if (sidebarItem) {
+                sidebarItem.style.display = 'flex';
+            }
+            
+            if (wasActive) {
+                activeConvId = convId;
+                chatHistory = originalHistory;
+                loadSelectedChat(convId);
+            }
+            
+            toast.classList.remove('active');
+            if (window.CyberSound) window.CyberSound.playScan();
+        };
+    }
+    
+    const timeout = setTimeout(() => {
+        if (toast) toast.classList.remove('active');
+        performActualChatDelete(convId);
+        delete pendingDeletedChats[convId];
+    }, 5000);
+    
+    pendingDeletedChats[convId] = {
+        timeout: timeout,
+        wasActive: wasActive,
+        originalHistory: originalHistory,
+        sidebarItem: sidebarItem
+    };
+}
+
+async function performActualChatDelete(convId) {
+    try {
+        const url = getBackendUrl(`/chats/${convId}`);
+        const res = await fetch(url, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        await loadRecentChats();
+    } catch (e) {
+        console.error('Error deleting chat:', e);
+    }
 }
 
 function filterAndRenderHistory() {
@@ -196,7 +613,11 @@ function filterAndRenderHistory() {
 
 async function loadRecentChats() {
     try {
-        const url = getBackendUrl('/chats');
+        let path = '/chats';
+        if (activeProjectId && activeProjectId !== 'global') {
+            path += `?project_id=${activeProjectId}`;
+        }
+        const url = getBackendUrl(path);
         const response = await fetch(url);
         allUserChats = await response.json();
         
@@ -218,6 +639,7 @@ async function loadSelectedChat(convId) {
     if (activeItem) activeItem.classList.add('active');
     
     welcomeView.style.display = 'none';
+    if (chatMessages) chatMessages.style.display = 'flex';
     chatMessages.innerHTML = '';
     
     const loadingDiv = document.createElement('div');
@@ -246,15 +668,7 @@ async function loadSelectedChat(convId) {
                 const msgDiv = appendMessage('', 'aura-msg', 'AURA Assistant');
                 const textBody = msgDiv.querySelector('.msg-txt-body');
                 
-                let internalThoughtHTML = '';
-                if (thought && thought.trim().length > 0) {
-                    internalThoughtHTML = `<div class="thinking-block">`;
-                    internalThoughtHTML += `<div class="thinking-block-title"><i class="fas fa-brain"></i> Deep Thought Process</div>`;
-                    internalThoughtHTML += `<div class="thinking-block-body">${escapeHtml(thought)}</div>`;
-                    internalThoughtHTML += `</div>`;
-                }
-                
-                textBody.innerHTML = internalThoughtHTML;
+                textBody.innerHTML = '';
                 const textSpan = document.createElement('span');
                 textSpan.innerHTML = content.replace(/\n/g, '<br>');
                 textBody.appendChild(textSpan);
@@ -284,6 +698,7 @@ function clearActiveChat() {
     chatMessages.innerHTML = '';
     chatHistory = [];
     welcomeView.style.display = 'flex';
+    if (chatMessages) chatMessages.style.display = 'none';
     if (ws) {
         try { ws.close(); } catch(e) {}
         ws = null;
@@ -295,16 +710,7 @@ function clearActiveChat() {
 }
 
 function toggleWebSearchInPill() {
-    searchEnabled = !searchEnabled;
-    const btn = document.getElementById('btn-web-search-toggle');
-    if (searchEnabled) {
-        btn.classList.add('active');
-        sbSearchDepth.value = 'multi-tier';
-    } else {
-        btn.classList.remove('active');
-        sbSearchDepth.value = 'local-only';
-    }
-    updateSandboxUI();
+    // Handled by Mode select dropdown.
 }
 
 // Cognitive state visualizers
@@ -333,48 +739,48 @@ function setHaloState(state, labelText) {
         dashboardStatusLabel.innerText = labelText;
     }
 
-    // Dynamic badge and background lights
+    // Dynamic badge and background lights using CSS theme variables
     switch(state) {
         case 'listening':
-            if (navHaloDot) navHaloDot.style.background = 'var(--electric-blue)';
+            if (navHaloDot) navHaloDot.style.background = 'var(--theme-state-listening)';
             if (statusBadge) {
                 statusBadge.innerHTML = `<i class="fas fa-microphone"></i> AURA CORE LISTENING`;
-                statusBadge.style.color = 'var(--electric-blue)';
-                statusBadge.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                statusBadge.style.color = 'var(--theme-state-listening)';
+                statusBadge.style.borderColor = 'var(--theme-state-listening-alpha)';
             }
-            if (glowC) glowC.style.background = 'radial-gradient(circle, var(--electric-blue), transparent 70%)';
+            if (glowC) glowC.style.background = 'radial-gradient(circle, var(--theme-state-listening), transparent 70%)';
             break;
             
         case 'thinking':
-            if (navHaloDot) navHaloDot.style.background = 'var(--violet-glow)';
+            if (navHaloDot) navHaloDot.style.background = 'var(--theme-state-thinking)';
             if (statusBadge) {
                 statusBadge.innerHTML = `<i class="fas fa-microchip fa-spin"></i> AURA CORE THINKING`;
-                statusBadge.style.color = 'var(--violet-glow)';
-                statusBadge.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+                statusBadge.style.color = 'var(--theme-state-thinking)';
+                statusBadge.style.borderColor = 'var(--theme-state-thinking-alpha)';
             }
-            if (glowC) glowC.style.background = 'radial-gradient(circle, var(--violet-glow), transparent 70%)';
+            if (glowC) glowC.style.background = 'radial-gradient(circle, var(--theme-state-thinking), transparent 70%)';
             break;
             
         case 'scanning':
-            if (navHaloDot) navHaloDot.style.background = 'var(--neon-red)';
+            if (navHaloDot) navHaloDot.style.background = 'var(--theme-state-scanning)';
             if (statusBadge) {
                 statusBadge.innerHTML = `<i class="fas fa-shield-virus"></i> AURA CORE SCANNING`;
-                statusBadge.style.color = 'var(--neon-red)';
-                statusBadge.style.borderColor = 'rgba(244, 63, 94, 0.3)';
+                statusBadge.style.color = 'var(--theme-state-scanning)';
+                statusBadge.style.borderColor = 'var(--theme-state-scanning-alpha)';
             }
-            if (glowV) glowV.style.background = 'radial-gradient(circle, var(--neon-red), transparent 70%)';
+            if (glowV) glowV.style.background = 'radial-gradient(circle, var(--theme-state-scanning), transparent 70%)';
             break;
             
         case 'idle':
         default:
-            if (navHaloDot) navHaloDot.style.background = 'var(--neon-cyan)';
+            if (navHaloDot) navHaloDot.style.background = 'var(--theme-primary)';
             if (statusBadge) {
                 statusBadge.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> AURA CORE ONLINE`;
-                statusBadge.style.color = 'var(--neon-cyan)';
-                statusBadge.style.borderColor = 'rgba(0, 242, 255, 0.12)';
+                statusBadge.style.color = 'var(--theme-primary)';
+                statusBadge.style.borderColor = 'var(--theme-primary-alpha-15)';
             }
-            if (glowC) glowC.style.background = 'radial-gradient(circle, var(--neon-cyan), transparent 70%)';
-            if (glowV) glowV.style.background = 'radial-gradient(circle, var(--violet-glow), transparent 70%)';
+            if (glowC) glowC.style.background = 'radial-gradient(circle, var(--theme-primary), transparent 70%)';
+            if (glowV) glowV.style.background = 'radial-gradient(circle, var(--theme-secondary), transparent 70%)';
             break;
     }
 }
@@ -401,12 +807,15 @@ function submitSimulationQuery() {
     const text = userInput.value.trim();
     if (!text || isThinking) return;
 
+    CyberSound.playEnter();
+
     // Reset input pill
     userInput.value = '';
     userInput.style.height = 'auto';
 
     // Hide welcome overlay on active chat
     welcomeView.style.display = 'none';
+    if (chatMessages) chatMessages.style.display = 'flex';
 
     // Assign active conversation ID if empty
     if (!activeConvId) {
@@ -443,9 +852,9 @@ function appendMessage(text, className, auraTitle = '') {
 // Connect to backend LRM WebSocket
 function executeRealtimeChat(query) {
     isThinking = true;
-    thoughtStepsLog.innerHTML = ''; // Reset diagnostic logs
-    thinkingProgressBar.style.width = '0%';
-    thinkingProgressLabel.innerText = "Connecting to AURA LRM Core...";
+    if (thoughtStepsLog) thoughtStepsLog.innerHTML = ''; // Reset diagnostic logs
+    if (thinkingProgressBar) thinkingProgressBar.style.width = '0%';
+    if (thinkingProgressLabel) thinkingProgressLabel.innerText = "Connecting to AURA LRM Core...";
     
     setHaloState('thinking', 'COGNITIVE STATE: RESOLVING REAL-TIME THOUGHTS');
 
@@ -458,14 +867,16 @@ function executeRealtimeChat(query) {
     }, 3500);
 
     try {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        let wsHost = window.location.host || 'localhost:7860';
-        if (wsHost.includes('localhost:') || wsHost.includes('127.0.0.1:')) {
-            wsHost = wsHost.split(':')[0] + ':7860';
-        } else if (wsHost === 'localhost' || wsHost === '127.0.0.1') {
-            wsHost = wsHost + ':7860';
+        let wsUrl;
+        if (PRODUCTION_BACKEND_URL) {
+            const cleanUrl = PRODUCTION_BACKEND_URL.replace(/^(http|https):/, '');
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            wsUrl = `${wsProtocol}${cleanUrl}/chat`;
+        } else {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            const wsHost = getBackendHost(window.location.host);
+            wsUrl = `${wsProtocol}://${wsHost}/chat`;
         }
-        const wsUrl = `${wsProtocol}://${wsHost}/chat`;
         
         ws = new WebSocket(wsUrl);
         currentResponseContainer = null;
@@ -474,21 +885,15 @@ function executeRealtimeChat(query) {
 
         ws.onopen = function() {
             clearTimeout(fallbackTimeout);
-            thinkingProgressLabel.innerText = "Handshake complete. Initializing cognitive pathway...";
+            if (thinkingProgressLabel) thinkingProgressLabel.innerText = "Handshake complete. Initializing cognitive pathway...";
             
             // Ingestion variables
             const payload = {
                 prompt: query,
                 conversationId: activeConvId || "default_web",
-                projectId: "global",
+                projectId: activeProjectId || "global",
                 history: chatHistory.slice(-10),
-                sandbox: {
-                    persona: sbPersona.value,
-                    search_strategy: sbSearchDepth.value,
-                    ocr: modOCR.checked,
-                    lint: modLint.checked,
-                    workspace_path: sbWorkspacePath.value
-                }
+                sandbox: getSandboxConfig()
             };
             ws.send(JSON.stringify(payload));
         };
@@ -500,37 +905,22 @@ function executeRealtimeChat(query) {
                 const raw = (data.content || '').trim();
                 const noisy = /searching|compiling|structuring|current date|realtime|looking up|web search|gateway|ingestion|synthesiz|analyzing|neural memory|live summaries|synchronized/i.test(raw);
                 if (!noisy && raw) {
-                    thinkingProgressLabel.innerText = raw;
+                    if (thinkingProgressLabel) thinkingProgressLabel.innerText = raw;
                 }
             } 
             else if (data.type === 'thought_step') {
                 // Append node in side diagnostics panel
-                const node = document.createElement('div');
-                node.className = 'thought-node';
-                node.innerHTML = `
-                    <div class="thought-node-icon"><i class="fas fa-spinner fa-spin"></i></div>
-                    <div class="thought-node-details">
-                        <div class="thought-node-title">${data.title}</div>
-                        <div class="thought-node-body">${data.body}</div>
-                    </div>
-                `;
-                
-                const lastNode = thoughtStepsLog.lastElementChild;
-                if (lastNode && lastNode.classList.contains('thought-node') && !lastNode.classList.contains('resolved')) {
-                    lastNode.className = 'thought-node resolved';
-                    const icon = lastNode.querySelector('.thought-node-icon');
-                    if (icon) icon.innerHTML = '<i class="fas fa-check"></i>';
-                }
-                
-                thoughtStepsLog.appendChild(node);
-                thoughtStepsLog.scrollTop = thoughtStepsLog.scrollHeight;
-                
-                let currentPercent = parseInt(thinkingProgressBar.style.width) || 0;
-                let nextPercent = Math.min(currentPercent + 25, 90);
-                thinkingProgressBar.style.width = `${nextPercent}%`;
-            }
-            else if (data.type === 'chunk') {
-                if (!currentResponseContainer) {
+                if (thoughtStepsLog) {
+                    const node = document.createElement('div');
+                    node.className = 'thought-node';
+                    node.innerHTML = `
+                        <div class="thought-node-icon"><i class="fas fa-spinner fa-spin"></i></div>
+                        <div class="thought-node-details">
+                            <div class="thought-node-title">${data.title}</div>
+                            <div class="thought-node-body">${data.body}</div>
+                        </div>
+                    `;
+                    
                     const lastNode = thoughtStepsLog.lastElementChild;
                     if (lastNode && lastNode.classList.contains('thought-node') && !lastNode.classList.contains('resolved')) {
                         lastNode.className = 'thought-node resolved';
@@ -538,31 +928,35 @@ function executeRealtimeChat(query) {
                         if (icon) icon.innerHTML = '<i class="fas fa-check"></i>';
                     }
                     
-                    thinkingProgressBar.style.width = '95%';
-                    thinkingProgressLabel.innerText = "Ingestion resolved. Generating answer...";
+                    thoughtStepsLog.appendChild(node);
+                    thoughtStepsLog.scrollTop = thoughtStepsLog.scrollHeight;
+                }
+                
+                if (thinkingProgressBar) {
+                    let currentPercent = parseInt(thinkingProgressBar.style.width) || 0;
+                    let nextPercent = Math.min(currentPercent + 25, 90);
+                    thinkingProgressBar.style.width = `${nextPercent}%`;
+                }
+            }
+            else if (data.type === 'chunk') {
+                if (!currentResponseContainer) {
+                    if (thoughtStepsLog) {
+                        const lastNode = thoughtStepsLog.lastElementChild;
+                        if (lastNode && lastNode.classList.contains('thought-node') && !lastNode.classList.contains('resolved')) {
+                            lastNode.className = 'thought-node resolved';
+                            const icon = lastNode.querySelector('.thought-node-icon');
+                            if (icon) icon.innerHTML = '<i class="fas fa-check"></i>';
+                        }
+                    }
+                    
+                    if (thinkingProgressBar) thinkingProgressBar.style.width = '95%';
+                    if (thinkingProgressLabel) thinkingProgressLabel.innerText = "Ingestion resolved. Generating answer...";
                     
                     // Create beautiful LRM text container
                     currentResponseContainer = appendMessage('', 'aura-msg', 'AURA Assistant');
                     const textBody = currentResponseContainer.querySelector('.msg-txt-body');
                     
-                    // Curved deep reasoning block inside chat UI
-                    let internalThoughtHTML = `<div class="thinking-block">`;
-                    internalThoughtHTML += `<div class="thinking-block-title"><i class="fas fa-brain"></i> Deep Thought Process</div>`;
-                    internalThoughtHTML += `<div class="thinking-block-body">`;
-                    
-                    const steps = thoughtStepsLog.querySelectorAll('.thought-node');
-                    steps.forEach((step, i) => {
-                        const title = step.querySelector('.thought-node-title').innerText;
-                        const body = step.querySelector('.thought-node-body').innerText;
-                        internalThoughtHTML += `${i+1}. ${title}: ${body}\n`;
-                    });
-                    
-                    if (steps.length === 0) {
-                        internalThoughtHTML += `1. Memory Map Scan: Sandbox grounding active. Direct cognitive weights loaded.`;
-                    }
-                    
-                    internalThoughtHTML += `</div></div>`;
-                    textBody.innerHTML = internalThoughtHTML;
+                    textBody.innerHTML = '';
                     
                     currentTextSpan = document.createElement('span');
                     textBody.appendChild(currentTextSpan);
@@ -607,17 +1001,19 @@ function executeRealtimeChat(query) {
 function finalizeChatSession() {
     isThinking = false;
     setHaloState('idle', 'COGNITIVE STATE: IDLE');
-    thinkingProgressBar.style.width = '100%';
-    thinkingProgressLabel.innerText = "AURA Core Online";
+    if (thinkingProgressBar) thinkingProgressBar.style.width = '100%';
+    if (thinkingProgressLabel) thinkingProgressLabel.innerText = "AURA Core Online";
     
-    const steps = thoughtStepsLog.querySelectorAll('.thought-node');
-    steps.forEach(step => {
-        if (!step.classList.contains('resolved')) {
-            step.className = 'thought-node resolved';
-            const icon = step.querySelector('.thought-node-icon');
-            if (icon) icon.innerHTML = '<i class="fas fa-check"></i>';
-        }
-    });
+    if (thoughtStepsLog) {
+        const steps = thoughtStepsLog.querySelectorAll('.thought-node');
+        steps.forEach(step => {
+            if (!step.classList.contains('resolved')) {
+                step.className = 'thought-node resolved';
+                const icon = step.querySelector('.thought-node-icon');
+                if (icon) icon.innerHTML = '<i class="fas fa-check"></i>';
+            }
+        });
+    }
 
     if (fullReplyAccumulated) {
         chatHistory.push({ role: "assistant", content: fullReplyAccumulated });
@@ -660,41 +1056,49 @@ function executeFallbackSimulation(query) {
         if (currentStep < totalSteps) {
             const thought = responseData.thoughts[currentStep];
             
-            const node = document.createElement('div');
-            node.className = 'thought-node';
-            node.innerHTML = `
-                <div class="thought-node-icon"><i class="fas fa-spinner fa-spin"></i></div>
-                <div class="thought-node-details">
-                    <div class="thought-node-title">${thought.title}</div>
-                    <div class="thought-node-body">${thought.body}</div>
-                </div>
-            `;
-            
-            const lastNode = thoughtStepsLog.lastElementChild;
-            if (lastNode && lastNode.classList.contains('thought-node') && !lastNode.classList.contains('resolved')) {
-                lastNode.className = 'thought-node resolved';
-                const icon = lastNode.querySelector('.thought-node-icon');
-                if (icon) icon.innerHTML = '<i class="fas fa-check"></i>';
+            if (thoughtStepsLog) {
+                const node = document.createElement('div');
+                node.className = 'thought-node';
+                node.innerHTML = `
+                    <div class="thought-node-icon"><i class="fas fa-spinner fa-spin"></i></div>
+                    <div class="thought-node-details">
+                        <div class="thought-node-title">${thought.title}</div>
+                        <div class="thought-node-body">${thought.body}</div>
+                    </div>
+                `;
+                
+                const lastNode = thoughtStepsLog.lastElementChild;
+                if (lastNode && lastNode.classList.contains('thought-node') && !lastNode.classList.contains('resolved')) {
+                    lastNode.className = 'thought-node resolved';
+                    const icon = lastNode.querySelector('.thought-node-icon');
+                    if (icon) icon.innerHTML = '<i class="fas fa-check"></i>';
+                }
+                
+                thoughtStepsLog.appendChild(node);
+                thoughtStepsLog.scrollTop = thoughtStepsLog.scrollHeight;
             }
-            
-            thoughtStepsLog.appendChild(node);
-            thoughtStepsLog.scrollTop = thoughtStepsLog.scrollHeight;
 
             const percent = Math.round(((currentStep + 0.5) / totalSteps) * 100);
-            thinkingProgressBar.style.width = `${percent}%`;
-            thinkingProgressLabel.innerText = `Step ${currentStep + 1} of ${totalSteps}: ${thought.title}`;
+            if (thinkingProgressBar) thinkingProgressBar.style.width = `${percent}%`;
+            if (thinkingProgressLabel) thinkingProgressLabel.innerText = `Step ${currentStep + 1} of ${totalSteps}: ${thought.title}`;
 
             setTimeout(() => {
-                node.className = 'thought-node resolved';
-                node.querySelector('.thought-node-icon').innerHTML = '<i class="fas fa-check"></i>';
+                if (thoughtStepsLog) {
+                    const node = thoughtStepsLog.lastElementChild;
+                    if (node && node.classList.contains('thought-node')) {
+                        node.className = 'thought-node resolved';
+                        const icon = node.querySelector('.thought-node-icon');
+                        if (icon) icon.innerHTML = '<i class="fas fa-check"></i>';
+                    }
+                }
                 currentStep++;
                 const percentDone = Math.round((currentStep / totalSteps) * 100);
-                thinkingProgressBar.style.width = `${percentDone}%`;
+                if (thinkingProgressBar) thinkingProgressBar.style.width = `${percentDone}%`;
                 setTimeout(processNextThought, 700);
             }, 800);
             
         } else {
-            thinkingProgressLabel.innerText = "Cognitive Processing Complete.";
+            if (thinkingProgressLabel) thinkingProgressLabel.innerText = "Cognitive Processing Complete.";
             
             setTimeout(() => {
                 isThinking = false;
@@ -703,18 +1107,10 @@ function executeFallbackSimulation(query) {
                 const responseContainer = appendMessage('', 'aura-msg', 'AURA Assistant');
                 const textBody = responseContainer.querySelector('.msg-txt-body');
                 
-                let internalThoughtHTML = `<div class="thinking-block">`;
-                internalThoughtHTML += `<div class="thinking-block-title"><i class="fas fa-brain"></i> Deep Thought Process</div>`;
-                internalThoughtHTML += `<div class="thinking-block-body">`;
-                responseData.thoughts.forEach((t, i) => {
-                    internalThoughtHTML += `${i+1}. ${t.title}: ${t.body}\n`;
-                });
-                internalThoughtHTML += `</div></div>`;
-                
                 let fullText = responseData.answer;
                 let charIndex = 0;
                 
-                textBody.innerHTML = internalThoughtHTML;
+                textBody.innerHTML = '';
                 const textSpan = document.createElement('span');
                 textBody.appendChild(textSpan);
                 
@@ -745,80 +1141,11 @@ function executeFallbackSimulation(query) {
 
 // Sandbox configuration managers
 function updateSandboxUI() {
-    if (syncStatus) {
-        syncStatus.innerText = "MODIFIED";
-        syncStatus.style.background = "rgba(139, 92, 246, 0.08)";
-        syncStatus.style.borderColor = "rgba(139, 92, 246, 0.2)";
-        syncStatus.style.color = "var(--violet-glow)";
-    }
+    // Diagnostics panel removed.
 }
 
 function hotReloadSandbox() {
-    if (syncStatus) {
-        syncStatus.innerText = "HOT-RELOADING...";
-        syncStatus.style.background = "rgba(255, 193, 7, 0.08)";
-        syncStatus.style.borderColor = "rgba(255, 193, 7, 0.2)";
-        syncStatus.style.color = "#ffc107";
-    }
-    
-    setHaloState('scanning', 'COGNITIVE STATE: RE-INDEXING MEMORY CHUNKS');
-
-    setTimeout(() => {
-        // Map persona value
-        const persona = sbPersona.value;
-        let sysInstText = "";
-        if (persona === 'warm-narrative') {
-            sysInstText = '"You are Aura, a warm co-founder companion providing strategic advice."';
-        } else if (persona === 'ultra-technical') {
-            sysInstText = '"You are Aura, an ultra-technical architect providing precise system schemas."';
-        } else {
-            sysInstText = '"You are Aura, a minimalist developer offering short shell corrections."';
-        }
-        if (vizSysInst) vizSysInst.innerText = sysInstText;
-
-        // Map ingestion cluster
-        const ocr = modOCR.checked ? "ON" : "OFF";
-        const lint = modLint.checked ? "ON" : "OFF";
-        if (vizIngest) vizIngest.innerText = `Status: Active (OCR: ${ocr}, Lint: ${lint})`;
-
-        // Map workspace
-        if (vizWorkspace) vizWorkspace.innerText = `"${sbWorkspacePath.value}"`;
-
-        // Map search depth
-        const depth = sbSearchDepth.value;
-        let depthText = "";
-        if (depth === 'multi-tier') {
-            depthText = '"Fallback gateway: DDG Primary -> Scraper -> SearXNG"';
-        } else if (depth === 'pure-api') {
-            depthText = '"Direct gateway: DuckDuckGo API (strict citations)"';
-        } else {
-            depthText = '"Isolated gateway: Local Sandboxed memory contexts (No-Web)"';
-        }
-        if (vizRetrieval) vizRetrieval.innerText = depthText;
-
-        // Randomize token counts slightly
-        const randomTokens = Math.floor(Math.random() * 4500) + 4000;
-        const percent = Math.round((randomTokens / 16384) * 100);
-        if (vizTokenBar) vizTokenBar.style.width = `${percent}%`;
-        if (vizTokenText) vizTokenText.innerText = `${randomTokens.toLocaleString()} / 16,384 tokens`;
-
-        // Reset sync status pill
-        if (syncStatus) {
-            syncStatus.innerText = "HOT-LOADED SYNCED";
-            syncStatus.style.background = "rgba(0, 242, 255, 0.08)";
-            syncStatus.style.borderColor = "rgba(0, 242, 255, 0.2)";
-            syncStatus.style.color = "var(--neon-cyan)";
-        }
-
-        setHaloState('idle', 'COGNITIVE STATE: IDLE');
-
-        // Flash screen grids slightly
-        if (bgGrid) {
-            bgGrid.style.opacity = '0.3';
-            setTimeout(() => { bgGrid.style.opacity = '0.8'; }, 200);
-        }
-
-    }, 1500);
+    // Diagnostics panel removed.
 }
 
 // Initializer on page load
@@ -829,6 +1156,35 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchInput) {
         searchInput.addEventListener('input', filterAndRenderHistory);
     }
+
+    // Bind custom delete modal events
+    const cancelBtn = document.getElementById('delete-modal-cancel');
+    const confirmBtn = document.getElementById('delete-modal-confirm');
+    const modal = document.getElementById('aura-delete-modal');
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeCustomDeleteModal);
+    }
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', executeCustomDeleteAction);
+    }
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeCustomDeleteModal();
+            }
+        });
+    }
+    
+    // ESC key closes modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeCustomDeleteModal();
+        }
+    });
+    
+    // Set initial mode theme based on tabs
+    changeMode(activeChatMode);
 });
 
 // AURA Floating Overlay Assistant Controllers
@@ -1033,6 +1389,8 @@ async function submitOverlayQuery() {
     const text = input.value.trim();
     if (!text) return;
     
+    CyberSound.playEnter();
+    
     input.value = '';
     
     const userMsg = document.createElement('div');
@@ -1082,14 +1440,16 @@ async function submitOverlayQuery() {
     }
     
     try {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        let wsHost = window.location.host || 'localhost:7860';
-        if (wsHost.includes('localhost:') || wsHost.includes('127.0.0.1:')) {
-            wsHost = wsHost.split(':')[0] + ':7860';
-        } else if (wsHost === 'localhost' || wsHost === '127.0.0.1') {
-            wsHost = wsHost + ':7860';
+        let wsUrl;
+        if (PRODUCTION_BACKEND_URL) {
+            const cleanUrl = PRODUCTION_BACKEND_URL.replace(/^(http|https):/, '');
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            wsUrl = `${wsProtocol}${cleanUrl}/chat`;
+        } else {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            const wsHost = getBackendHost(window.location.host);
+            wsUrl = `${wsProtocol}://${wsHost}/chat`;
         }
-        const wsUrl = `${wsProtocol}://${wsHost}/chat`;
         
         if (overlayWs) {
             try { overlayWs.close(); } catch(e) {}
@@ -1106,15 +1466,10 @@ async function submitOverlayQuery() {
                 conversationId: "overlay_session",
                 projectId: "global",
                 history: overlayHistory.slice(-6),
-                sandbox: {
-                    persona: (sbPersona && sbPersona.value) || 'warm-narrative',
-                    search_strategy: (sbSearchDepth && sbSearchDepth.value) || 'multi-tier',
-                    ocr: modOCR ? modOCR.checked : true,
-                    lint: modLint ? modLint.checked : false,
-                    workspace_path: (sbWorkspacePath && sbWorkspacePath.value) || '',
+                sandbox: Object.assign({}, getSandboxConfig(), {
                     screenshot: screenshotBase64,
                     overlay_mode: true
-                }
+                })
             };
             overlayWs.send(JSON.stringify(payload));
         };
@@ -1207,17 +1562,34 @@ async function toggleOverlayPiP() {
         // Google Fonts link
         const fontLink = pipWindow.document.createElement('link');
         fontLink.rel = 'stylesheet';
-        fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap';
+        fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&display=swap';
         pipWindow.document.head.appendChild(fontLink);
 
         // Body styling for PiP window to make it fit properly
         pipWindow.document.body.style.margin = '0';
         pipWindow.document.body.style.padding = '0';
-        pipWindow.document.body.style.backgroundColor = '#212121';
-        pipWindow.document.body.style.color = '#ececec';
+        pipWindow.document.body.style.backgroundColor = 'var(--bg-chat)';
+        pipWindow.document.body.style.color = 'var(--text-main)';
         pipWindow.document.body.style.height = '100vh';
         pipWindow.document.body.style.overflow = 'hidden';
         pipWindow.document.body.style.fontFamily = "'Inter', sans-serif";
+
+        // Sync theme class list to PiP body
+        const activeTheme = Array.from(document.body.classList).find(cls => cls.startsWith('theme-'));
+        if (activeTheme) {
+            pipWindow.document.body.classList.add(activeTheme);
+        } else {
+            pipWindow.document.body.classList.add('theme-chat');
+        }
+
+        // Add cyber grid and scanlines to PiP window
+        const gridDiv = pipWindow.document.createElement('div');
+        gridDiv.className = 'ambient-grid';
+        pipWindow.document.body.appendChild(gridDiv);
+
+        const scanlinesDiv = pipWindow.document.createElement('div');
+        scanlinesDiv.className = 'cyber-scanlines';
+        pipWindow.document.body.appendChild(scanlinesDiv);
 
         // Move the overlay panel into the PiP window
         const overlayPanel = document.getElementById('aura-overlay-panel');
@@ -1248,6 +1620,25 @@ async function toggleOverlayPiP() {
 
         // Move panel DOM node to PiP document
         pipWindow.document.body.appendChild(overlayPanel);
+
+        // Copy click listener to the PiP window document for sound effects (Capturing Phase)
+        pipWindow.document.addEventListener('click', (e) => {
+            const target = e.target.closest('button, select, .history-item, .suggestion-card, .quick-action-pill, a, .state-action-btn, .ctrl-btn');
+            if (target) {
+                CyberSound.playClick();
+            }
+        }, true);
+
+        // Copy typing listener to the PiP window document for keyboard sound feedback
+        pipWindow.document.addEventListener('keydown', (e) => {
+            const target = e.target;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+                const quietKeys = ['Enter', 'Tab', 'Shift', 'Control', 'Alt', 'Meta', 'Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+                if (!quietKeys.includes(e.key)) {
+                    CyberSound.playKeypress();
+                }
+            }
+        }, true);
 
         // Focus inputs automatically
         setTimeout(() => {
@@ -1370,6 +1761,7 @@ async function advanceDesktopModal() {
                 audio: false
             });
             window.screenCaptureStream = screenCaptureStream;
+            CyberSound.playScan();
             if (statusEl) {
                 statusEl.innerText = "Status: Screen Capture Granted ✔";
                 statusEl.style.color = "#00ff66";
@@ -1457,6 +1849,9 @@ function disableDesktopAssist() {
 
 async function triggerOverlayAction(action) {
     if (window.AuraOverlayRuntime && typeof window.AuraOverlayRuntime.triggerOverlayAction === 'function') {
+        if (action === 'screenshot') {
+            CyberSound.playScan();
+        }
         return window.AuraOverlayRuntime.triggerOverlayAction(action);
     }
     const container = getOverlayElement('overlay-chat-messages');
@@ -1579,17 +1974,12 @@ async function triggerOverlayAction(action) {
             const payload = {
                 prompt: contextPrompt,
                 conversationId: "overlay_session",
-                projectId: "global",
+                projectId: activeProjectId || "global",
                 history: overlayHistory.slice(-6),
-                sandbox: {
-                    persona: (sbPersona && sbPersona.value) || 'warm-narrative',
-                    search_strategy: (sbSearchDepth && sbSearchDepth.value) || 'multi-tier',
-                    ocr: modOCR ? modOCR.checked : true,
-                    lint: modLint ? modLint.checked : false,
-                    workspace_path: (sbWorkspacePath && sbWorkspacePath.value) || '',
+                sandbox: Object.assign({}, getSandboxConfig(), {
                     screenshot: screenshotBase64,
                     overlay_mode: true
-                }
+                })
             };
             overlayWs.send(JSON.stringify(payload));
         };
@@ -1624,4 +2014,636 @@ async function triggerOverlayAction(action) {
         textSpan.innerText = "Failed to launch overlay routing pathway.";
     }
 }
+
+// ==========================================================================
+// RESEARCH HUD WORKFLOW IMPLEMENTATION
+// ==========================================================================
+
+let researchCategory = 'Web';
+let researchSocket = null;
+
+function selectResearchCategory(category) {
+    researchCategory = category;
+    const chips = document.querySelectorAll('.category-chip');
+    chips.forEach(chip => {
+        if (chip.getAttribute('data-category') === category) {
+            chip.classList.add('active');
+        } else {
+            chip.classList.remove('active');
+        }
+    });
+    CyberSound.playClick();
+}
+
+function triggerPresetResearch(query) {
+    const queryInput = document.getElementById('research-query-input');
+    if (queryInput) {
+        queryInput.value = query;
+        initiateResearchQuery();
+    }
+}
+
+function handleResearchInputKey(e) {
+    if (e.key === 'Enter') {
+        initiateResearchQuery();
+    }
+}
+
+function initiateResearchQuery() {
+    const queryInput = document.getElementById('research-query-input');
+    if (!queryInput || !queryInput.value.trim()) return;
+    
+    const query = queryInput.value.trim();
+    CyberSound.playEnter();
+    
+    // Hide presets, show console
+    const discoverySec = document.getElementById('research-discovery-section');
+    const consolePanel = document.getElementById('research-console-panel');
+    if (discoverySec) discoverySec.style.display = 'none';
+    if (consolePanel) consolePanel.style.display = 'flex';
+    
+    const synthesisBox = document.getElementById('research-synthesis-stream');
+    const sourcesBox = document.getElementById('research-sources-list');
+    if (synthesisBox) synthesisBox.innerHTML = '';
+    if (sourcesBox) sourcesBox.innerHTML = '';
+    
+    connectResearchSocket(query, researchCategory);
+}
+
+function connectResearchSocket(query, category) {
+    const statusLbl = document.getElementById('research-status-lbl');
+    const spinner = document.getElementById('research-spinner');
+    if (statusLbl) statusLbl.innerText = 'CONNECTING TO AURA RESEARCH CORE...';
+    if (spinner) spinner.style.display = 'inline-block';
+    
+    try {
+        let wsUrl;
+        if (PRODUCTION_BACKEND_URL) {
+            const cleanUrl = PRODUCTION_BACKEND_URL.replace(/^(http|https):/, '');
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            wsUrl = `${wsProtocol}${cleanUrl}/research`;
+        } else {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            const wsHost = getBackendHost(window.location.host);
+            wsUrl = `${wsProtocol}://${wsHost}/research`;
+        }
+        
+        if (researchSocket) {
+            try { researchSocket.close(); } catch(e) {}
+        }
+        
+        researchSocket = new WebSocket(wsUrl);
+        
+        researchSocket.onopen = function() {
+            if (statusLbl) statusLbl.innerText = 'RESEARCH SESSION ACTIVE - INGESTING SOURCES...';
+            CyberSound.playScan();
+            
+            researchSocket.send(JSON.stringify({
+                prompt: query,
+                category: category,
+                history: []
+            }));
+        };
+        
+        researchSocket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.done === true) {
+                if (statusLbl) statusLbl.innerText = 'RESEARCH CORE SYNC COMPLETE.';
+                if (spinner) spinner.style.display = 'none';
+                researchSocket.close();
+                researchSocket = null;
+                return;
+            }
+            
+            const type = data.type;
+            const content = data.content;
+            
+            if (type === 'status') {
+                if (statusLbl) statusLbl.innerText = content.toUpperCase();
+            } else if (type === 'sources') {
+                const sourcesBox = document.getElementById('research-sources-list');
+                if (sourcesBox && Array.isArray(content)) {
+                    sourcesBox.innerHTML = '';
+                    content.forEach((url, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'source-item';
+                        let shortUrl = url;
+                        try {
+                            const parsed = new URL(url);
+                            shortUrl = parsed.hostname + parsed.pathname.substring(0, 15) + (parsed.pathname.length > 15 ? '...' : '');
+                        } catch(e) {}
+                        item.innerHTML = `<i class="fa-solid fa-link"></i> <a href="${url}" target="_blank" title="${url}">[Source ${index+1}] ${shortUrl}</a>`;
+                        sourcesBox.appendChild(item);
+                    });
+                }
+            } else if (type === 'synthesis') {
+                const synthesisBox = document.getElementById('research-synthesis-stream');
+                if (synthesisBox) {
+                    let formatted = '';
+                    if (typeof content === 'object' && content !== null) {
+                        formatted = `# ${content.title || 'Research Analysis'}\n\n`;
+                        formatted += `## Summary\n${content.summary || ''}\n\n`;
+                        if (content.key_findings) {
+                            formatted += `## Key Findings\n`;
+                            content.key_findings.forEach(kf => { formatted += `- ${kf}\n`; });
+                            formatted += `\n`;
+                        }
+                        if (content.technical_analysis) {
+                            formatted += `## Technical Analysis\n${content.technical_analysis}\n\n`;
+                        }
+                        if (content.statistics) {
+                            formatted += `## Statistics\n`;
+                            content.statistics.forEach(s => { formatted += `- ${s}\n`; });
+                            formatted += `\n`;
+                        }
+                        if (content.future_scope) {
+                            formatted += `## Future Scope\n${content.future_scope}\n\n`;
+                        }
+                    } else {
+                        formatted = content.toString();
+                    }
+                    
+                    const cleanHtml = parseMarkdownToHtml(formatted);
+                    synthesisBox.innerHTML += cleanHtml;
+                    synthesisBox.scrollTop = synthesisBox.scrollHeight;
+                }
+            }
+        };
+        
+        researchSocket.onerror = function(err) {
+            if (statusLbl) statusLbl.innerText = 'RESEARCH GATEWAY DISRUPTED.';
+            if (spinner) spinner.style.display = 'none';
+        };
+        
+        researchSocket.onclose = function() {
+            if (spinner) spinner.style.display = 'none';
+        };
+        
+    } catch(err) {
+        if (statusLbl) statusLbl.innerText = 'COGNITIVE CHANNEL INITIALIZATION FAILURE.';
+        if (spinner) spinner.style.display = 'none';
+    }
+}
+
+function resetResearchConsole() {
+    if (researchSocket) {
+        try { researchSocket.close(); } catch(e) {}
+        researchSocket = null;
+    }
+    const discoverySec = document.getElementById('research-discovery-section');
+    const consolePanel = document.getElementById('research-console-panel');
+    const queryInput = document.getElementById('research-query-input');
+    if (discoverySec) discoverySec.style.display = 'block';
+    if (consolePanel) consolePanel.style.display = 'none';
+    if (queryInput) queryInput.value = '';
+    CyberSound.playClick();
+}
+
+function parseMarkdownToHtml(markdown) {
+    if (!markdown) return '';
+    return markdown
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/^#\s+(.*?)$/gm, '<h1>$1</h1>')
+        .replace(/^##\s+(.*?)$/gm, '<h2>$1</h2>')
+        .replace(/^###\s+(.*?)$/gm, '<h3>$1</h3>')
+        .replace(/^\s*-\s+(.*?)$/gm, '<li>$1</li>')
+        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
+        .replace(/\n/g, '<br>');
+}
+
+// ==========================================================================
+// WORKSPACE HUD WORKFLOW IMPLEMENTATION
+// ==========================================================================
+
+let activeProjectId = 'global';
+let workspaceProjects = [];
+let selectedProjectId = null;
+let currentProjectBlueprint = '';
+
+let obTitle = '';
+let obTopic = '';
+let obDesc = '';
+let obLevel = 'Intermediate';
+let obQuestions = [];
+
+async function loadWorkspaceProjects() {
+    const listContainer = document.getElementById('workspace-projects-list');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = '<div class="console-status-text" style="grid-column: 1/-1; text-align: center;">Scanning Neural Workspace Cores...</div>';
+    
+    try {
+        const url = getBackendUrl('/workspaces');
+        const response = await fetch(url);
+        workspaceProjects = await response.json();
+        
+        listContainer.innerHTML = '';
+        if (workspaceProjects.length === 0) {
+            listContainer.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 40px; border: 1px dashed rgba(57, 255, 20, 0.2); border-radius: 12px; background: rgba(5, 12, 28, 0.45); color: var(--text-muted); font-family: var(--font-hud);">
+                    <i class="fa-solid fa-folder-open" style="font-size: 2rem; color: rgba(57, 255, 20, 0.4); margin-bottom: 12px; display: block;"></i>
+                    NO ACTIVE NEURAL CORES. INITIALIZE A NEW WORKSPACE PARAMETER TO BEGIN.
+                </div>
+            `;
+            return;
+        }
+        
+        workspaceProjects.forEach(proj => {
+            const card = document.createElement('div');
+            card.className = 'project-card';
+            card.setAttribute('onclick', `selectProject('${proj.id}')`);
+            
+            const tag = proj.tag || 'AI PROJECT';
+            const desc = proj.description || 'No description provided.';
+            
+            card.innerHTML = `
+                <div class="project-card-header">
+                    <span class="project-tag">${tag}</span>
+                    <i class="fa-solid fa-microchip" style="color: var(--neon-green); font-size: 0.85rem;"></i>
+                </div>
+                <h4 class="project-card-title">${proj.title}</h4>
+                <p class="project-card-desc">${desc}</p>
+            `;
+            listContainer.appendChild(card);
+        });
+    } catch (e) {
+        console.error("Error loading workspace projects:", e);
+        listContainer.innerHTML = '<div class="console-status-text" style="grid-column: 1/-1; text-align: center; color: var(--neon-pink);">COGNITIVE INTERACTION CHANNEL FAILURE.</div>';
+    }
+}
+
+function startWorkspaceOnboarding() {
+    CyberSound.playClick();
+    
+    const listContainer = document.getElementById('workspace-projects-list');
+    const header = document.querySelector('.workspace-hub-header');
+    const wizard = document.getElementById('workspace-onboarding-wizard');
+    
+    if (listContainer) listContainer.style.display = 'none';
+    if (header) header.style.display = 'none';
+    if (wizard) wizard.style.display = 'flex';
+    
+    document.getElementById('onboarding-step-1').style.display = 'block';
+    document.getElementById('onboarding-step-2').style.display = 'none';
+    document.getElementById('onboarding-step-3').style.display = 'none';
+    
+    document.getElementById('ob-project-title').value = '';
+    document.getElementById('ob-project-topic').value = '';
+    document.getElementById('ob-project-desc').value = '';
+    document.getElementById('ob-project-level').value = 'Intermediate';
+}
+
+function cancelWorkspaceOnboarding() {
+    CyberSound.playClick();
+    
+    const listContainer = document.getElementById('workspace-projects-list');
+    const header = document.querySelector('.workspace-hub-header');
+    const wizard = document.getElementById('workspace-onboarding-wizard');
+    const dashboard = document.getElementById('workspace-project-dashboard');
+    
+    if (wizard) wizard.style.display = 'none';
+    if (dashboard) dashboard.style.display = 'none';
+    if (listContainer) listContainer.style.display = 'grid';
+    if (header) header.style.display = 'flex';
+    
+    loadWorkspaceProjects();
+}
+
+async function submitOnboardingDetails() {
+    obTitle = document.getElementById('ob-project-title').value.trim();
+    obTopic = document.getElementById('ob-project-topic').value.trim();
+    obDesc = document.getElementById('ob-project-desc').value.trim();
+    obLevel = document.getElementById('ob-project-level').value;
+    
+    if (!obTitle) {
+        alert("Please enter a Workspace Title.");
+        return;
+    }
+    
+    CyberSound.playEnter();
+    
+    const container = document.getElementById('ob-questions-container');
+    if (container) {
+        container.innerHTML = '<div class="console-status-text" style="text-align: center;">Retrieving adaptive alignment criteria...</div>';
+    }
+    
+    document.getElementById('onboarding-step-1').style.display = 'none';
+    document.getElementById('onboarding-step-2').style.display = 'block';
+    
+    try {
+        const url = getBackendUrl('/workspaces/onboarding');
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: obTitle,
+                experience_level: obLevel,
+                project_details: {
+                    topic: obTopic,
+                    description: obDesc
+                }
+            })
+        });
+        
+        const data = await response.json();
+        obQuestions = data.questions || [];
+        
+        if (container) {
+            container.innerHTML = '';
+            if (obQuestions.length === 0) {
+                container.innerHTML = '<div class="console-status-text">Ready to align. Click Analyze & Build Blueprint.</div>';
+            } else {
+                obQuestions.forEach((q, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'ob-question-item';
+                    const questionText = typeof q === 'object' ? (q.question || '') : q;
+                    const optionsText = (typeof q === 'object' && q.options && q.options.length > 0)
+                        ? `<div class="ob-question-options" style="font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-top: 4px; margin-bottom: 8px;">Options: ${q.options.join(', ')}</div>`
+                        : '';
+                    item.innerHTML = `
+                        <div class="ob-question-text">[Q${idx+1}] ${questionText}</div>
+                        ${optionsText}
+                        <input type="text" class="ob-question-input" data-index="${idx}" placeholder="Enter parameter detail...">
+                    `;
+                    container.appendChild(item);
+                });
+            }
+        }
+    } catch(e) {
+        console.error("Error fetching onboarding questions:", e);
+        if (container) {
+            container.innerHTML = '<div class="console-status-text" style="color: var(--neon-pink);">Failed to fetch alignment parameters. Try again.</div>';
+        }
+    }
+}
+
+function backToOnboardingStep1() {
+    CyberSound.playClick();
+    document.getElementById('onboarding-step-2').style.display = 'none';
+    document.getElementById('onboarding-step-1').style.display = 'block';
+}
+
+async function submitOnboardingAnswers() {
+    CyberSound.playEnter();
+    
+    const preview = document.getElementById('ob-blueprint-preview');
+    if (preview) {
+        preview.innerHTML = 'Synthesizing local dependencies, AST targets, and building roadmap blueprint...';
+    }
+    
+    document.getElementById('onboarding-step-2').style.display = 'none';
+    document.getElementById('onboarding-step-3').style.display = 'block';
+    
+    const answers = [];
+    const inputs = document.querySelectorAll('.ob-question-input');
+    inputs.forEach(input => {
+        const idx = parseInt(input.getAttribute('data-index'));
+        answers.push({
+            question: obQuestions[idx],
+            answer: input.value.trim() || "Defaults accepted."
+        });
+    });
+    
+    try {
+        const url = getBackendUrl('/workspaces/analyze');
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: obTitle,
+                answers: answers,
+                experience_level: obLevel,
+                project_details: {
+                    topic: obTopic,
+                    description: obDesc
+                }
+            })
+        });
+        
+        const data = await response.json();
+        currentProjectBlueprint = data.blueprint || data.analysis || (typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+        
+        if (preview) {
+            preview.innerHTML = currentProjectBlueprint;
+        }
+    } catch(e) {
+        console.error("Error generating analysis blueprint:", e);
+        if (preview) {
+            preview.innerHTML = 'Analysis compilation failed. Sandbox deployment path corrupted.';
+        }
+    }
+}
+
+async function finalizeWorkspaceCreation() {
+    CyberSound.playEnter();
+    
+    try {
+        const url = getBackendUrl('/workspaces');
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: obTitle,
+                description: obDesc || `Strategic architecture for ${obTopic}`,
+                blueprint: currentProjectBlueprint,
+                tag: 'WORKSPACE CORE'
+            })
+        });
+        
+        if (response.ok) {
+            cancelWorkspaceOnboarding();
+        } else {
+            alert("Failed to save neural core workspace.");
+        }
+    } catch(e) {
+        console.error("Error creating project:", e);
+        alert("Failed to communicate core creation parameters.");
+    }
+}
+
+function selectProject(projectId) {
+    CyberSound.playClick();
+    
+    selectedProjectId = projectId;
+    const project = workspaceProjects.find(p => p.id === projectId);
+    if (!project) return;
+    
+    const listContainer = document.getElementById('workspace-projects-list');
+    const header = document.querySelector('.workspace-hub-header');
+    const wizard = document.getElementById('workspace-onboarding-wizard');
+    const dashboard = document.getElementById('workspace-project-dashboard');
+    
+    if (listContainer) listContainer.style.display = 'none';
+    if (header) header.style.display = 'none';
+    if (wizard) wizard.style.display = 'none';
+    if (dashboard) dashboard.style.display = 'flex';
+    
+    document.getElementById('dash-project-tag').innerText = project.tag || 'AI PROJECT';
+    document.getElementById('dash-project-title').innerText = project.title;
+    document.getElementById('dash-project-desc').innerText = project.description || '';
+    
+    const bpBox = document.getElementById('dash-blueprint-content');
+    if (bpBox) {
+        bpBox.innerText = project.blueprint || 'No architectural blueprint compiled.';
+    }
+    
+    const suggestBox = document.getElementById('dash-suggestion-box');
+    if (suggestBox) {
+        suggestBox.innerText = 'Click button above to scan workspace and request cognitive improvements.';
+    }
+    
+    document.getElementById('dash-project-progress-lbl').innerText = '15%';
+    document.getElementById('dash-project-progress-bar').style.width = '15%';
+    
+    switchDashboardTab('blueprint');
+}
+
+function showHubProjectsList() {
+    CyberSound.playClick();
+    
+    const dashboard = document.getElementById('workspace-project-dashboard');
+    const listContainer = document.getElementById('workspace-projects-list');
+    const header = document.querySelector('.workspace-hub-header');
+    
+    if (dashboard) dashboard.style.display = 'none';
+    if (listContainer) listContainer.style.display = 'grid';
+    if (header) header.style.display = 'flex';
+    
+    selectedProjectId = null;
+    loadWorkspaceProjects();
+}
+
+function switchDashboardTab(tabName) {
+    CyberSound.playClick();
+    
+    const tabs = document.querySelectorAll('.dashboard-tabs .tab-item');
+    tabs.forEach(tab => {
+        const text = tab.innerText.toLowerCase();
+        if (text.includes(tabName)) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    const bpContent = document.getElementById('dash-tab-blueprint');
+    const sugContent = document.getElementById('dash-tab-suggestions');
+    
+    if (tabName === 'blueprint') {
+        if (bpContent) bpContent.style.display = 'block';
+        if (sugContent) sugContent.style.display = 'none';
+    } else {
+        if (bpContent) bpContent.style.display = 'none';
+        if (sugContent) sugContent.style.display = 'block';
+    }
+}
+
+function deleteCurrentProject() {
+    if (!selectedProjectId) return;
+    openCustomDeleteModal('workspace', selectedProjectId);
+}
+
+async function executeWorkspaceDelete(projectId) {
+    if (window.CyberSound) window.CyberSound.playClick();
+    
+    try {
+        const url = getBackendUrl(`/workspaces/${projectId}`);
+        const response = await fetch(url, { method: 'DELETE' });
+        if (response.ok) {
+            showHubProjectsList();
+        } else {
+            alert("Failed to purge workspace.");
+        }
+    } catch(e) {
+        console.error("Error deleting workspace:", e);
+        alert("Failed to communicate purge request.");
+    }
+}
+
+async function fetchProjectSuggestion() {
+    if (!selectedProjectId) return;
+    
+    CyberSound.playScan();
+    
+    const box = document.getElementById('dash-suggestion-box');
+    if (box) {
+        box.innerText = 'Scanning workspace files, indexing AST, and retrieving strategic recommendations...';
+    }
+    
+    try {
+        const url = getBackendUrl(`/workspaces/${selectedProjectId}/suggest`);
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (box) {
+            box.innerText = data.suggestion || 'No current recommendations. Neural alignment optimal.';
+            document.getElementById('dash-project-progress-lbl').innerText = '45%';
+            document.getElementById('dash-project-progress-bar').style.width = '45%';
+        }
+    } catch(e) {
+        console.error("Error fetching workspace suggestion:", e);
+        if (box) {
+            box.innerText = 'Neural audit path blocked. Try again.';
+        }
+    }
+}
+
+function startProjectChat() {
+    if (!selectedProjectId) return;
+    
+    const project = workspaceProjects.find(p => p.id === selectedProjectId);
+    if (!project) return;
+    
+    activeProjectId = selectedProjectId;
+    
+    changeMode('chat');
+    
+    CyberSound.playEnter();
+    
+    chatMessages.innerHTML = '';
+    chatHistory = [];
+    activeConvId = `conv_${selectedProjectId}_${Date.now()}`;
+    
+    loadRecentChats();
+    
+    const welcomeMsg = document.createElement('div');
+    welcomeMsg.className = 'message system-msg';
+    welcomeMsg.innerHTML = `<span class="msg-time">[Workspace Sandbox Active]</span> Connected to project **${project.title}**. AURA will base all reasoning and actions on this workspace's blueprint parameters.`;
+    chatMessages.appendChild(welcomeMsg);
+    
+    welcomeView.style.display = 'none';
+    chatMessages.style.display = 'flex';
+}
+
+// Bind to window for HTML access
+window.changeMode = changeMode;
+window.selectResearchCategory = selectResearchCategory;
+window.triggerPresetResearch = triggerPresetResearch;
+window.handleResearchInputKey = handleResearchInputKey;
+window.initiateResearchQuery = initiateResearchQuery;
+window.resetResearchConsole = resetResearchConsole;
+
+window.loadWorkspaceProjects = loadWorkspaceProjects;
+window.startWorkspaceOnboarding = startWorkspaceOnboarding;
+window.cancelWorkspaceOnboarding = cancelWorkspaceOnboarding;
+window.submitOnboardingDetails = submitOnboardingDetails;
+window.backToOnboardingStep1 = backToOnboardingStep1;
+window.submitOnboardingAnswers = submitOnboardingAnswers;
+window.finalizeWorkspaceCreation = finalizeWorkspaceCreation;
+window.selectProject = selectProject;
+window.showHubProjectsList = showHubProjectsList;
+window.switchDashboardTab = switchDashboardTab;
+window.deleteCurrentProject = deleteCurrentProject;
+window.fetchProjectSuggestion = fetchProjectSuggestion;
+window.startProjectChat = startProjectChat;
+window.activeChatMode = activeChatMode;
+window.activeProjectId = activeProjectId;
+
+window.openCustomDeleteModal = openCustomDeleteModal;
+window.closeCustomDeleteModal = closeCustomDeleteModal;
+window.confirmDeleteChat = confirmDeleteChat;
+window.executeCustomDeleteAction = executeCustomDeleteAction;
 

@@ -18,7 +18,7 @@ OVERLAY_CONVERSATION_ID = "aura_overlay"
 OVERLAY_SLM_MODEL = "llama-3.1-8b-instant"
 
 # Groq multimodal model (replaces decommissioned llama-3.2-11b-vision-preview)
-GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_VISION_MODEL = os.environ.get("GROQ_VISION_MODEL", "openbmb/minicpm-v-2.6")
 GROQ_VISION_MAX_B64_BYTES = 3_500_000  # Groq limit is 4MB for base64 images
 
 ASSISTANT_MODES = ("quick", "tutor", "copilot", "research", "focus")
@@ -115,7 +115,8 @@ def get_overlay_inference_params(sandbox: dict, has_screenshot: bool = False) ->
     cfg = MODE_RULES.get(mode, MODE_RULES["copilot"])
     max_tokens = cfg["max_tokens"]
     if has_screenshot:
-        max_tokens = min(max_tokens + 120, 550)
+        # Increase token limit significantly to prevent truncation due to reasoning tokens
+        max_tokens = max(max_tokens, 2048)
     return {
         "max_tokens": max_tokens,
         "temperature": cfg["temperature"],

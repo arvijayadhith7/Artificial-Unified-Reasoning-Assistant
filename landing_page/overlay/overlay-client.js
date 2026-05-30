@@ -13,7 +13,7 @@
       return `${proto}://${clean}/chat`;
     }
     const loc = typeof window !== 'undefined' ? window.location : null;
-    if (loc && (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1')) {
+    if (loc && loc.hostname) {
       return `ws://${loc.hostname}:${DEFAULT_BACKEND_PORT}/chat`;
     }
     return `ws://127.0.0.1:${DEFAULT_BACKEND_PORT}/chat`;
@@ -24,7 +24,7 @@
       return `${explicitHost.replace(/\/$/, '')}${path}`;
     }
     const loc = typeof window !== 'undefined' ? window.location : null;
-    if (loc && (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1')) {
+    if (loc && loc.hostname) {
       return `http://${loc.hostname}:${DEFAULT_BACKEND_PORT}${path}`;
     }
     return `http://127.0.0.1:${DEFAULT_BACKEND_PORT}${path}`;

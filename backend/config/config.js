@@ -10,6 +10,7 @@ module.exports = {
   },
   localInferenceUrl: process.env.LOCAL_INFERENCE_URL || 'ws://127.0.0.1:8000/chat',
   groqApiKey: process.env.GROQ_API_KEY || '',
+  openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
   supabaseUrl: process.env.SUPABASE_URL || 'https://mfmxknljzzpddwclqxlx.supabase.co',
   supabaseKey: process.env.SUPABASE_KEY || 'sb_publishable_tgNP7eHPzGR0giEZ8F0gvQ_7Z1Fwcgq',
   modelsPath: 'D:\\ANTIGRAVITY\\llm APP\\models'
