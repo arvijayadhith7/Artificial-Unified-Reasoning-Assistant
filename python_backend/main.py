@@ -179,8 +179,7 @@ async def startup_event():
     def boot_sequence():
         print("NEURAL BOOT: Initializing Memory and Databases...")
         try:
-            Base.metadata.create_all(bind=engine)
-            # Pre-load ChromaDB and SentenceTransformer in startup background thread
+            # Database init is handled in on_startup, just pre-load vector memory
             _ = memory.client
             print("NEURAL BOOT: Systems Synchronized.")
         except Exception as e:
@@ -1374,6 +1373,8 @@ LIVE DATA RULES:
                                     print(f"DDG Fallback failed: {ddg_err}")
                                     yield ("content", "\n[AURA completely offline. All 4 fallback tiers failed. Please check internet connection.]")
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"Inference Error: {e}")
             err_msg = str(e).lower()
             if "api_key" in err_msg or not async_groq_client:
@@ -2147,8 +2148,13 @@ async def secured_chat(websocket: WebSocket):
                 elif chunk_type == "thought":
                     accumulated_thought += content
                 elif chunk_type == "content":
-                    full_reply += content
-                    buffer += content
+                    if isinstance(content, dict):
+                        # Handle older duckduckgo_search versions that yield dicts
+                        content_str = content.get("content", content.get("message", str(content)))
+                    else:
+                        content_str = str(content)
+                    full_reply += content_str
+                    buffer += content_str
                     if len(buffer) > 10 or "\n" in buffer:
                         await websocket.send_text(json.dumps({"type": "chunk", "content": buffer}))
                         buffer = ""
@@ -2164,6 +2170,8 @@ async def secured_chat(websocket: WebSocket):
             await websocket.send_text(json.dumps({"done": True}))
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"WS Chat Error: {e}")
         try:
             await websocket.send_text(json.dumps({
