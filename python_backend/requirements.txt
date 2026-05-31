@@ -21,7 +21,8 @@ langchain-groq
 # UI/Inference
 gradio
 # Required for RAG
-ddgs
+duckduckgo-search
+openai
 bs4
 lxml
 httpx
