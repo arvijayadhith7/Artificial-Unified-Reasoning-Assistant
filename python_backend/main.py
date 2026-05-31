@@ -28,9 +28,10 @@ from google.auth.transport import requests as google_requests
 # Auth & Database
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from sqlalchemy import create_engine, Column, String, Integer, DateTime, JSON
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+
+from database import init_db, get_db, SessionLocal
+from models.user import User
+from routers import chat_history, upload
 
 # Agent Plugins
 # Agent Plugins (Loaded on demand)
@@ -78,25 +79,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. Database Setup
-DB_URL = "sqlite:///./memory/aura_intelligence.db"
-os.makedirs('./memory', exist_ok=True)
-engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+# 2. Database Setup is now handled in database.py
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    google_id = Column(String, unique=True, index=True, nullable=True)
-    email = Column(String, unique=True, index=True)
-    username = Column(String, nullable=True)
-    password_hash = Column(String, nullable=True)
-    profile_image = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_login = Column(DateTime, default=datetime.utcnow)
+app.include_router(chat_history.router)
+app.include_router(upload.router)
 
-# 2. Realtime Data Ingestion Cluster (Embedded)
+# 3. Realtime Data Ingestion Cluster (Embedded)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("IngestionCluster")
 
@@ -362,15 +353,33 @@ class AsyncOpenRouterClient:
 
 groq_key = os.environ.get("GROQ_API_KEY")
 openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+groq_key = os.environ.get("GROQ_API_KEY")
 
+# 1. Primary AI (GroqCloud)
+print("[SYSTEM] AURA primary cognitive brain: Running on GroqCloud")
+groq_client = GroqClient(api_key=groq_key) if groq_key else None
+async_groq_client = AsyncGroq(api_key=groq_key) if groq_key else None
+
+# 2. Fallback AI (OpenRouter / Hermes Agent)
 if openrouter_key:
-    print("[SYSTEM] AURA cognitive brain: Running on OpenRouter (Nous Research Hermes-3)")
-    groq_client = OpenRouterClient(api_key=openrouter_key)
-    async_groq_client = AsyncOpenRouterClient(api_key=openrouter_key)
+    print("[SYSTEM] AURA fallback brain: OpenRouter (Nous Research Hermes-3) on standby")
+    fallback_client = OpenRouterClient(api_key=openrouter_key)
+    async_fallback_client = AsyncOpenRouterClient(api_key=openrouter_key)
 else:
-    print("[SYSTEM] AURA cognitive brain: Running on GroqCloud")
-    groq_client = GroqClient(api_key=groq_key) if groq_key else None
-    async_groq_client = AsyncGroq(api_key=groq_key) if groq_key else None
+    fallback_client = None
+    async_fallback_client = None
+
+# 3. Tertiary AI (Cerebras)
+cerebras_key = os.environ.get("CEREBRAS_API_KEY")
+if cerebras_key:
+    print("[SYSTEM] AURA fallback brain 2: Cerebras on standby")
+    from openai import AsyncOpenAI
+    async_cerebras_client = AsyncOpenAI(
+        base_url="https://api.cerebras.ai/v1",
+        api_key=cerebras_key
+    )
+else:
+    async_cerebras_client = None
 
 custom_vision_url = os.environ.get("CUSTOM_VISION_API_URL")
 custom_vision_key = os.environ.get("CUSTOM_VISION_API_KEY", "no_key_needed")
@@ -505,7 +514,7 @@ class AuthManager:
 # 5. Reasoning Engine
 class InferenceEngine:
     def __init__(self):
-        pass
+        self.request_queue = asyncio.Semaphore(100) # LLM request queue limiting concurrent users to 100
 
     def _detect_complex_intent(self, prompt: str) -> bool:
         p = prompt.strip().lower()
@@ -581,6 +590,11 @@ class InferenceEngine:
         return final_history
 
     async def generate_stream(self, prompt, history, sandbox: dict = None):
+        async with self.request_queue:
+            async for chunk in self._generate_stream_inner(prompt, history, sandbox):
+                yield chunk
+
+    async def _generate_stream_inner(self, prompt, history, sandbox: dict = None):
         # Parse sandbox settings (universal overlay envelope)
         sandbox = merge_sandbox_defaults(sandbox)
         overlay_mode = sandbox.get("overlay_mode", False)
@@ -910,6 +924,24 @@ RESPONSE FORMAT: Output ONLY the optimized search query, nothing else. Do NOT in
             if api_context and "No matching free APIs" not in api_context:
                 memory_context += "\n\n" + api_context
 
+            # --- FILE INTELLIGENCE INJECTION ---
+            conversation_id = sandbox.get("conversation_id")
+            if conversation_id:
+                try:
+                    from services.rag_pipeline import query_knowledge_pack
+                    # Query ChromaDB for specific files uploaded to this conversation
+                    file_results = await asyncio.to_thread(
+                        query_knowledge_pack, prompt, f"conv_{conversation_id}", 3
+                    )
+                    if file_results:
+                        file_context_str = "\n\n--- EXTRACTED FILE CONTEXT ---\n"
+                        for doc in file_results:
+                            file_name = doc.get("metadata", {}).get("source", "Uploaded File")
+                            file_context_str += f"[Source: {file_name}]: {doc.get('content')}\n"
+                        memory_context += file_context_str
+                except Exception as e:
+                    print(f"File Intelligence Context Error: {e}")
+
         # 3. Workspace Blueprint
         workspace_title = "AURA GLOBAL"
         workspace_instructions = "General Intelligence Mode"
@@ -1173,7 +1205,7 @@ LIVE DATA RULES:
             messages = [{"role": "system", "content": system_prompt + (f"\nInternal notes: {thought_process}" if thought_process else "")}] + safe_history + [user_message]
             
             # Start direct streaming of final response
-            try:
+            if True:
                 if base64_image_content and custom_vision_client:
                     print(f"CUSTOM VISION ROUTING: Sending screenshot to self-hosted endpoint: {custom_vision_url}")
                     response_stream = await custom_vision_client.chat.completions.create(
@@ -1183,56 +1215,28 @@ LIVE DATA RULES:
                         max_tokens=overlay_params.get("max_tokens", 2048),
                         stream=True
                     )
+                    async for chunk in response_stream:
+                        if chunk.choices and len(chunk.choices) > 0:
+                            delta = chunk.choices[0].delta
+                            content = getattr(delta, "content", None)
+                            if not content and isinstance(delta, dict):
+                                content = delta.get("content")
+                            if content:
+                                yield ("content", content)
                 else:
-                    response_stream = await async_groq_client.chat.completions.create(
-                        model=map_model_for_backend(chosen_model),
-                        messages=messages,
-                        temperature=overlay_params.get("temperature", 0.7),
-                        max_tokens=overlay_params.get("max_tokens", 2048),
-                        stream=True
-                    )
-                
-                async for chunk in response_stream:
-                    if chunk.choices and len(chunk.choices) > 0:
-                        delta = chunk.choices[0].delta
-                        content = getattr(delta, "content", None)
-                        if not content and isinstance(delta, dict):
-                            content = delta.get("content")
-                        if content:
-                            yield ("content", content)
-                        
-            except Exception as e:
-                cerebras_key = os.environ.get("CEREBRAS_API_KEY")
-                if cerebras_key:
-                    print(f"Groq Inference failed: {e}. Seamlessly falling back to Cerebras...")
+                    # 1. Primary: NVIDIA NIM
+                    print(f"Routing to Primary: NVIDIA NIM...")
                     try:
                         from openai import AsyncOpenAI
-                        cerebras_client = AsyncOpenAI(
-                            base_url="https://api.cerebras.ai/v1",
-                            api_key=cerebras_key
+                        nvidia_key = os.environ.get("NVIDIA_API_KEY") or "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"
+                        nim_client = AsyncOpenAI(
+                            base_url="https://integrate.api.nvidia.com/v1",
+                            api_key=nvidia_key
                         )
                         
-                        # Map model names to Cerebras supported ones
-                        cerebras_model = "llama3.1-8b"
-                        if "70b" in chosen_model or chosen_model == "llama-3.3-70b-versatile":
-                            cerebras_model = "llama3.1-70b"
-                        
-                        # Strip out images if any (Cerebras is text-only)
-                        cerebras_messages = []
-                        for msg in messages:
-                            content = msg.get("content")
-                            if isinstance(content, list):
-                                text_content = ""
-                                for item in content:
-                                    if item.get("type") == "text":
-                                        text_content += item.get("text", "")
-                                cerebras_messages.append({"role": msg.get("role"), "content": text_content})
-                            else:
-                                cerebras_messages.append(msg)
-
-                        response_stream = await cerebras_client.chat.completions.create(
-                            model=cerebras_model,
-                            messages=cerebras_messages,
+                        response_stream = await nim_client.chat.completions.create(
+                            model="meta/llama-3.3-70b-instruct",
+                            messages=messages,
                             temperature=overlay_params.get("temperature", 0.7),
                             max_tokens=overlay_params.get("max_tokens", 2048),
                             stream=True
@@ -1241,35 +1245,134 @@ LIVE DATA RULES:
                         async for chunk in response_stream:
                             if chunk.choices and getattr(chunk.choices[0], "delta", None) and chunk.choices[0].delta.content:
                                 yield ("content", chunk.choices[0].delta.content)
-                        return # Successfully completed using Cerebras
-                    except Exception as ce:
-                        print(f"Cerebras fallback failed: {ce}")
-
-                print(f"Falling back to NVIDIA NIM...")
-                try:
-                    from openai import AsyncOpenAI
-                    nvidia_key = os.environ.get("NVIDIA_API_KEY") or "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"
-                    nim_client = AsyncOpenAI(
-                        base_url="https://integrate.api.nvidia.com/v1",
-                        api_key=nvidia_key
-                    )
-                    
-                    response_stream = await nim_client.chat.completions.create(
-                        model="minimaxai/minimax-m2.7",
-                        messages=messages,
-                        temperature=overlay_params.get("temperature", 0.7),
-                        max_tokens=overlay_params.get("max_tokens", 2048),
-                        stream=True
-                    )
-                    
-                    async for chunk in response_stream:
-                        if chunk.choices and getattr(chunk.choices[0], "delta", None) and chunk.choices[0].delta.content:
-                            yield ("content", chunk.choices[0].delta.content)
+                                
+                    except Exception as nim_err:
+                        print(f"NVIDIA NIM failed: {nim_err}. Routing to Secondary: Groq...")
+                        # 2. Secondary: Groq
+                        try:
+                            response_stream = await async_groq_client.chat.completions.create(
+                                model=map_model_for_backend(chosen_model),
+                                messages=messages,
+                                temperature=overlay_params.get("temperature", 0.7),
+                                max_tokens=overlay_params.get("max_tokens", 2048),
+                                stream=True
+                            )
                             
-                except Exception as e2:
-                    print(f"NVIDIA NIM failed: {e2}. Seamlessly falling back to Local SLM...")
-                    yield ("content", "\n[Fallback SLM active. Processing request locally...]")
-                    
+                            async for chunk in response_stream:
+                                if chunk.choices and len(chunk.choices) > 0:
+                                    delta = chunk.choices[0].delta
+                                    content = getattr(delta, "content", None)
+                                    if not content and isinstance(delta, dict):
+                                        content = delta.get("content")
+                                    if content:
+                                        yield ("content", content)
+                        except Exception as groq_err:
+                            print(f"Groq failed: {groq_err}. Routing to Tertiary: Hermes Agent...")
+                            # 3. Tertiary: Hermes Agent Fallback
+                            if async_fallback_client:
+                                yield ("status", "AURA rate limited. Engaging Hermes Agent fallback...")
+                                try:
+                                    fallback_model = "nousresearch/hermes-3-llama-3.1-70b" if "70b" in chosen_model else "nousresearch/hermes-3-llama-3.1-405b:free"
+                                    response_stream = await async_fallback_client.chat.completions.create(
+                                        model=fallback_model,
+                                        messages=messages,
+                                        temperature=overlay_params.get("temperature", 0.7),
+                                        max_tokens=overlay_params.get("max_tokens", 2048),
+                                        stream=True
+                                    )
+                                    async for chunk in response_stream:
+                                        if chunk.choices and len(chunk.choices) > 0:
+                                            delta = chunk.choices[0].delta
+                                            content = getattr(delta, "content", None)
+                                            if not content and isinstance(delta, dict):
+                                                content = delta.get("content")
+                                            if content:
+                                                yield ("content", content)
+                                except Exception as fallback_err:
+                                    print(f"Hermes Fallback failed: {fallback_err}. Routing to Cerebras...")
+                                    cerebras_success = False
+                                    if async_cerebras_client:
+                                        yield ("status", "Hermes fallback rate limited. Engaging Cerebras Core...")
+                                        try:
+                                            response_stream = await async_cerebras_client.chat.completions.create(
+                                                model="llama3.1-8b",
+                                                messages=messages,
+                                                temperature=overlay_params.get("temperature", 0.7),
+                                                max_tokens=overlay_params.get("max_tokens", 2048),
+                                                stream=True
+                                            )
+                                            async for chunk in response_stream:
+                                                if chunk.choices and len(chunk.choices) > 0:
+                                                    delta = chunk.choices[0].delta
+                                                    content = getattr(delta, "content", None)
+                                                    if content:
+                                                        yield ("content", content)
+                                            cerebras_success = True
+                                        except Exception as cerebras_err:
+                                            print(f"Cerebras Fallback failed: {cerebras_err}.")
+                                    
+                                    if not cerebras_success:
+                                        print("Routing to DuckDuckGo Free AI...")
+                                        yield ("status", "API Core offline. Engaging Free DuckDuckGo AI...")
+                                        try:
+                                            from duckduckgo_search import DDGS
+                                            import threading, queue, asyncio
+                                            prompt_string = messages[-1]["content"] if messages else prompt
+                                            q = queue.Queue()
+                                            def ddg_worker():
+                                                try:
+                                                    for token in DDGS().chat_yield(prompt_string, model="gpt-4o-mini"):
+                                                        q.put(token)
+                                                except Exception as e:
+                                                    q.put(e)
+                                                finally:
+                                                    q.put(None)
+                                            threading.Thread(target=ddg_worker, daemon=True).start()
+                                            while True:
+                                                try:
+                                                    item = q.get_nowait()
+                                                except queue.Empty:
+                                                    await asyncio.sleep(0.05)
+                                                    continue
+                                                if item is None:
+                                                    break
+                                                if isinstance(item, Exception):
+                                                    raise item
+                                                yield ("content", item)
+                                        except Exception as ddg_err:
+                                            print(f"DDG Fallback failed: {ddg_err}")
+                                            yield ("content", "\n[AURA completely offline. All 4 fallback tiers failed. Please check internet connection.]")
+                            else:
+                                print("Routing to DuckDuckGo Free AI...")
+                                yield ("status", "API Core offline. Engaging Free DuckDuckGo AI...")
+                                try:
+                                    from duckduckgo_search import DDGS
+                                    import threading, queue, asyncio
+                                    prompt_string = messages[-1]["content"] if messages else prompt
+                                    q = queue.Queue()
+                                    def ddg_worker():
+                                        try:
+                                            for token in DDGS().chat_yield(prompt_string, model="gpt-4o-mini"):
+                                                q.put(token)
+                                        except Exception as e:
+                                            q.put(e)
+                                        finally:
+                                            q.put(None)
+                                    threading.Thread(target=ddg_worker, daemon=True).start()
+                                    while True:
+                                        try:
+                                            item = q.get_nowait()
+                                        except queue.Empty:
+                                            await asyncio.sleep(0.05)
+                                            continue
+                                        if item is None:
+                                            break
+                                        if isinstance(item, Exception):
+                                            raise item
+                                        yield ("content", item)
+                                except Exception as ddg_err:
+                                    print(f"DDG Fallback failed: {ddg_err}")
+                                    yield ("content", "\n[AURA completely offline. All 4 fallback tiers failed. Please check internet connection.]")
         except Exception as e:
             print(f"Inference Error: {e}")
             err_msg = str(e).lower()

@@ -613,7 +613,7 @@ function filterAndRenderHistory() {
 
 async function loadRecentChats() {
     try {
-        let path = '/chats';
+        let path = '/api/history/conversations';
         if (activeProjectId && activeProjectId !== 'global') {
             path += `?project_id=${activeProjectId}`;
         }
@@ -638,6 +638,9 @@ async function loadSelectedChat(convId) {
     const activeItem = document.getElementById(`history-item-${convId}`);
     if (activeItem) activeItem.classList.add('active');
     
+    // Setup Export Button Data
+    window.currentExportConvId = convId;
+    
     welcomeView.style.display = 'none';
     if (chatMessages) chatMessages.style.display = 'flex';
     chatMessages.innerHTML = '';
@@ -648,7 +651,7 @@ async function loadSelectedChat(convId) {
     chatMessages.appendChild(loadingDiv);
     
     try {
-        const url = getBackendUrl(`/chats/${convId}`);
+        const url = getBackendUrl(`/api/history/conversations/${convId}`);
         const response = await fetch(url);
         const messages = await response.json();
         
@@ -799,9 +802,113 @@ function adjustTextareaHeight() {
 }
 userInput.addEventListener('input', adjustTextareaHeight);
 
+// --- FILE INTELLIGENCE UPLOAD ---
 function triggerAttachFile() {
-    alert("Attachment sandbox mounted. Drag & drop standard code repositories or system instruction templates.");
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.xlsx,.csv,.txt,.md,.py,.js,.html,.css,.png,.jpg,.jpeg,.webp';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (!activeConvId) {
+            // Need a conversation ID to link the file to, create a dummy or start chat first
+            alert("Please start a conversation first by typing a message before attaching a file.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('message_id', 'pending_msg_' + Date.now()); // Fallback if no specific message
+
+        setHaloState('thinking', 'COGNITIVE STATE: ANALYZING FILE...');
+        appendMessage(`Uploading & parsing ${file.name}...`, 'user-msg');
+        
+        try {
+            const res = await fetch(getBackendUrl('/api/upload'), {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                appendMessage(`File analyzed successfully. Extracted ${data.parsed_length} characters. Context added to active workspace.`, 'aura-msg', 'AURA Intelligence');
+            } else {
+                appendMessage(`File analysis failed: ${data.detail}`, 'aura-msg', 'AURA Error');
+            }
+        } catch (err) {
+            console.error("Upload error", err);
+            appendMessage(`Error connecting to upload pipeline.`, 'aura-msg', 'AURA Error');
+        }
+        setHaloState('idle', 'COGNITIVE STATE: READY');
+    };
+    input.click();
 }
+
+function exportCurrentChat() {
+    if (!chatHistory || chatHistory.length === 0) {
+        alert("No chat history to export.");
+        return;
+    }
+    
+    let textOutput = "AURA Conversation Export\\n\\n";
+    chatHistory.forEach(msg => {
+        textOutput += `[${msg.role.toUpperCase()}]:\\n${msg.content}\\n\\n`;
+    });
+    
+    const blob = new Blob([textOutput], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aura_chat_export_${activeConvId || 'session'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// --- SMART PASTE INTERCEPTION ---
+document.addEventListener('paste', (e) => {
+    // If the active element is the user input and there is an image in the clipboard
+    if (document.activeElement === userInput) {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+                const blob = items[i].getAsFile();
+                
+                // Directly mock the file upload flow for the pasted image
+                const file = new File([blob], 'pasted_image.png', { type: blob.type });
+                
+                if (!activeConvId) {
+                    alert("Please start a conversation first by typing a message before pasting an image.");
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('message_id', 'pending_msg_' + Date.now());
+
+                setHaloState('scanning', 'COGNITIVE STATE: VISION OCR ACTIVE...');
+                appendMessage(`Analyzing pasted image...`, 'user-msg');
+                
+                fetch(getBackendUrl('/api/upload'), {
+                    method: 'POST',
+                    body: formData
+                }).then(res => res.json()).then(data => {
+                    if (data.status === 'success') {
+                        appendMessage(`Vision OCR complete. Context added to workspace.`, 'aura-msg', 'AURA Intelligence');
+                    }
+                    setHaloState('idle', 'COGNITIVE STATE: READY');
+                }).catch(err => {
+                    appendMessage(`Vision OCR failed.`, 'aura-msg', 'AURA Error');
+                    setHaloState('idle', 'COGNITIVE STATE: READY');
+                });
+            }
+        }
+    }
+});
+
+
 
 function submitSimulationQuery() {
     const text = userInput.value.trim();
@@ -837,10 +944,41 @@ function appendMessage(text, className, auraTitle = '') {
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${className}`;
     
+    // Basic Markdown Parser (Code blocks with syntax highlighting and Copy button)
+    let formattedText = text;
+    // Format code blocks: ```lang ... ```
+    formattedText = formattedText.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        const uniqueId = 'code_' + Math.random().toString(36).substring(2, 9);
+        // Escape HTML in the code block
+        const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `
+            <div class="code-block-container" style="background:#1e1e1e; border-radius:8px; margin: 8px 0; overflow:hidden;">
+                <div class="code-block-header" style="display:flex; justify-content:space-between; padding: 4px 12px; background:#2d2d2d; color:#888; font-size:12px;">
+                    <span>${lang || 'code'}</span>
+                    <button class="copy-code-btn" onclick="navigator.clipboard.writeText(document.getElementById('${uniqueId}').innerText); this.innerText='Copied!'; setTimeout(() => this.innerText='Copy', 2000);" style="background:transparent; border:none; color:#bbb; cursor:pointer;"><i class="fa-solid fa-copy"></i> Copy</button>
+                </div>
+                <div class="code-block-body" style="padding: 12px; overflow-x:auto;">
+                    <code id="${uniqueId}" style="color:#d4d4d4; font-family: 'Share Tech Mono', monospace; font-size:14px; white-space:pre;">${escapedCode}</code>
+                </div>
+            </div>
+        `;
+    });
+    // Format inline code: `code`
+    formattedText = formattedText.replace(/`([^`]+)`/g, '<code style="background:#2d2d2d; padding:2px 4px; border-radius:4px; font-family:monospace; color:#4fc1ff;">$1</code>');
+    // Format bold: **bold**
+    formattedText = formattedText.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    
+    // Replace remaining newlines with <br> for regular text (but outside of code blocks)
+    // A quick way is to just do a smart replace or just accept that the <pre> handles code blocks
+    formattedText = formattedText.split('</div>').map(part => {
+        if (part.includes('<code id="')) return part;
+        return part.replace(/\n/g, '<br>');
+    }).join('</div>');
+    
     if (auraTitle) {
-        msgDiv.innerHTML = `<span class="msg-time">[${timeString}]</span> <strong>${auraTitle}</strong> <div class="msg-txt-body">${text.replace(/\n/g, '<br>')}</div>`;
+        msgDiv.innerHTML = `<span class="msg-time">[${timeString}]</span> <strong>${auraTitle}</strong> <div class="msg-txt-body">${formattedText}</div>`;
     } else {
-        msgDiv.innerHTML = `<span class="msg-time">[${timeString}]</span> <div class="msg-txt-body">${text.replace(/\n/g, '<br>')}</div>`;
+        msgDiv.innerHTML = `<span class="msg-time">[${timeString}]</span> <div class="msg-txt-body">${formattedText}</div>`;
     }
     
     chatMessages.appendChild(msgDiv);

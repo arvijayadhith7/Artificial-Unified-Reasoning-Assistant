@@ -183,7 +183,6 @@ class MainActivity : FlutterActivity() {
             }
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Failed to start overlay service: ${e.message}")
-            throw e
         }
     }
 

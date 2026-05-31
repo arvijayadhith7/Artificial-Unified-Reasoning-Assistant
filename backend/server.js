@@ -11,6 +11,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- RATE LIMITING (Gateway Layer) ---
+const rateLimit = require('express-rate-limit');
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again after a minute',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(apiLimiter);
+
 // Custom CSP for Flutter Web Compatibility
 app.use((req, res, next) => {
   res.setHeader(
