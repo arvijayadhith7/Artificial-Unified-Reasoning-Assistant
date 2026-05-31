@@ -1315,7 +1315,7 @@ LIVE DATA RULES:
                                         yield ("status", "API Core offline. Engaging Free DuckDuckGo AI...")
                                         try:
                                             from duckduckgo_search import DDGS
-                                            import threading, queue, asyncio
+                                            import threading, queue
                                             prompt_string = messages[-1]["content"] if messages else prompt
                                             q = queue.Queue()
                                             def ddg_worker():
@@ -1346,7 +1346,7 @@ LIVE DATA RULES:
                                 yield ("status", "API Core offline. Engaging Free DuckDuckGo AI...")
                                 try:
                                     from duckduckgo_search import DDGS
-                                    import threading, queue, asyncio
+                                    import threading, queue
                                     prompt_string = messages[-1]["content"] if messages else prompt
                                     q = queue.Queue()
                                     def ddg_worker():
