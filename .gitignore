@@ -67,6 +67,75 @@ node_modules/
 dist/
 .env.local
 .env.development.local
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# AI Specific
+/models/
+/llm-datasets-main/
+.env
+*.apk
+/python_backend/__pycache__/
+/python_backend/venv/
+/backend/node_modules/
+/python_backend/memory/
+/python_backend/scratch_scrape_test.py
+/searxng-master/
+
+# Root memory, databases, and logs
+/memory/aura_intelligence.db
+/memory/chats/
+/memory/vector_db/
+analyze_utf8.txt
+
+# General web/desktop ignores
+node_modules/
+dist/
+.env.local
+.env.development.local
 .env.test.local
 .env.production.local
 npm-debug.log*
@@ -76,3 +145,4 @@ yarn-error.log*
 # Secrets and Scripts
 real-time-data-*.json
 upload_space.py
+hermes-agent/
